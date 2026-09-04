@@ -1,0 +1,11 @@
+import { createBrowserClient } from '@supabase/ssr'
+import type { Database } from '@/types/database'
+
+export function createClient() {
+  // Fallbacks let the client instantiate without crashing when env vars aren't set yet.
+  // Queries will return empty data — replace with real values in .env.local to connect.
+  return createBrowserClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co',
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-anon-key'
+  )
+}

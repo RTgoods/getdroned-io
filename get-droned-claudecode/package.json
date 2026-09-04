@@ -1,0 +1,9 @@
+{
+  "name": "get-droned",
+  "version": "2.12.0",
+  "private": true,
+  "description": "Get Droned browser game",
+  "scripts": {
+    "start": "python3 -m http.server 8000"
+  }
+}

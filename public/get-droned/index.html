@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>GET DRONED</title>
+<link rel="stylesheet" href="assets/css/game.css">
+</head>
+<body>
+<div id="wrap">
+  <div id="splash" role="button" tabindex="0" aria-label="Continue to game menu">
+    <img id="splashImg" alt="GET DRONED" src="assets/images/covers/main-cover.png">
+    <div id="splashBar"><i></i></div>
+    <div id="splashTap">TAP TO SKIP</div>
+  </div>
+  <div id="levelOneIntro" class="levelIntro" aria-hidden="true">
+    <img class="levelIntroImg" id="levelOneIntroImg" alt="Level 1 mission briefing: Yevgeny Prigozhin" src="assets/images/covers/level-1.webp">
+    <div class="levelIntroControls" id="levelOneIntroControls">
+      <button class="levelIntroStart" id="levelOneIntroStart" type="button" data-intro-level="1">START NOW</button>
+      <div class="levelIntroBar" id="levelOneIntroBar" aria-hidden="true"><i></i></div>
+    </div>
+  </div>
+  <div id="levelTwoIntro" class="levelIntro" aria-hidden="true">
+    <img class="levelIntroImg" id="levelTwoIntroImg" alt="Level 2 mission briefing: Valery Gerasimov" src="assets/images/covers/level-2.webp">
+    <div class="levelIntroControls" id="levelTwoIntroControls">
+      <button class="levelIntroStart" id="levelTwoIntroStart" type="button" data-intro-level="2">START NOW</button>
+      <div class="levelIntroBar" id="levelTwoIntroBar" aria-hidden="true"><i></i></div>
+    </div>
+  </div>
+  <img id="wagnerPatchAsset" alt="" aria-hidden="true" style="display:none" src="assets/images/emblems/wagner-patch.jpg">
+  <div id="levelThreeIntro" class="levelIntro" aria-hidden="true">
+    <img class="levelIntroImg" id="levelThreeIntroImg" alt="Level 3 mission briefing: Aleksandr Moiseyev" src="assets/images/covers/level-3.webp">
+    <div class="levelIntroControls"><button class="levelIntroStart" type="button" data-intro-level="3">START NOW</button><div class="levelIntroBar" aria-hidden="true"><i></i></div></div>
+  </div>
+  <div id="levelFourIntro" class="levelIntro" aria-hidden="true">
+    <img class="levelIntroImg" id="levelFourIntroImg" alt="Level 4 mission briefing: Dmitry Medvedev" src="assets/images/covers/level-4.webp">
+    <div class="levelIntroControls"><button class="levelIntroStart" type="button" data-intro-level="4">START NOW</button><div class="levelIntroBar" aria-hidden="true"><i></i></div></div>
+  </div>
+  <div id="levelFiveIntro" class="levelIntro" aria-hidden="true">
+    <img class="levelIntroImg" id="levelFiveIntroImg" alt="Level 5 mission briefing: Kim Jong Un" src="assets/images/covers/level-5.webp">
+    <div class="levelIntroControls"><button class="levelIntroStart" type="button" data-intro-level="5">START NOW</button><div class="levelIntroBar" aria-hidden="true"><i></i></div></div>
+  </div>
+  <div id="levelSixIntro" class="levelIntro" aria-hidden="true">
+    <img class="levelIntroImg" id="levelSixIntroImg" alt="Red Square mission briefing: Vladimir Putin" src="assets/images/covers/level-6-red-square.webp">
+    <div class="levelIntroControls"><button class="levelIntroStart" type="button" data-intro-level="6">START NOW</button><div class="levelIntroBar" aria-hidden="true"><i></i></div></div>
+  </div>
+  <canvas id="cv"></canvas>
+  <div id="dmgFlash"></div>
+
+  <div class="hud" id="topL">
+    <div class="bar"><i id="hpF"></i></div>
+    <div class="bar" id="apBar"><i id="apF"></i></div>
+    <div class="lbl" id="wname">M9 PISTOL &nbsp;·&nbsp; <span id="ammo">12 / 60</span></div>
+  </div>
+  <div class="hud" id="topR">
+    <div id="sector">SECTOR 1</div>
+    <div id="left">6 HOSTILES</div>
+    <div id="cash">$0</div>
+    <div id="squad">SQUAD 5/5</div>
+  </div>
+
+  <div id="joyZone"><div id="joyBase" style="display:none"><div id="joyKnob"></div></div></div>
+  <button id="nade" class="dim">FRAG<br>×0</button>
+  <button id="act">FIRE</button>
+  <button id="mute">♪</button>
+
+  <div id="banner"><b></b><small></small></div>
+  <div id="levelFourBossVictory"><div class="victoryIn"><img alt="Dmitry Medvedev" src="assets/images/bosses/dmitry-medvedev.jpg"><strong>LEVEL FOUR CLEAR</strong><span>DMITRY MEDVEDEV DEFEATED</span><i></i></div></div>
+  <div id="bossVictory"><div class="victoryIn"><img alt="Yevgeny Prigozhin" src="assets/images/bosses/yevgeny-prigozhin.jpg"><strong>LEVEL ONE CLEAR</strong><span>YEVGENY PRIGOZHIN DEAD</span><i></i></div></div>
+
+  <div id="seaBossVictory"><div class="victoryIn"><img alt="Aleksandr Moiseyev" src="assets/images/bosses/aleksandr-moiseyev.jpg"><strong>LEVEL THREE CLEAR</strong><span>ALEKSANDR MOISEYEV DEFEATED</span><i></i></div></div>
+
+  <div id="airBossVictory"><div class="victoryIn"><img alt="Kim Jong Un" src="assets/images/bosses/kim-jong-un.jpg"><strong>LEVEL FIVE CLEAR</strong><span>KIM JONG UN DEFEATED</span><i></i></div></div>
+
+  <div id="levelTwoBossVictory"><div class="victoryIn"><img alt="Valery Gerasimov" src="assets/images/bosses/valery-gerasimov.jpg"><strong>LEVEL TWO CLEAR</strong><span>VALERY GERASIMOV DEFEATED</span><i></i></div></div>
+
+  <div id="finalBossVictory"><div class="victoryIn"><canvas id="finalBossCardCv" width="180" height="150" aria-label="Vladimir Putin boss artwork"></canvas><strong>RED SQUARE CLEAR</strong><span>VLADIMIR PUTIN DEFEATED</span><i></i></div></div>
+
+  <div class="ov" id="start">
+    <h1>GET<br>DRONED<small>EYES UP</small></h1>
+    <div id="build">GET DRONED · BUILD 106</div>
+    <p class="sub">Sweep the compound, then get to the flagpole in the forecourt, haul their colours down and run yours up. They will come back for it.<br><br>Sweep the ruin. Enemy squads push in from every side. Crack open supply crates to pull weapon and ammo cards — you only carry one gun, so choose well.</p>
+    <div id="kitLbl">CHOOSE YOUR KIT</div>
+    <div id="kits"></div>
+    <button class="btn" id="go">SECTOR 1 · THE COMPOUND</button>
+    <button class="btn trench lvl" data-l="2">SECTOR 2 · THE TRENCHES</button>
+    <button class="btn sea lvl" data-l="3">SECTOR 3 · THE BLACK SEA</button>
+    <button class="btn oil lvl" data-l="4">SECTOR 4 · THE OIL FIELDS</button>
+    <button class="btn lvl" data-l="5">SECTOR 5 · THE AIRFIELD</button>
+    <div class="row">
+      <button class="btn ghost mini lvl" data-l="6">SECTOR 6 · RED SQUARE</button>
+    </div>
+    <button class="btn ghost" id="bossTest">TEST · FINAL BOSS</button>
+    <button class="btn ghost" id="bossOneTest">TEST · LEVEL 1 BOSS</button>
+    <button class="btn ghost" id="bossTwoTest">TEST · LEVEL 2 BOSS</button>
+    <button class="btn ghost" id="bossThreeTest">TEST · LEVEL 3 BOSS</button>
+    <button class="btn ghost" id="bossFourTest">TEST · LEVEL 4 BOSS</button>
+    <button class="btn ghost" id="bossFiveTest">TEST · LEVEL 5 BOSS</button>
+    <div id="deathCardLbl">VIEW BOSS DEFEAT CARDS</div>
+    <div id="deathCardLinks">
+      <button class="btn ghost deathCardLink" data-card="bossVictory">YEVGENY<br>PRIGOZHIN</button>
+      <button class="btn ghost deathCardLink" data-card="levelTwoBossVictory">VALERY<br>GERASIMOV</button>
+      <button class="btn ghost deathCardLink" data-card="seaBossVictory">ALEKSANDR<br>MOISEYEV</button>
+      <button class="btn ghost deathCardLink" data-card="levelFourBossVictory">DMITRY<br>MEDVEDEV</button>
+      <button class="btn ghost deathCardLink" data-card="airBossVictory">KIM<br>JONG UN</button>
+      <button class="btn ghost deathCardLink" data-card="finalBossVictory">VLADIMIR<br>PUTIN</button>
+    </div>
+  </div>
+
+  <div class="ov hide" id="cardOv" style="display:none">
+    <div id="card"><div id="cardIn">
+      <div id="cardArt"><canvas id="cardCv" width="220" height="104"></canvas></div>
+      <div id="cardRar">COMMON</div>
+      <div id="cardName">AMMO CRATE</div>
+      <div id="cardStats"></div>
+      <div id="cardBtns"><button class="btn ghost" id="leave">LEAVE</button><button class="btn" id="take">TAKE</button></div>
+      <div id="cardHint">tap anywhere outside to skip</div>
+    </div></div>
+  </div>
+
+  <div class="ov hide" id="over">
+    <h1 id="overT">K.I.A.<small id="overS">THE HOUSE HOLDS</small></h1>
+    <p class="sub" id="overStats"></p>
+    <button class="btn" id="retry">REDEPLOY</button>
+  </div>
+
+</div>
+
+<!-- Back button — outside #wrap so overflow:hidden can't clip it -->
+<a id="backBtn" href="/"
+   style="display:none;position:fixed;top:12px;left:12px;z-index:2147483647;
+          padding:6px 12px;font-size:9px;font-weight:900;letter-spacing:2px;
+          text-transform:uppercase;text-decoration:none;color:#9a9288;
+          background:rgba(12,13,11,0.85);border:1px solid rgba(255,255,255,0.12);
+          border-radius:3px;backdrop-filter:blur(8px);
+          transition:color 150ms,background 150ms;cursor:pointer;">
+  ← BACK
+</a>
+<script>
+  (function(){
+    var btn = document.getElementById('backBtn');
+    if (window.self === window.top) {
+      btn.style.display = 'block';
+    }
+    btn.addEventListener('mouseenter', function(){
+      this.style.color='#e2b13c';
+      this.style.background='rgba(12,13,11,0.95)';
+      this.style.borderColor='rgba(226,177,60,0.35)';
+    });
+    btn.addEventListener('mouseleave', function(){
+      this.style.color='#9a9288';
+      this.style.background='rgba(12,13,11,0.85)';
+      this.style.borderColor='rgba(255,255,255,0.12)';
+    });
+    btn.addEventListener('click', function(e){
+      e.stopPropagation();
+      window.location.href = '/';
+    });
+  })();
+</script>
+
+<script src="assets/js/game.js"></script>
+</body>
+</html>

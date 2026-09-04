@@ -1,0 +1,94 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: #0c0d0b;
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    color: #e8e4d8;
+  }
+
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: #0c0d0b; }
+  ::-webkit-scrollbar-thumb { background: #c0562f; border-radius: 2px; }
+}
+
+@layer utilities {
+  /* ─── Typography ─────────────────────────── */
+  .label {
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 3.5px;
+    text-transform: uppercase;
+    color: #e2b13c;
+  }
+
+  .heading-game {
+    font-weight: 900;
+    letter-spacing: 6px;
+    text-transform: uppercase;
+    color: #f2ead2;
+    text-shadow: 0 4px 0 #241f16, 0 6px 18px #000;
+    line-height: 0.92;
+  }
+
+  /* ─── Buttons ────────────────────────────── */
+  .btn-primary {
+    display: inline-block;
+    padding: 14px 32px;
+    background: linear-gradient(180deg, #c0562f, #7d3016);
+    box-shadow: 0 4px 0 #4a1b0c;
+    color: #fff;
+    font-size: 15px;
+    font-weight: 800;
+    letter-spacing: 2.5px;
+    text-transform: uppercase;
+    border-radius: 3px;
+    border: 0;
+    cursor: pointer;
+    transition: filter 0.1s;
+  }
+  .btn-primary:hover { filter: brightness(1.12); }
+  .btn-primary:active { transform: translateY(3px); box-shadow: 0 1px 0 #4a1b0c; }
+
+  .btn-ghost {
+    display: inline-block;
+    padding: 12px 28px;
+    background: rgba(255,255,255,0.07);
+    box-shadow: 0 4px 0 rgba(0,0,0,0.45);
+    color: #d6d0c2;
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    border-radius: 3px;
+    border: 0;
+    cursor: pointer;
+    transition: filter 0.1s;
+  }
+  .btn-ghost:hover { filter: brightness(1.15); }
+  .btn-ghost:active { transform: translateY(3px); box-shadow: 0 1px 0 rgba(0,0,0,.45); }
+
+  /* ─── Divider ─────────────────────────────── */
+  .gold-line {
+    height: 2px;
+    background: linear-gradient(90deg, transparent, #e2b13c, #c0562f, #e2b13c, transparent);
+    box-shadow: 0 0 12px #c0562f;
+  }
+
+  /* ─── Scan-line effect ───────────────────── */
+  .scan-lines {
+    background: repeating-linear-gradient(
+      0deg, transparent 0 5px, rgba(255,255,255,0.018) 6px
+    );
+  }
+
+  /* ─── Panel card ─────────────────────────── */
+  .panel {
+    background: linear-gradient(170deg, #1a1814, #0f0e0c);
+    border: 1px solid rgba(226,177,60,0.18);
+  }
+}
