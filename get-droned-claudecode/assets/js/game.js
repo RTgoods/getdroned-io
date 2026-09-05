@@ -2707,45 +2707,52 @@ function spawnCiv(){
   civs.push(C0);
 }
 // ── Base patrol guard ─────────────────────────────────────────────────────────
-function baseGuardRoute(G){
-  for(var t=0;t<12;t++){
-    var gx=ri(Math.ceil(BASE.x0+1),Math.floor(BASE.x1-1));
-    var gy=ri(Math.ceil(BASE.y0+1),Math.floor(BASE.y1-1));
-    if(!blocksMove(T(gx,gy))){
-      var pth=findPath(Math.floor(G.x/TILE),Math.floor(G.y/TILE),gx,gy);
-      if(pth&&pth.length>3){ G.path=pth; G.pi=1; return true; }
-    }
-  }
-  return false;
-}
 function spawnBaseGuard(){
   for(var i=0;i<200;i++){
     var gx=ri(Math.ceil(BASE.x0+1),Math.floor(BASE.x1-1));
     var gy=ri(Math.ceil(BASE.y0+1),Math.floor(BASE.y1-1));
     if(!blocksMove(T(gx,gy))){
-      var G={x:gx*TILE+TILE/2,y:gy*TILE+TILE/2,r:10,
+      baseGuards.push({x:gx*TILE+TILE/2,y:gy*TILE+TILE/2,r:10,
         baseGuard:true,col:'#1c1c1e',hair:'#111111',
-        walk:0,amt:0,ang:rr(0,6.3),panic:0,life:999999,
-        path:null,pi:0,ox:0,oy:0,say:0,sid:ri(0,9000)};
-      if(baseGuardRoute(G)) baseGuards.push(G);
+        walk:0,amt:0,ang:rr(0,6.3),panic:0,life:999999,say:0,sid:ri(0,9000),
+        patrolX:0,patrolY:0,patrolT:0});
       return;
     }
   }
 }
 function updateBaseGuards(dt){
+  var bx0=(BASE.x0+1)*TILE, bx1=(BASE.x1-1)*TILE;
+  var by0=(BASE.y0+1)*TILE, by1=(BASE.y1-1)*TILE;
   for(var i=0;i<baseGuards.length;i++){
     var G=baseGuards[i];
-    if(!G.path||G.pi>=G.path.length){ baseGuardRoute(G); continue; }
-    var wp=G.path[G.pi];
-    var dx=wp.x-G.x, dy=wp.y-G.y, dist=Math.hypot(dx,dy)||1;
-    if(dist<16){ G.pi++; if(G.pi>=G.path.length){ baseGuardRoute(G); } continue; }
-    var spd=46, step=spd*dt;
-    var ox=G.x, oy=G.y;
-    moveEnt(G,(dx/dist)*step,(dy/dist)*step);
-    G.ang=Math.atan2(dy,dx);
-    var moved=Math.hypot(G.x-ox,G.y-oy);
-    G.walk+=dt*(moved>1?10:2.5);
-    G.amt=Math.min(1,G.amt+dt*(moved>1?7:-4));
+    // Clamp strictly inside base in case anything nudged them out
+    G.x=Math.max(bx0,Math.min(bx1,G.x));
+    G.y=Math.max(by0,Math.min(by1,G.y));
+    // Pick a new patrol waypoint when timer expires or close enough
+    G.patrolT-=dt;
+    var nearWP=Math.hypot(G.patrolX-G.x,G.patrolY-G.y)<20;
+    if(G.patrolT<=0||nearWP){
+      var tries=0;
+      do{
+        G.patrolX=rr(bx0,bx1); G.patrolY=rr(by0,by1); tries++;
+      } while(blocksMove(T(Math.floor(G.patrolX/TILE),Math.floor(G.patrolY/TILE)))&&tries<20);
+      G.patrolT=rr(3.5,8);
+    }
+    var dx=G.patrolX-G.x, dy=G.patrolY-G.y, dist=Math.hypot(dx,dy)||1;
+    if(dist>20){
+      var step=44*dt, ox=G.x, oy=G.y;
+      moveEnt(G,(dx/dist)*step,(dy/dist)*step);
+      // Re-clamp after movement
+      G.x=Math.max(bx0,Math.min(bx1,G.x));
+      G.y=Math.max(by0,Math.min(by1,G.y));
+      G.ang=Math.atan2(dy,dx);
+      var moved=Math.hypot(G.x-ox,G.y-oy);
+      G.walk+=dt*(moved>1?10:2.5);
+      G.amt=Math.min(1,G.amt+dt*7);
+    } else {
+      G.amt=Math.max(0,G.amt-dt*5);
+      G.walk+=dt*2;
+    }
   }
 }
 // ─────────────────────────────────────────────────────────────────────────────

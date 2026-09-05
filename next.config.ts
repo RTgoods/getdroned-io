@@ -16,15 +16,15 @@ const nextConfig: NextConfig = {
       // HTML entry point — always revalidate (short TTL, ETag check)
       {
         source: '/get-droned',
-        headers: [{ key: 'Cache-Control', value: 'public, max-age=0, must-revalidate' }],
+        headers: [{ key: 'Cache-Control', value: 'public, max-age=0, s-maxage=0, must-revalidate' }],
       },
       {
         source: '/get-droned/',
-        headers: [{ key: 'Cache-Control', value: 'public, max-age=0, must-revalidate' }],
+        headers: [{ key: 'Cache-Control', value: 'public, max-age=0, s-maxage=0, must-revalidate' }],
       },
       {
         source: '/get-droned/index.html',
-        headers: [{ key: 'Cache-Control', value: 'public, max-age=0, must-revalidate' }],
+        headers: [{ key: 'Cache-Control', value: 'public, max-age=0, s-maxage=0, must-revalidate' }],
       },
       // Static assets (JS, CSS, images, audio) — 1 year immutable via ?v= query busting
       {
