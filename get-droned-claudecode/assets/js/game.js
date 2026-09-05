@@ -40,7 +40,7 @@ var seaBossSpawned=0, seaBossDefeated=0;
 var homeSpawn={x:61.5,y:8.6};
 var padList=[], wingmen=[], relaunch=0, truck=null, truckRoute=[], depots=[], depotWorkers=[], aaGuns=[], refineries=[], sams=[], samShots=[], smog=0;
 var bunkers=[], roads=[], bases=[], flags=[], intro=[], introT=0;
-var missionBriefT=0, missionBriefActive=false, missionBriefFade=0;
+var missionBriefStart=0, missionBriefActive=false;
 var rescueGroups=[], captives=[];
 var BASE={x0:55.5,y0:2.2,x1:67.8,y1:13.6}, wave=0, dronePad=null, droneCD=0, tank=null;
 var flag=null, baseFlags=[], crew=[], civs=[], civT=4, shopPad=null, shopCD=0, bought={}, upgAP=60, upgHP=100;
@@ -6014,7 +6014,7 @@ function startSector(n){
   enemies.length=0; bullets.length=0; eb.length=0; fx.length=0; nades.length=0; smoke.length=0;
   chunks.length=0; mist.length=0; splat.length=0; pools.length=0;
   civs.length=0; baseGuards.length=0; civT=4; shopCD=0; droneCam=null; respawnT=0; enades.length=0; flames.length=0; wingmen.length=0;
-  missionBriefActive=false; missionBriefT=0; missionBriefFade=0;
+  missionBriefActive=false; missionBriefStart=0;
   for(var pz0=0;pz0<padList.length;pz0++) padList[pz0].cd=0;
   setCrewZone();
   if(!crew.length||squadLost===0) buildCrew(); else rebuildCrew();
@@ -6087,7 +6087,7 @@ function startSector(n){
   cam.x=player.x-VW/2; cam.y=player.y-VH/2;
   if(n===1&&player.nades<5) player.nades=5;
   state='play'; hud(); startMusic(mapKind);
-  missionBriefT=0; missionBriefFade=0; missionBriefActive=true;
+  missionBriefStart=performance.now(); missionBriefActive=true;
   intro=(mapKind==='redSquare')?[{t:0,a:'SECTOR '+n,b:'RED SQUARE · MOSCOW'},
         {t:2.4,a:'RED SQUARE CATHEDRAL AND KREMLIN',b:'TWO PRIMARY OBJECTIVES'},
         {t:4.8,a:'MOTORCADE CHECKS THE STREETS',b:'SECURITY TEAMS DEPLOY AT STOPS'},
@@ -8484,7 +8484,7 @@ function draw(){
     ctx.textAlign='start';
   }
   drawMinimap();
-  drawMissionBrief(ctx,dt);
+  drawMissionBrief(ctx);
   // drawObjectives(); — objectives shown in sidebar, not needed in-game HUD
   drawStick();
   drawBelt();
@@ -8558,15 +8558,14 @@ function getBriefObjs(){
   if(mapKind==='redSquare') return ['DESTROY BUILDINGS & MOTORCADE','CLEAR ALL SECURITY TEAMS','DEFEAT THE FINAL BOSS'];
   return ['CAPTURE ALL BASES','CLEAR ALL HOSTILES','DEFEAT THE COMPOUND BOSS'];
 }
-function drawMissionBrief(c,dt){
+function drawMissionBrief(c){
   if(!missionBriefActive) return;
-  missionBriefT+=dt;
   var objs=getBriefObjs();
   var OBJ_DELAY=0.85;
   var HOLD_AFTER=1.8;
   var FADE_DUR=0.7;
   var fadeStart=OBJ_DELAY*objs.length+HOLD_AFTER;
-  var t=missionBriefT;
+  var t=(performance.now()-missionBriefStart)/1000;
   if(t>fadeStart+FADE_DUR){ missionBriefActive=false; return; }
   var alpha=t<fadeStart?1:Math.max(0,1-(t-fadeStart)/FADE_DUR);
   c.save();
