@@ -2988,18 +2988,17 @@ function drawBaseGuard(c,G){
   c.fillStyle='#1a1a1f'; rrect(c,-7,-24,14,13,4); c.fill(); outl(c,'#0a0a0e',2);
   // Lapel stripe
   c.fillStyle='rgba(180,160,90,.55)'; c.fillRect(-1,-24,2,10);
-  // Arms down at sides — gentle swing with walk cycle (not raised)
-  var lSwing=Math.sin(ph+Math.PI)*.9*G.amt, rSwing=Math.sin(ph)*.9*G.amt;
-  // Upper arms along body, forearms hanging down
+  // Arms hanging DOWN from shoulders — gentle fore/aft sway
+  var lSway=Math.sin(ph+Math.PI)*1.5*G.amt, rSway=Math.sin(ph)*1.5*G.amt;
   c.strokeStyle='#1a1a1f'; c.lineWidth=5; c.lineCap='round'; c.lineJoin='round';
-  c.beginPath(); c.moveTo(-6,-20); c.lineTo(-8,-26+lSwing); c.lineTo(-7,-33+lSwing); c.stroke();
-  c.beginPath(); c.moveTo( 6,-20); c.lineTo( 8,-26+rSwing); c.lineTo( 7,-33+rSwing); c.stroke();
+  c.beginPath(); c.moveTo(-7,-21); c.lineTo(-8+lSway,-13); c.lineTo(-7+lSway,-4); c.stroke();
+  c.beginPath(); c.moveTo( 7,-21); c.lineTo( 8+rSway,-13); c.lineTo( 7+rSway,-4); c.stroke();
   c.strokeStyle='#0a0a0e'; c.lineWidth=1.2;
-  c.beginPath(); c.moveTo(-6,-20); c.lineTo(-8,-26+lSwing); c.lineTo(-7,-33+lSwing); c.stroke();
-  c.beginPath(); c.moveTo( 6,-20); c.lineTo( 8,-26+rSwing); c.lineTo( 7,-33+rSwing); c.stroke();
+  c.beginPath(); c.moveTo(-7,-21); c.lineTo(-8+lSway,-13); c.lineTo(-7+lSway,-4); c.stroke();
+  c.beginPath(); c.moveTo( 7,-21); c.lineTo( 8+rSway,-13); c.lineTo( 7+rSway,-4); c.stroke();
   // Hands
-  c.fillStyle=SKIN2; c.beginPath(); c.arc(-7,-33+lSwing,2.5,0,6.3); c.fill(); outl(c,'#0a0a0e',1);
-  c.fillStyle=SKIN2; c.beginPath(); c.arc( 7,-33+rSwing,2.5,0,6.3); c.fill(); outl(c,'#0a0a0e',1);
+  c.fillStyle=SKIN2; c.beginPath(); c.arc(-7+lSway,-4,2.5,0,6.3); c.fill(); outl(c,'#0a0a0e',1);
+  c.fillStyle=SKIN2; c.beginPath(); c.arc( 7+rSway,-4,2.5,0,6.3); c.fill(); outl(c,'#0a0a0e',1);
   // Head
   c.fillStyle=SKIN; c.beginPath(); c.arc(0,-30,7,0,6.3); c.fill(); outl(c,'#0a0a0e',1.6);
   // Black hair / close-cropped
