@@ -163,7 +163,7 @@ function buildMap(){
   fill(52,8,52,9,FLOOR);                          // west gate
   fill(60,3,60,7,WALL); fill(60,5,60,6,FLOOR);    // internal partition
   shopPad={x:(56.5)*TILE,y:(6.5)*TILE};
-  dronePad={x:(64.5)*TILE,y:(6.85)*TILE};
+  dronePad={x:(64.5)*TILE,y:(8.5)*TILE};
   addProp(55,5,3,1,'shoptable'); addProp(53,3,1,2,'shelf');
   addProp(53,10,4,1,'console');  addProp(57,12,2,1,'console');
   addProp(65,3,1,2,'dronerack'); addProp(65,11,1,2,'dronerack');
@@ -172,8 +172,11 @@ function buildMap(){
   addProp(61,3,2,1,'medbed');    addProp(61,5,2,1,'medbed');
   medStation={x:63.5*TILE,y:4.5*TILE,nurse:1,
     healX:64.35*TILE,healY:5.45*TILE,healR:25,healing:0,healFx:0};
-  padList=[{x:64.5*TILE,y:6.85*TILE,standX:62.5*TILE,standY:6.85*TILE,table:1,kind:'droneS',cd:0,cool:24,n:'SCOUT'},
-           {x:64.5*TILE,y:9.85*TILE,standX:62.5*TILE,standY:9.85*TILE,table:1,kind:'drone', cd:0,cool:36,n:'FPV'}];
+  // Drone stations shifted down; desk tiles marked PROP so player can't walk through them
+  padList=[{x:64.5*TILE,y:8.5*TILE, standX:62.5*TILE,standY:8.5*TILE, table:1,kind:'droneS',cd:0,cool:24,n:'SCOUT'},
+           {x:64.5*TILE,y:11.0*TILE,standX:62.5*TILE,standY:11.0*TILE,table:1,kind:'drone', cd:0,cool:36,n:'FPV'}];
+  setT(63,8,PROP); setT(64,8,PROP);   // scout drone desk
+  setT(63,11,PROP); setT(64,11,PROP); // FPV drone desk
   setupTruck(null);
 
   // ===== busted-up vehicles littering the roads =====
@@ -9042,7 +9045,7 @@ function drawDroneStand(P,col,cd){
   ctx.lineWidth=1.2; ctx.setLineDash([5,4]);
   rrect(ctx,sx-sw/2+5,sy-sw/2+5,sw-10,sw-10,2); ctx.stroke(); ctx.setLineDash([]);
   ctx.fillStyle=live?col:'#83949b'; ctx.font='bold 7px Arial'; ctx.textAlign='center';
-  ctx.fillText(live?'STAND HERE':Math.ceil(cd)+'s',sx,sy+3);
+  ctx.fillText(live?'ACTIVATE':Math.ceil(cd)+'s',sx,sy+3);
   ctx.textAlign='start';
 }
 
@@ -9050,20 +9053,38 @@ function drawDroneTable(P,col,label,cd,icon){
   var live=cd<=0;
   var sx=P.standX, sy=P.standY, sw=42;
 
-  // Display table with the selected drone resting on top.
-  var tw=58, th=38, tx=P.x-tw/2, ty=P.y-th/2;
-  ctx.fillStyle='rgba(0,0,0,.3)'; rrect(ctx,tx+3,ty+5,tw,th,4); ctx.fill();
-  ctx.fillStyle='#5e625b'; rrect(ctx,tx,ty,tw,th,4); ctx.fill(); outl(ctx,'#171a17',1.8);
-  ctx.fillStyle='#7a8077'; rrect(ctx,tx+3,ty+3,tw-6,th-13,3); ctx.fill();
-  ctx.strokeStyle='rgba(220,230,225,.2)'; ctx.lineWidth=1; ctx.strokeRect(tx+5,ty+5,tw-10,th-17);
-  ctx.fillStyle='#30342f'; ctx.fillRect(tx+5,ty+th-8,7,12); ctx.fillRect(tx+tw-12,ty+th-8,7,12);
-  ctx.save(); ctx.translate(P.x,P.y-5); ctx.globalAlpha=live?1:.3;
-  toolIcon(ctx,icon,icon==='droneL'?40:34); ctx.restore();
+  // Drone control desk — styled like the console prop
+  var tw=64, th=36, tx=P.x-tw/2, ty=P.y-th/2;
+  ctx.fillStyle='rgba(0,0,0,.36)'; rrect(ctx,tx+4,ty+6,tw,th,4); ctx.fill();
+  ctx.fillStyle='#3a4048'; rrect(ctx,tx,ty,tw,th,4); ctx.fill(); outl(ctx,'#12161a',2);
+  ctx.fillStyle='#22262c'; rrect(ctx,tx+4,ty+5,tw-8,th-12,2); ctx.fill();
+  // Two monitors
+  for(var dm2=0;dm2<2;dm2++){
+    var mx4=tx+6+dm2*28, my4=ty+2;
+    ctx.fillStyle='#161a1f'; rrect(ctx,mx4,my4-8,20,14,2); ctx.fill(); outl(ctx,'#0c0f12',1.6);
+    ctx.fillStyle=live?(dm2===0?'#1d5f52':'#1b4a66'):'#1a1a1a';
+    ctx.fillRect(mx4+2,my4-6,16,10);
+    if(live){
+      ctx.fillStyle='rgba(150,240,220,.55)';
+      for(var ln4=0;ln4<4;ln4++) ctx.fillRect(mx4+3,my4-5+ln4*2.2,rr(4,12),1);
+    }
+    ctx.fillStyle='rgba(120,220,255,.3)'; ctx.fillRect(mx4+2,my4-6,16,2);
+    ctx.fillStyle='#2b3138'; ctx.fillRect(mx4+8,my4+6,4,3);
+  }
+  // Keyboard strip
+  ctx.fillStyle='#4a525c'; rrect(ctx,tx+6,ty+th-10,tw-12,7,2); ctx.fill();
+  // Status LEDs
+  ctx.fillStyle=live?'#62d6a0':'#383838'; ctx.beginPath(); ctx.arc(tx+tw-8,ty+8,2,0,6.3); ctx.fill();
+  ctx.fillStyle=live?'#e2b13c':'#383838'; ctx.beginPath(); ctx.arc(tx+tw-8,ty+14,2,0,6.3); ctx.fill();
+  // Drone icon floating above
+  ctx.save(); ctx.translate(P.x+8,P.y-2); ctx.globalAlpha=live?0.9:.25;
+  toolIcon(ctx,icon,icon==='droneL'?30:26); ctx.restore();
+  // Label panel above desk
   ctx.fillStyle=live?'rgba(8,12,14,.82)':'rgba(20,20,20,.68)';
   rrect(ctx,tx+3,ty-14,tw-6,12,2); ctx.fill();
-  ctx.fillStyle=live?col:'#8fa0a6'; ctx.font='bold 8px Arial';
+  ctx.fillStyle=live?col:'#8fa0a6'; ctx.font='bold 7px Arial'; ctx.textAlign='center';
   ctx.fillText(live?label:label+' '+Math.ceil(cd)+'s',P.x,ty-5);
-  // Direction marker visually connects the square to its table.
+  // Connector line from stand to desk
   ctx.strokeStyle=live?col:'rgba(150,160,166,.3)'; ctx.lineWidth=1.5;
   ctx.beginPath(); ctx.moveTo(sx+sw/2,sy); ctx.lineTo(tx-4,P.y); ctx.stroke();
   ctx.textAlign='start';
