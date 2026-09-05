@@ -129,78 +129,70 @@ export function GameLanding({ game, user, hasPurchased, onPlay }: Props) {
             </div>
           ) : (
             /* Not owned — two-button split */
-            <div className="flex flex-col sm:flex-row gap-3">
+            <><div className="flex flex-col sm:flex-row gap-2">
 
               {/* ── FREE: Sector One — Ukraine blue ── */}
               <button
                 onClick={onPlay}
                 className="flex-1"
                 style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  gap: 10, padding: '10px 14px',
                   background: 'linear-gradient(180deg,#0068cc 0%,#004a99 100%)',
-                  border: '1px solid rgba(0,120,220,0.6)',
-                  borderRadius: 4, padding: '0',
-                  cursor: 'pointer',
-                  boxShadow: '0 3px 0 #002a5c, 0 6px 20px rgba(0,104,204,0.30)',
+                  border: '1px solid rgba(0,120,220,0.55)',
+                  borderRadius: 4, cursor: 'pointer',
+                  boxShadow: '0 2px 0 #002a5c, 0 4px 14px rgba(0,104,204,0.25)',
                   transition: 'filter 150ms',
-                  overflow: 'hidden',
                 }}
-                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.filter = 'brightness(1.15)' }}
+                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.filter = 'brightness(1.12)' }}
                 onMouseLeave={e => { (e.currentTarget as HTMLElement).style.filter = 'none' }}
               >
-                <div style={{ padding: '16px 20px' }}>
-                  <div style={{
-                    display: 'inline-block', fontSize: 8, fontWeight: 900,
-                    letterSpacing: '2px', color: '#002a5c', background: '#ffd700',
-                    borderRadius: 2, padding: '2px 7px', marginBottom: 8, textTransform: 'uppercase',
-                  }}>FREE</div>
-                  <div style={{ fontSize: 13, fontWeight: 900, letterSpacing: '2px', color: '#e8f4ff', textTransform: 'uppercase', marginBottom: 4 }}>
-                    ▶ Play Sector One
-                  </div>
-                  <p style={{ fontSize: 9, color: 'rgba(200,225,255,0.65)', letterSpacing: '1.5px', textTransform: 'uppercase', margin: 0 }}>
-                    The Compound · No login required
-                  </p>
-                </div>
+                <span style={{ fontSize: 11, fontWeight: 900, letterSpacing: '2px', color: '#e8f4ff', textTransform: 'uppercase' }}>
+                  ▶ Play Sector One
+                </span>
+                <span style={{
+                  fontSize: 8, fontWeight: 900, letterSpacing: '1.5px',
+                  color: '#002a5c', background: '#ffd700',
+                  borderRadius: 2, padding: '2px 6px', textTransform: 'uppercase', flexShrink: 0,
+                }}>FREE</span>
               </button>
 
-              {/* ── DONATE & UNLOCK: Full access — Ukraine yellow ── */}
+              {/* ── UNLOCK: Full access — Ukraine yellow ── */}
               <button
                 onClick={handleBuy}
                 disabled={buyLoading}
                 className="flex-1"
                 style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  gap: 10, padding: '10px 14px',
                   background: 'linear-gradient(180deg,#f5c800 0%,#c89e00 100%)',
-                  border: '1px solid rgba(245,200,0,0.5)',
-                  borderRadius: 4, padding: '0',
+                  border: '1px solid rgba(245,200,0,0.45)',
+                  borderRadius: 4,
                   cursor: buyLoading ? 'default' : 'pointer',
-                  boxShadow: '0 3px 0 #7a6000, 0 8px 28px rgba(245,200,0,0.25)',
+                  boxShadow: '0 2px 0 #7a6000, 0 4px 14px rgba(245,200,0,0.20)',
                   opacity: buyLoading ? 0.7 : 1,
                   transition: 'filter 150ms',
-                  overflow: 'hidden',
                 }}
-                onMouseEnter={e => { if (!buyLoading) (e.currentTarget as HTMLElement).style.filter = 'brightness(1.1)' }}
+                onMouseEnter={e => { if (!buyLoading) (e.currentTarget as HTMLElement).style.filter = 'brightness(1.08)' }}
                 onMouseLeave={e => { (e.currentTarget as HTMLElement).style.filter = 'none' }}
               >
-                <div style={{ padding: '16px 20px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                    <div style={{ fontSize: 13, fontWeight: 900, letterSpacing: '2px', color: '#1a1200', textTransform: 'uppercase' }}>
-                      {buyLoading ? 'Redirecting…' : 'Unlock All 6 Sectors'}
-                    </div>
-                    <div style={{
-                      fontSize: 16, fontWeight: 900, color: '#1a1200',
-                      background: 'rgba(0,0,0,0.12)', borderRadius: 3,
-                      padding: '2px 8px', letterSpacing: '0.5px',
-                    }}>{price}</div>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span style={{ fontSize: 13, lineHeight: 1 }}>🇺🇦</span>
-                    <p style={{ fontSize: 9, color: 'rgba(0,0,0,0.55)', letterSpacing: '1.5px', textTransform: 'uppercase', margin: 0 }}>
-                      50% donated to Ukraine relief · one-time
-                    </p>
-                  </div>
-                </div>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ fontSize: 11, lineHeight: 1 }}>🇺🇦</span>
+                  <span style={{ fontSize: 11, fontWeight: 900, letterSpacing: '2px', color: '#1a1000', textTransform: 'uppercase' }}>
+                    {buyLoading ? 'Redirecting…' : 'Unlock All Sectors'}
+                  </span>
+                </span>
+                <span style={{
+                  fontSize: 12, fontWeight: 900, color: '#1a1000',
+                  background: 'rgba(0,0,0,0.10)', borderRadius: 3,
+                  padding: '2px 7px', letterSpacing: '0.5px', flexShrink: 0,
+                }}>{price}</span>
               </button>
 
             </div>
+            <p style={{ margin: '6px 0 0', fontSize: 8, letterSpacing: '1.5px', color: '#4a4840', textTransform: 'uppercase' }}>
+              50% of every purchase donated to Ukraine relief · one-time payment
+            </p></>
           )}
 
           {buyError && (
