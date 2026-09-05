@@ -43,7 +43,7 @@ export function GameLanding({ game, hasPurchased, onPlay }: Props) {
       <div style={{ position: 'relative', height: '52vh', minHeight: 320, overflow: 'hidden' }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src="/get-droned/assets/images/covers/main-cover.png"
+          src="/get-droned/assets/images/covers/main-cover.webp"
           alt="Get Droned"
           style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center top', display: 'block' }}
         />
