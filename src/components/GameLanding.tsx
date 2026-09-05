@@ -131,16 +131,16 @@ export function GameLanding({ game, user, hasPurchased, onPlay }: Props) {
             /* Not owned — two-button split */
             <div className="flex flex-col sm:flex-row gap-3">
 
-              {/* ── FREE: Sector One ── */}
+              {/* ── FREE: Sector One — Ukraine blue ── */}
               <button
                 onClick={onPlay}
                 className="flex-1"
                 style={{
-                  background: 'linear-gradient(180deg,#2a3a1a 0%,#1a2410 100%)',
-                  border: '1px solid rgba(157,179,90,0.5)',
+                  background: 'linear-gradient(180deg,#0068cc 0%,#004a99 100%)',
+                  border: '1px solid rgba(0,120,220,0.6)',
                   borderRadius: 4, padding: '0',
                   cursor: 'pointer',
-                  boxShadow: '0 3px 0 #0d1408, 0 6px 20px rgba(157,179,90,0.12)',
+                  boxShadow: '0 3px 0 #002a5c, 0 6px 20px rgba(0,104,204,0.30)',
                   transition: 'filter 150ms',
                   overflow: 'hidden',
                 }}
@@ -150,50 +150,50 @@ export function GameLanding({ game, user, hasPurchased, onPlay }: Props) {
                 <div style={{ padding: '16px 20px' }}>
                   <div style={{
                     display: 'inline-block', fontSize: 8, fontWeight: 900,
-                    letterSpacing: '2px', color: '#0d1408', background: '#9db35a',
+                    letterSpacing: '2px', color: '#002a5c', background: '#ffd700',
                     borderRadius: 2, padding: '2px 7px', marginBottom: 8, textTransform: 'uppercase',
                   }}>FREE</div>
-                  <div style={{ fontSize: 13, fontWeight: 900, letterSpacing: '2px', color: '#d4e8a0', textTransform: 'uppercase', marginBottom: 4 }}>
+                  <div style={{ fontSize: 13, fontWeight: 900, letterSpacing: '2px', color: '#e8f4ff', textTransform: 'uppercase', marginBottom: 4 }}>
                     ▶ Play Sector One
                   </div>
-                  <p style={{ fontSize: 9, color: '#6a7a50', letterSpacing: '1.5px', textTransform: 'uppercase', margin: 0 }}>
+                  <p style={{ fontSize: 9, color: 'rgba(200,225,255,0.65)', letterSpacing: '1.5px', textTransform: 'uppercase', margin: 0 }}>
                     The Compound · No login required
                   </p>
                 </div>
               </button>
 
-              {/* ── DONATE & UNLOCK: Full access ── */}
+              {/* ── DONATE & UNLOCK: Full access — Ukraine yellow ── */}
               <button
                 onClick={handleBuy}
                 disabled={buyLoading}
                 className="flex-1"
                 style={{
-                  background: 'linear-gradient(160deg,#c0562f 0%,#8a3318 50%,#5c1f0a 100%)',
-                  border: '1px solid rgba(226,177,60,0.4)',
+                  background: 'linear-gradient(180deg,#f5c800 0%,#c89e00 100%)',
+                  border: '1px solid rgba(245,200,0,0.5)',
                   borderRadius: 4, padding: '0',
                   cursor: buyLoading ? 'default' : 'pointer',
-                  boxShadow: '0 4px 0 #3a1508, 0 8px 28px rgba(192,86,47,0.35)',
+                  boxShadow: '0 3px 0 #7a6000, 0 8px 28px rgba(245,200,0,0.25)',
                   opacity: buyLoading ? 0.7 : 1,
                   transition: 'filter 150ms',
                   overflow: 'hidden',
                 }}
-                onMouseEnter={e => { if (!buyLoading) (e.currentTarget as HTMLElement).style.filter = 'brightness(1.12)' }}
+                onMouseEnter={e => { if (!buyLoading) (e.currentTarget as HTMLElement).style.filter = 'brightness(1.1)' }}
                 onMouseLeave={e => { (e.currentTarget as HTMLElement).style.filter = 'none' }}
               >
                 <div style={{ padding: '16px 20px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                    <div style={{ fontSize: 13, fontWeight: 900, letterSpacing: '2px', color: '#fff', textTransform: 'uppercase' }}>
+                    <div style={{ fontSize: 13, fontWeight: 900, letterSpacing: '2px', color: '#1a1200', textTransform: 'uppercase' }}>
                       {buyLoading ? 'Redirecting…' : 'Unlock All 6 Sectors'}
                     </div>
                     <div style={{
-                      fontSize: 16, fontWeight: 900, color: '#e2b13c',
-                      background: 'rgba(0,0,0,0.25)', borderRadius: 3,
+                      fontSize: 16, fontWeight: 900, color: '#1a1200',
+                      background: 'rgba(0,0,0,0.12)', borderRadius: 3,
                       padding: '2px 8px', letterSpacing: '0.5px',
                     }}>{price}</div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <span style={{ fontSize: 13, lineHeight: 1 }}>🇺🇦</span>
-                    <p style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', letterSpacing: '1.5px', textTransform: 'uppercase', margin: 0 }}>
+                    <p style={{ fontSize: 9, color: 'rgba(0,0,0,0.55)', letterSpacing: '1.5px', textTransform: 'uppercase', margin: 0 }}>
                       50% donated to Ukraine relief · one-time
                     </p>
                   </div>
