@@ -419,13 +419,13 @@ function LevelRow({ sector, unlocked, done, open, onClick }: LevelRowProps) {
                 <span style={{
                   flexShrink: 0, marginTop: 1,
                   fontSize: 8, fontWeight: 900,
-                  color: checked ? '#9db35a' : '#3a3830',
+                  color: checked ? '#9db35a' : '#6e6a60',
                 }}>
                   {checked ? '✓' : '○'}
                 </span>
                 <span style={{
                   fontSize: 8, letterSpacing: '0.5px', lineHeight: 1.4,
-                  color: checked ? '#6a7a50' : '#4a4840',
+                  color: checked ? '#9db35a' : '#8a8478',
                   textDecoration: checked ? 'line-through' : 'none',
                 }}>
                   {obj}
