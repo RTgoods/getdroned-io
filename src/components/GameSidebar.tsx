@@ -10,9 +10,11 @@ interface Props {
   game: Game
   user: User | null
   hasPurchased: boolean
+  completedSectors?: number[]
   playing?: boolean
   onPlay?: () => void
   onBack?: () => void
+  onReset?: () => void
 }
 
 const W_OPEN = 232
@@ -27,7 +29,7 @@ const SECTORS = [
   { num: 6, name: 'RED SQUARE',     cover: '/get-droned/assets/images/covers/level-6-red-square.webp' },
 ]
 
-export function GameSidebar({ game, user, hasPurchased, playing = false, onPlay, onBack }: Props) {
+export function GameSidebar({ game, user, hasPurchased, completedSectors = [], playing = false, onPlay, onBack, onReset }: Props) {
   // Start closed — restored after mount so there's no flash
   const [open, setOpen] = useState(false)
   const [mobile, setMobile] = useState(false)
@@ -178,11 +180,13 @@ export function GameSidebar({ game, user, hasPurchased, playing = false, onPlay,
         <div style={{ overflowY: 'auto', flex: 1 }}>
           {SECTORS.map((s) => {
             const unlocked = s.num === 1 || hasPurchased
+            const done = completedSectors.includes(s.num)
             return (
               <LevelRow
                 key={s.num}
                 sector={s}
                 unlocked={unlocked}
+                done={done}
                 open={open}
                 onClick={() => handleLevelClick(s.num)}
               />
@@ -252,6 +256,18 @@ export function GameSidebar({ game, user, hasPurchased, playing = false, onPlay,
           />
         )}
 
+        {/* ── Reset progress (paid players only) ───────────── */}
+        {user && hasPurchased && onReset && (
+          <SideRow
+            open={open}
+            onClick={() => { if (confirm('Reset all sector progress and start from Sector 1?')) onReset() }}
+            icon={<span style={{ fontSize: 11, color: '#4a4840', flexShrink: 0 }}>↺</span>}
+            label={<span style={{ fontSize: 9, fontWeight: 900, letterSpacing: '2px', color: '#4a4840', textTransform: 'uppercase' }}>RESET PROGRESS</span>}
+            hover
+            border
+          />
+        )}
+
         {/* ── Sign in / out ────────────────────────────────── */}
         {user ? (
           <SideRow
@@ -298,76 +314,128 @@ export function GameSidebar({ game, user, hasPurchased, playing = false, onPlay,
   )
 }
 
+// Per-sector objectives
+const OBJECTIVES: Record<number, string[]> = {
+  1: ['Breach the compound perimeter', 'Neutralize Prigozhin\'s forces', 'Eliminate the commander'],
+  2: ['Push through enemy trenches', 'Clear the front-line network', 'Secure the trench boss'],
+  3: ['Establish naval dominance', 'Destroy the Black Sea fleet', 'Defeat the sea commander'],
+  4: ['Disrupt enemy supply lines', 'Destroy oil infrastructure', 'Take out the field boss'],
+  5: ['Suppress air defenses', 'Ground the enemy air force', 'Neutralize the airfield boss'],
+  6: ['Breach the inner circle', 'Push to Red Square', 'Final confrontation — finish it'],
+}
+
 // ── Level row ─────────────────────────────────────────────────────────────────
 interface LevelRowProps {
   sector: { num: number; name: string; cover: string }
   unlocked: boolean
+  done: boolean
   open: boolean
   onClick: () => void
 }
 
-function LevelRow({ sector, unlocked, open, onClick }: LevelRowProps) {
+function LevelRow({ sector, unlocked, done, open, onClick }: LevelRowProps) {
   const [hovered, setHovered] = useState(false)
+  const objectives = OBJECTIVES[sector.num] ?? []
+
+  // Pill color
+  const pillBg    = done ? 'rgba(157,179,90,0.18)' : unlocked ? 'rgba(157,179,90,0.08)' : 'rgba(255,255,255,0.03)'
+  const pillBdr   = done ? 'rgba(157,179,90,0.5)'  : unlocked ? 'rgba(157,179,90,0.22)' : 'rgba(255,255,255,0.06)'
+  const pillColor = done ? '#9db35a' : unlocked ? '#7a9a42' : '#3a3830'
 
   return (
-    <button
-      onClick={onClick}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      title={!unlocked ? `Buy to unlock Sector ${sector.num}` : `Play Sector ${sector.num} — ${sector.name}`}
-      style={{
-        width: '100%', display: 'flex', alignItems: 'center',
-        gap: open ? 10 : 0, padding: open ? '7px 12px' : '7px 0',
-        background: hovered && unlocked ? 'rgba(255,255,255,0.05)' : 'transparent',
-        border: 'none', borderBottom: '1px solid rgba(255,255,255,0.03)',
-        cursor: unlocked ? 'pointer' : 'default',
-        transition: 'background 140ms',
-        textAlign: 'left',
-        justifyContent: open ? 'flex-start' : 'center',
-      }}
-    >
-      <div style={{
-        width: 28, height: 28, borderRadius: 2, flexShrink: 0,
-        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-        background: unlocked ? 'rgba(157,179,90,0.12)' : 'rgba(255,255,255,0.03)',
-        border: `1px solid ${unlocked ? 'rgba(157,179,90,0.25)' : 'rgba(255,255,255,0.06)'}`,
-      }}>
-        <span style={{ fontSize: 8, fontWeight: 900, color: unlocked ? '#9db35a' : '#3a3830', letterSpacing: '0.5px' }}>
-          S{sector.num}
-        </span>
-        {!open && !unlocked && <span style={{ fontSize: 7, marginTop: 1 }}>◼</span>}
-        {!open && unlocked && sector.num === 1 && <span style={{ fontSize: 7, color: '#9db35a', marginTop: 1 }}>▶</span>}
-      </div>
+    <div style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+      {/* ── Main row button ── */}
+      <button
+        onClick={onClick}
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+        title={!unlocked ? `Buy to unlock Sector ${sector.num}` : done ? `Sector ${sector.num} complete` : `Play Sector ${sector.num} — ${sector.name}`}
+        style={{
+          width: '100%', display: 'flex', alignItems: 'center',
+          gap: open ? 10 : 0, padding: open ? '7px 12px' : '7px 0',
+          background: hovered && unlocked ? 'rgba(255,255,255,0.04)' : 'transparent',
+          border: 'none',
+          cursor: unlocked ? 'pointer' : 'default',
+          transition: 'background 140ms',
+          textAlign: 'left',
+          justifyContent: open ? 'flex-start' : 'center',
+        }}
+      >
+        {/* Number/status pill */}
+        <div style={{
+          width: 28, height: 28, borderRadius: 2, flexShrink: 0,
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+          background: pillBg, border: `1px solid ${pillBdr}`,
+        }}>
+          <span style={{ fontSize: 8, fontWeight: 900, color: pillColor, letterSpacing: '0.5px' }}>
+            {done ? '✓' : `S${sector.num}`}
+          </span>
+          {!open && !unlocked && <span style={{ fontSize: 7, marginTop: 1, color: '#3a3830' }}>◼</span>}
+          {!open && unlocked && !done && <span style={{ fontSize: 7, color: '#9db35a', marginTop: 1 }}>▶</span>}
+        </div>
 
-      {open && (
-        <div style={{ overflow: 'hidden', flex: 1 }}>
-          <div style={{
-            fontSize: 7, fontWeight: 900, letterSpacing: '1.5px',
-            color: unlocked ? '#c0562f' : '#3a3830',
-            textTransform: 'uppercase', marginBottom: 2,
-          }}>
-            SECTOR {sector.num}
+        {open && (
+          <div style={{ overflow: 'hidden', flex: 1 }}>
+            <div style={{
+              fontSize: 7, fontWeight: 900, letterSpacing: '1.5px',
+              color: done ? '#9db35a' : unlocked ? '#c0562f' : '#3a3830',
+              textTransform: 'uppercase', marginBottom: 2,
+            }}>
+              {done ? '✓ CLEARED' : `SECTOR ${sector.num}`}
+            </div>
+            <div style={{
+              fontSize: 9, fontWeight: 900, letterSpacing: '1px',
+              color: done ? '#7a9a42' : unlocked ? '#d8d0bc' : '#3a3830',
+              textTransform: 'uppercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+            }}>
+              {sector.name}
+            </div>
           </div>
-          <div style={{
-            fontSize: 9, fontWeight: 900, letterSpacing: '1px',
-            color: unlocked ? '#d8d0bc' : '#3a3830',
-            textTransform: 'uppercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-          }}>
-            {sector.name}
+        )}
+
+        {open && (
+          <div style={{ flexShrink: 0, width: 16, textAlign: 'center' }}>
+            {done ? (
+              <span style={{ fontSize: 11, color: '#9db35a' }}>✓</span>
+            ) : unlocked ? (
+              <span style={{ fontSize: 10, color: hovered ? '#9db35a' : '#4a5640', transition: 'color 140ms' }}>▶</span>
+            ) : (
+              <span style={{ fontSize: 10, color: '#3a3830' }}>◼</span>
+            )}
           </div>
+        )}
+      </button>
+
+      {/* ── Objectives (expanded sidebar only) ── */}
+      {open && unlocked && (
+        <div style={{ padding: '0 12px 8px 50px' }}>
+          {objectives.map((obj, i) => {
+            const checked = done // all objectives done when sector is done
+            return (
+              <div key={i} style={{
+                display: 'flex', alignItems: 'flex-start', gap: 6,
+                marginBottom: i < objectives.length - 1 ? 4 : 0,
+              }}>
+                <span style={{
+                  flexShrink: 0, marginTop: 1,
+                  fontSize: 8, fontWeight: 900,
+                  color: checked ? '#9db35a' : '#3a3830',
+                }}>
+                  {checked ? '✓' : '○'}
+                </span>
+                <span style={{
+                  fontSize: 8, letterSpacing: '0.5px', lineHeight: 1.4,
+                  color: checked ? '#6a7a50' : '#4a4840',
+                  textDecoration: checked ? 'line-through' : 'none',
+                }}>
+                  {obj}
+                </span>
+              </div>
+            )
+          })}
         </div>
       )}
-
-      {open && (
-        <div style={{ flexShrink: 0, width: 16, textAlign: 'center' }}>
-          {unlocked ? (
-            <span style={{ fontSize: 10, color: hovered ? '#9db35a' : '#4a5640', transition: 'color 140ms' }}>▶</span>
-          ) : (
-            <span style={{ fontSize: 10, color: '#3a3830' }}>◼</span>
-          )}
-        </div>
-      )}
-    </button>
+    </div>
   )
 }
 

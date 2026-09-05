@@ -3288,7 +3288,8 @@ function showOilBossClear(x,y){
 }
 function killEnemy(e,ang,gib){
   var idx=enemies.indexOf(e); if(idx>=0) enemies.splice(idx,1);
-  if(e.finalBoss){ redBossDefeated=1; bossBarrels.length=0; banner('FINAL BOSS DEFEATED','RED SQUARE SECURED',2.5); }
+  if(e.finalBoss){ redBossDefeated=1; bossBarrels.length=0; banner('FINAL BOSS DEFEATED','RED SQUARE SECURED',2.5);
+    try{ window.parent.postMessage({type:'gd:sectorComplete',sector:6},'*'); }catch(ex){} }
   if(e.airfieldBoss){
     airfieldBossDefeated=1; miniNukes.length=0; killed++; totalKills++;
     showAirfieldBossClear(e.x,e.y); hud(); return;
@@ -5993,6 +5994,8 @@ var clearing=false;
 function sectorClear(){
   if(clearing) return; clearing=true;
   state='pause'; sfx('clear');
+  // Notify parent window (Next.js) that this sector was completed
+  try{ window.parent.postMessage({type:'gd:sectorComplete',sector:level},'*'); }catch(e){}
   banner('SECTOR CLEAR','RESUPPLY · SECTOR '+(level+1),2.2);
   setTimeout(function(){
     clearing=false;
