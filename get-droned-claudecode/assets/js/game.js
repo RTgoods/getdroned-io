@@ -40,6 +40,7 @@ var seaBossSpawned=0, seaBossDefeated=0;
 var homeSpawn={x:61.5,y:8.6};
 var padList=[], wingmen=[], relaunch=0, truck=null, truckRoute=[], depots=[], depotWorkers=[], aaGuns=[], refineries=[], sams=[], samShots=[], smog=0;
 var bunkers=[], roads=[], bases=[], flags=[], intro=[], introT=0;
+var missionBriefT=0, missionBriefActive=false, missionBriefFade=0;
 var rescueGroups=[], captives=[];
 var BASE={x0:55.5,y0:2.2,x1:67.8,y1:13.6}, wave=0, dronePad=null, droneCD=0, tank=null;
 var flag=null, baseFlags=[], crew=[], civs=[], civT=4, shopPad=null, shopCD=0, bought={}, upgAP=60, upgHP=100;
@@ -6013,6 +6014,7 @@ function startSector(n){
   enemies.length=0; bullets.length=0; eb.length=0; fx.length=0; nades.length=0; smoke.length=0;
   chunks.length=0; mist.length=0; splat.length=0; pools.length=0;
   civs.length=0; baseGuards.length=0; civT=4; shopCD=0; droneCam=null; respawnT=0; enades.length=0; flames.length=0; wingmen.length=0;
+  missionBriefActive=false; missionBriefT=0; missionBriefFade=0;
   for(var pz0=0;pz0<padList.length;pz0++) padList[pz0].cd=0;
   setCrewZone();
   if(!crew.length||squadLost===0) buildCrew(); else rebuildCrew();
@@ -6085,6 +6087,7 @@ function startSector(n){
   cam.x=player.x-VW/2; cam.y=player.y-VH/2;
   if(n===1&&player.nades<5) player.nades=5;
   state='play'; hud(); startMusic(mapKind);
+  missionBriefT=0; missionBriefFade=0; missionBriefActive=true;
   intro=(mapKind==='redSquare')?[{t:0,a:'SECTOR '+n,b:'RED SQUARE · MOSCOW'},
         {t:2.4,a:'RED SQUARE CATHEDRAL AND KREMLIN',b:'TWO PRIMARY OBJECTIVES'},
         {t:4.8,a:'MOTORCADE CHECKS THE STREETS',b:'SECURITY TEAMS DEPLOY AT STOPS'},
@@ -8481,6 +8484,7 @@ function draw(){
     ctx.textAlign='start';
   }
   drawMinimap();
+  drawMissionBrief(ctx,dt);
   // drawObjectives(); — objectives shown in sidebar, not needed in-game HUD
   drawStick();
   drawBelt();
@@ -8545,6 +8549,76 @@ function paintDamaged(c){
         c.fillRect(X+hs(sd+r3*4)*26,Y+hs(sd+r3*6)*26,7,4); }
     }
   }
+}
+function getBriefObjs(){
+  if(mapKind==='trench')    return ['CAPTURE ENEMY HEADQUARTERS','RESCUE ALLIED SOLDIERS','ELIMINATE GENERAL GRAKOV'];
+  if(mapKind==='airfield')  return ['DESTROY ALL CARGO PLANES','REPEL BOTH ASSAULT WAVES','DEFEAT THE AIRFIELD COMMANDER'];
+  if(mapKind==='oil')       return ['DESTROY ALL REFINERIES','NEUTRALISE SAM SITES','DEFEAT THE OIL BARON'];
+  if(mapKind==='sea')       return ['SINK THE ENEMY FLEET','ELIMINATE SHORE TROOPS','DESTROY THE SEA BOSS'];
+  if(mapKind==='redSquare') return ['DESTROY BUILDINGS & MOTORCADE','CLEAR ALL SECURITY TEAMS','DEFEAT THE FINAL BOSS'];
+  return ['CAPTURE ALL BASES','CLEAR ALL HOSTILES','DEFEAT THE COMPOUND BOSS'];
+}
+function drawMissionBrief(c,dt){
+  if(!missionBriefActive) return;
+  missionBriefT+=dt;
+  var objs=getBriefObjs();
+  var OBJ_DELAY=0.85; // seconds between each objective appearing
+  var HOLD_AFTER=1.8; // seconds after last obj before fade starts
+  var FADE_DUR=0.7;
+  var allShownAt=OBJ_DELAY*objs.length;
+  var fadeStart=allShownAt+HOLD_AFTER;
+  var t=missionBriefT;
+  if(t>fadeStart+FADE_DUR){ missionBriefActive=false; return; }
+  var alpha=t<fadeStart?1:Math.max(0,1-(t-fadeStart)/FADE_DUR);
+  c.save(); c.globalAlpha=alpha;
+  // Dark vignette overlay
+  c.fillStyle='rgba(8,10,7,0.72)'; c.fillRect(0,0,VW,VH);
+  // Panel
+  var pw=Math.min(380,VW-40), ph=210, px=(VW-pw)/2, py=(VH-ph)/2-20;
+  // Panel shadow
+  c.shadowColor='rgba(0,0,0,.8)'; c.shadowBlur=32; c.shadowOffsetY=8;
+  c.fillStyle='#0d1009'; rrect(c,px,py,pw,ph,8); c.fill();
+  c.shadowColor='transparent'; c.shadowBlur=0; c.shadowOffsetY=0;
+  // Gold border
+  c.strokeStyle='#c9a83c'; c.lineWidth=1.5; rrect(c,px,py,pw,ph,8); c.stroke();
+  // Header strip
+  c.save(); rrect(c,px,py,pw,ph,8); c.clip();
+  c.fillStyle='rgba(180,140,30,.18)'; c.fillRect(px,py,pw,42); c.restore();
+  // Header divider
+  c.strokeStyle='rgba(201,168,60,.45)'; c.lineWidth=1;
+  c.beginPath(); c.moveTo(px+10,py+42); c.lineTo(px+pw-10,py+42); c.stroke();
+  // Sector label — small eyebrow
+  c.fillStyle='#9a8040'; c.font='bold 8px Arial'; c.textAlign='center';
+  c.fillText('SECTOR '+level+' · '+mapKind.toUpperCase().replace('REDSQUARE','RED SQUARE'),px+pw/2,py+14);
+  // "MISSION OBJECTIVES" title
+  c.fillStyle='#e8d882'; c.font='bold 14px Arial';
+  c.fillText('MISSION OBJECTIVES',px+pw/2,py+33);
+  // Objectives — one by one
+  var itemH=42, listTop=py+58;
+  for(var oi=0;oi<objs.length;oi++){
+    var appearAt=OBJ_DELAY*(oi+1);
+    if(t<appearAt) break;
+    var age=t-appearAt;
+    var slideAmt=Math.min(1,age/0.22); // 0→1 over 0.22s
+    var ease=slideAmt*slideAmt*(3-2*slideAmt); // smoothstep
+    var oy=listTop+oi*itemH;
+    var slideX=(1-ease)*-22; // slides in from left
+    var itemAlpha=ease;
+    c.save(); c.globalAlpha=itemAlpha;
+    // Number badge
+    var bx=px+22+slideX, by=oy;
+    c.fillStyle='#c9a83c'; rrect(c,bx,by,22,22,4); c.fill();
+    c.fillStyle='#0d1009'; c.font='bold 11px Arial'; c.textAlign='center';
+    c.fillText(''+(oi+1),bx+11,by+15);
+    // Objective text
+    c.fillStyle='#e8e4d4'; c.font='bold 11px Arial'; c.textAlign='left';
+    c.fillText(objs[oi],bx+30,by+15);
+    // Subtle underline
+    c.strokeStyle='rgba(200,190,140,.15)'; c.lineWidth=1;
+    c.beginPath(); c.moveTo(px+16+slideX,oy+26); c.lineTo(px+pw-16,oy+26); c.stroke();
+    c.restore();
+  }
+  c.globalAlpha=1; c.textAlign='start'; c.restore();
 }
 function drawObjectives(){
   if(!player||state==='menu'||state==='shop'||state==='card') return;
