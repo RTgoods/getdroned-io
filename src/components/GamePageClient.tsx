@@ -138,7 +138,7 @@ export function GamePageClient({ game }: Props) {
         {playing ? (
           game.play_url ? (
             <iframe
-              src={game.play_url}
+              src={`${game.play_url}?v=12`}
               style={{ display: 'block', width: '100%', height: '100%', border: 'none', background: '#0c0d0b' }}
               allowFullScreen
               title={game.title}
