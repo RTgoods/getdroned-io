@@ -43,6 +43,7 @@ var bunkers=[], roads=[], bases=[], flags=[], intro=[], introT=0;
 var rescueGroups=[], captives=[];
 var BASE={x0:55.5,y0:2.2,x1:67.8,y1:13.6}, wave=0, dronePad=null, droneCD=0, tank=null;
 var flag=null, baseFlags=[], crew=[], civs=[], civT=4, shopPad=null, shopCD=0, bought={}, upgAP=60, upgHP=100;
+var baseGuards=[];
 var belt=[], drops=[], twitchers=[], money=0, sentries=[], strikes=[], smokes=[], drone=null, piloting=false, fx2=[];
 var fires=[], plume=[], embers=[], motes=[], flares=[], chunks=[], mist=[], splat=[], pools=[], arty={t:5,flash:0}, wind=14, now=0;
 var medStation=null;
@@ -173,10 +174,11 @@ function buildMap(){
   medStation={x:63.5*TILE,y:4.5*TILE,nurse:1,
     healX:64.35*TILE,healY:5.45*TILE,healR:25,healing:0,healFx:0};
   // Drone stations shifted down; desk tiles marked PROP so player can't walk through them
-  padList=[{x:64.5*TILE,y:8.5*TILE, standX:62.5*TILE,standY:8.5*TILE, table:1,kind:'droneS',cd:0,cool:24,n:'SCOUT'},
-           {x:64.5*TILE,y:11.0*TILE,standX:62.5*TILE,standY:11.0*TILE,table:1,kind:'drone', cd:0,cool:36,n:'FPV'}];
+  padList=[{x:64.5*TILE,y:8.5*TILE, standX:61.5*TILE,standY:8.5*TILE, table:1,kind:'droneS',cd:0,cool:24,n:'SCOUT'},
+           {x:64.5*TILE,y:11.0*TILE,standX:61.5*TILE,standY:11.0*TILE,table:1,kind:'drone', cd:0,cool:36,n:'FPV'}];
   setT(63,8,PROP); setT(64,8,PROP);   // scout drone desk
   setT(63,11,PROP); setT(64,11,PROP); // FPV drone desk
+  setTimeout(function(){ spawnBaseGuard(); },200); // deferred so map tiles are ready
   setupTruck(null);
 
   // ===== busted-up vehicles littering the roads =====
@@ -2704,6 +2706,49 @@ function spawnCiv(){
   if(!civRoute(C0)) return;
   civs.push(C0);
 }
+// ── Base patrol guard ─────────────────────────────────────────────────────────
+function baseGuardRoute(G){
+  for(var t=0;t<12;t++){
+    var gx=ri(Math.ceil(BASE.x0+1),Math.floor(BASE.x1-1));
+    var gy=ri(Math.ceil(BASE.y0+1),Math.floor(BASE.y1-1));
+    if(!blocksMove(T(gx,gy))){
+      var pth=findPath(Math.floor(G.x/TILE),Math.floor(G.y/TILE),gx,gy);
+      if(pth&&pth.length>3){ G.path=pth; G.pi=1; return true; }
+    }
+  }
+  return false;
+}
+function spawnBaseGuard(){
+  for(var i=0;i<200;i++){
+    var gx=ri(Math.ceil(BASE.x0+1),Math.floor(BASE.x1-1));
+    var gy=ri(Math.ceil(BASE.y0+1),Math.floor(BASE.y1-1));
+    if(!blocksMove(T(gx,gy))){
+      var G={x:gx*TILE+TILE/2,y:gy*TILE+TILE/2,r:10,
+        baseGuard:true,col:'#1c1c1e',hair:'#111111',
+        walk:0,amt:0,ang:rr(0,6.3),panic:0,life:999999,
+        path:null,pi:0,ox:0,oy:0,say:0,sid:ri(0,9000)};
+      if(baseGuardRoute(G)) baseGuards.push(G);
+      return;
+    }
+  }
+}
+function updateBaseGuards(dt){
+  for(var i=0;i<baseGuards.length;i++){
+    var G=baseGuards[i];
+    if(!G.path||G.pi>=G.path.length){ baseGuardRoute(G); continue; }
+    var wp=G.path[G.pi];
+    var dx=wp.x-G.x, dy=wp.y-G.y, dist=Math.hypot(dx,dy)||1;
+    if(dist<16){ G.pi++; if(G.pi>=G.path.length){ baseGuardRoute(G); } continue; }
+    var spd=46, step=spd*dt;
+    var ox=G.x, oy=G.y;
+    moveEnt(G,(dx/dist)*step,(dy/dist)*step);
+    G.ang=Math.atan2(dy,dx);
+    var moved=Math.hypot(G.x-ox,G.y-oy);
+    G.walk+=dt*(moved>1?10:2.5);
+    G.amt=Math.min(1,G.amt+dt*(moved>1?7:-4));
+  }
+}
+// ─────────────────────────────────────────────────────────────────────────────
 function updateCivs(dt){
   civT-=dt;
   // Spawn base cats on first compound ticks (deferred so findPath works)
@@ -4400,6 +4445,7 @@ function update(dt){
     if(FL3.life<=0) flames.splice(fl2,1);
   }
   updateCivs(dt);
+  updateBaseGuards(dt);
   updateCaptives(dt);
   updateAtmos(dt);
   if(baseFlash>0) baseFlash-=dt*1.6;
@@ -5915,7 +5961,7 @@ function startSector(n){
   player=makePlayer();
   enemies.length=0; bullets.length=0; eb.length=0; fx.length=0; nades.length=0; smoke.length=0;
   chunks.length=0; mist.length=0; splat.length=0; pools.length=0;
-  civs.length=0; civT=4; shopCD=0; droneCam=null; respawnT=0; enades.length=0; flames.length=0; wingmen.length=0;
+  civs.length=0; baseGuards.length=0; civT=4; shopCD=0; droneCam=null; respawnT=0; enades.length=0; flames.length=0; wingmen.length=0;
   for(var pz0=0;pz0<padList.length;pz0++) padList[pz0].cd=0;
   setCrewZone();
   if(!crew.length||squadLost===0) buildCrew(); else rebuildCrew();
@@ -7281,6 +7327,7 @@ function draw(){
   for(var dwu=0;dwu<depotWorkers.length;dwu++) if(depotWorkers[dwu].alive) units.push(depotWorkers[dwu]);
   for(var ff=0;ff<fires.length;ff++) units.push(fires[ff]);
   for(var cv=0;cv<civs.length;cv++) units.push(civs[cv]);
+  for(var bg=0;bg<baseGuards.length;bg++) units.push(baseGuards[bg]);
   for(var cw=0;cw<crew.length;cw++) units.push(crew[cw]);
   if(tank) units.push(tank);
   units.sort(function(A,B){ return A.y-B.y; });
