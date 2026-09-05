@@ -186,8 +186,14 @@ function buildMap(){
   // ===== shipping container with flag — south entrance of the FOB =====
   addProp(61,15,3,1,'container');
   // ===== our colours over the compound base =====
-  baseFlags=[{x:52.4*TILE,y:15.6*TILE,h:62,crest:0},{x:67.4*TILE,y:15.6*TILE,h:62,crest:0},
-             {x:59.5*TILE,y:16.4*TILE,h:66,crest:2},{x:63.5*TILE,y:14.6*TILE,h:52,crest:0}];
+  // Four UA flags at the four outside corners of the FOB, evenly placed
+  baseFlags=[
+    {x:51.6*TILE,y:1.8*TILE, h:62,crest:0},   // NW corner
+    {x:67.4*TILE,y:1.8*TILE, h:62,crest:0},   // NE corner
+    {x:51.6*TILE,y:14.2*TILE,h:62,crest:0},   // SW corner
+    {x:67.4*TILE,y:14.2*TILE,h:62,crest:0},   // SE corner
+    {x:59.5*TILE,y:16.4*TILE,h:66,crest:2}    // south gate — branded Get Droned flag
+  ];
 
   // ===== barricades around the base =====
   addProp(53,16,3,1,'sand',true); addProp(63,16,3,1,'sand',true);
