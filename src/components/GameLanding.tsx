@@ -167,8 +167,8 @@ export function GameLanding({ game, hasPurchased, onPlay }: Props) {
           </div>
         </div>
 
-        {/* ── SPECS ────────────────────────────────────────── */}
-        <div className="pt-5 sm:pt-7">
+        {/* ── SPECS — hidden on mobile ─────────────────────── */}
+        <div className="hidden sm:block pt-5 sm:pt-7">
           <div className="text-[8px] font-black tracking-[3px] uppercase mb-4" style={{ color: '#e2b13c' }}>
             MISSION SPECS
           </div>
