@@ -132,7 +132,7 @@ VALUES (
   'Six sectors of aerial combat. 50% of every sale goes to Ukraine.',
   'A fast-paced browser shooter with six escalating levels of drone warfare. Half of every purchase is donated to Ukraine relief.',
   E'Take command of your craft and battle through six uniquely themed sectors of escalating drone combat. Face off against progressively tougher enemy formations and boss encounters, each with distinct attack patterns.\n\nBuilt entirely in the browser — no downloads, no plugins. Responsive controls work on desktop, tablet, and mobile. Synthesized audio keeps the action immersive without any large audio files to load.\n\n50% of every purchase is donated directly to Ukraine humanitarian relief.',
-  1999,
+  1000,
   ARRAY['Action', 'Shooter', 'Browser'],
   'Action',
   true,
