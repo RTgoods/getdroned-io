@@ -187,7 +187,6 @@ function buildMap(){
   addProp(61,15,3,1,'container');
   // ===== our colours over the compound base =====
   baseFlags=[{x:52.4*TILE,y:15.6*TILE,h:62,crest:0},{x:67.4*TILE,y:15.6*TILE,h:62,crest:0},
-             {x:59.5*TILE,y:1.4*TILE,h:58,crest:0},{x:50.6*TILE,y:8.5*TILE,h:66,crest:0},
              {x:59.5*TILE,y:16.4*TILE,h:66,crest:2},{x:63.5*TILE,y:14.6*TILE,h:52,crest:0}];
 
   // ===== barricades around the base =====
@@ -8283,7 +8282,7 @@ function draw(){
     ctx.textAlign='start';
   }
   drawMinimap();
-  drawObjectives();
+  // drawObjectives(); — objectives shown in sidebar, not needed in-game HUD
   drawStick();
   drawBelt();
   drawGunRail();
