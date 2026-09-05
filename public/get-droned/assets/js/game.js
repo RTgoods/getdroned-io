@@ -183,10 +183,12 @@ function buildMap(){
   addProp(59,26,2,4,'wreck');   addProp(9,45,4,2,'wreck');
   addProp(38,45,2,2,'burnt');   addProp(21,44,2,2,'burnt');
 
+  // ===== shipping container with flag — south entrance of the FOB =====
+  addProp(61,15,3,1,'container');
   // ===== our colours over the compound base =====
   baseFlags=[{x:52.4*TILE,y:15.6*TILE,h:62,crest:0},{x:67.4*TILE,y:15.6*TILE,h:62,crest:0},
              {x:59.5*TILE,y:1.4*TILE,h:58,crest:0},{x:50.6*TILE,y:8.5*TILE,h:66,crest:0},
-             {x:59.5*TILE,y:16.4*TILE,h:66,crest:2}];
+             {x:59.5*TILE,y:16.4*TILE,h:66,crest:2},{x:63.5*TILE,y:14.6*TILE,h:52,crest:0}];
 
   // ===== barricades around the base =====
   addProp(53,16,3,1,'sand',true); addProp(63,16,3,1,'sand',true);
@@ -1088,6 +1090,25 @@ function drawProp(c,o){
     c.fillStyle='rgba(40,38,32,.5)'; c.fillRect(x+9,y+h-11,3,3); c.fillRect(x+w-14,y+h-11,3,3);
   } else if(k==='night'||k==='chair'){
     c.fillStyle='#6f5637'; rrect(c,x+5,y+5,w-10,h-10,3); c.fill(); outl(c);
+  } else if(k==='container'){
+    // Military ISO shipping container — overhead view
+    c.fillStyle='rgba(0,0,0,.40)'; rrect(c,x+5,y+7,w-6,h-5,3); c.fill();
+    c.fillStyle='#4e5c3a'; rrect(c,x+2,y+2,w-4,h-4,3); c.fill(); outl(c,'#1c1f14',2);
+    // Corrugated roof ribs
+    var cnR=Math.max(4,Math.floor(o.w*5)), cnRW=(w-8)/cnR;
+    for(var cnI=0;cnI<cnR;cnI++){
+      c.fillStyle=cnI%2===0?'rgba(0,0,0,.20)':'rgba(255,255,255,.07)';
+      c.fillRect(x+4+cnI*cnRW,y+3,cnRW,h-6);
+    }
+    // End caps (left = door, right = closed)
+    c.fillStyle='#3a4628'; c.fillRect(x+2,y+2,5,h-4); c.fillRect(x+w-7,y+2,5,h-4);
+    // Door hinges on left end
+    c.fillStyle='#7a8070'; c.fillRect(x+2,y+Math.round(h*.28),4,3); c.fillRect(x+2,y+Math.round(h*.65),4,3);
+    // Corner castings — structural ISO fittings
+    c.fillStyle='#9aa08e';
+    c.fillRect(x+2,y+2,5,5); c.fillRect(x+w-7,y+2,5,5);
+    c.fillRect(x+2,y+h-7,5,5); c.fillRect(x+w-7,y+h-7,5,5);
+    outl(c,'#1c1f14',1.4);
   }
   c.restore();
 }
@@ -3420,7 +3441,19 @@ function update(dt){
       if(DP.z<=0){
         DP.z=0;
         if(Math.abs(DP.vz)>90&&DP.bounce<2){ DP.bounce++; DP.vz=-DP.vz*.36; DP.vx*=.5; DP.vy*=.5; DP.spin*=.5; }
-        else { DP.landed=true; DP.vx=0; DP.vy=0; DP.vz=0; }
+        else {
+          DP.landed=true; DP.vx=0; DP.vy=0; DP.vz=0;
+          // Nudge off any prop/wall tile so players can reach the drop
+          if(blocksMove(T(Math.floor(DP.x/TILE),Math.floor(DP.y/TILE)))){
+            var dpFound=false;
+            for(var dpR=1;dpR<=3&&!dpFound;dpR++){
+              for(var dpD=0;dpD<8&&!dpFound;dpD++){
+                var dpA=dpD*Math.PI/4, dpNX=DP.x+Math.cos(dpA)*dpR*TILE*.52, dpNY=DP.y+Math.sin(dpA)*dpR*TILE*.52;
+                if(!blocksMove(T(Math.floor(dpNX/TILE),Math.floor(dpNY/TILE)))){ DP.x=dpNX; DP.y=dpNY; dpFound=true; }
+              }
+            }
+          }
+        }
       }
     } else {
       DP.life-=dt;
@@ -4010,7 +4043,8 @@ function update(dt){
     var ml=Math.hypot(mvx,mvy);
     if(ml>0.01&&en.stag<=0){
       var esp=d.spd*(slowT(T(Math.floor(en.x/TILE),Math.floor(en.y/TILE)))?.6:1)
-              *((flag&&flag.assault&&flag.state!=='done')?1.22:1);
+              *((flag&&flag.assault&&flag.state!=='done')?1.22:1)
+              *(level===1?.80:1); // level 1 paced back a bit
       var step=esp*dt, dirA=Math.atan2(mvy,mvx);
       if(en.slideT>0) en.slideT-=dt; else en.slide=0;
       // if the straight line is blocked, follow the trench/flow route instead of grinding the wall
