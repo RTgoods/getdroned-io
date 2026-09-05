@@ -20,6 +20,26 @@ interface Props {
 const W_OPEN = 232
 const W_CLOSED = 52
 
+// Ukraine palette
+const UA = {
+  blue:       '#0068cc',
+  blueMid:    '#4a9eff',
+  blueLight:  '#7bbeff',
+  blueDim:    'rgba(0,104,204,0.18)',
+  blueFaint:  'rgba(0,104,204,0.08)',
+  yellow:     '#ffd700',
+  yellowDim:  'rgba(255,215,0,0.18)',
+  yellowFaint:'rgba(255,215,0,0.07)',
+  bg:         '#09101f',
+  surface:    '#0f1828',
+  border:     'rgba(0,104,204,0.16)',
+  borderFaint:'rgba(0,104,204,0.08)',
+  textPrimary:'#d8e8ff',
+  textMuted:  '#4a6080',
+  textDim:    '#243040',
+  locked:     '#1e2a3a',
+}
+
 const SECTORS = [
   { num: 1, name: 'THE COMPOUND',   cover: '/get-droned/assets/images/covers/level-1.webp' },
   { num: 2, name: 'THE TRENCHES',   cover: '/get-droned/assets/images/covers/level-2.webp' },
@@ -30,7 +50,6 @@ const SECTORS = [
 ]
 
 export function GameSidebar({ game, user, hasPurchased, completedSectors = [], playing = false, onPlay, onBack, onReset }: Props) {
-  // Start closed — restored after mount so there's no flash
   const [open, setOpen] = useState(false)
   const [mobile, setMobile] = useState(false)
   const [mounted, setMounted] = useState(false)
@@ -39,13 +58,11 @@ export function GameSidebar({ game, user, hasPurchased, completedSectors = [], p
   useEffect(() => {
     const isMob = window.innerWidth < 768
     setMobile(isMob)
-    // Only restore saved state on desktop; mobile always starts closed
     if (!isMob) {
       const saved = localStorage.getItem('sidebar')
       setOpen(saved !== 'closed')
     }
     setMounted(true)
-
     const check = () => {
       const mob = window.innerWidth < 768
       setMobile(mob)
@@ -73,35 +90,26 @@ export function GameSidebar({ game, user, hasPurchased, completedSectors = [], p
     : null
 
   const isMobileOpen = mobile && open
-
-  const handleLevelClick = (num: number) => {
-    const unlocked = num === 1 || hasPurchased
-    if (unlocked) { if (mobile) setOpen(false); onPlay?.() }
-  }
-
-  // Sidebar width — hidden (0) before mount to avoid SSR/client mismatch flash
   const sideWidth = !mounted ? 0 : mobile ? (open ? W_OPEN : 0) : open ? W_OPEN : W_CLOSED
   const sideMin   = sideWidth
 
   return (
     <>
-      {/* Mobile backdrop */}
       {isMobileOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black/60"
+          className="fixed inset-0 z-40"
           onClick={toggle}
-          style={{ backdropFilter: 'blur(2px)' }}
+          style={{ background: 'rgba(5,10,20,0.75)', backdropFilter: 'blur(3px)' }}
         />
       )}
 
-      {/* Sidebar */}
       <aside
         style={{
           width: sideWidth,
           minWidth: sideMin,
           transition: mounted ? 'width 220ms cubic-bezier(.4,0,.2,1), min-width 220ms cubic-bezier(.4,0,.2,1)' : 'none',
-          background: '#141610',
-          borderRight: '1px solid rgba(226,177,60,0.12)',
+          background: UA.bg,
+          borderRight: `1px solid ${UA.border}`,
           display: 'flex',
           flexDirection: 'column',
           height: '100vh',
@@ -116,14 +124,17 @@ export function GameSidebar({ game, user, hasPurchased, completedSectors = [], p
         <div style={{
           height: 52, display: 'flex', alignItems: 'center',
           padding: '0 13px', gap: 12,
-          borderBottom: '1px solid rgba(226,177,60,0.10)',
+          borderBottom: `1px solid ${UA.border}`,
           flexShrink: 0,
+          background: 'linear-gradient(180deg, rgba(0,80,180,0.10) 0%, transparent 100%)',
         }}>
           <button
             onClick={toggle}
             aria-label={open ? 'Collapse sidebar' : 'Expand sidebar'}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4,
-              color: '#6e6a60', display: 'flex', flexDirection: 'column', gap: 4, flexShrink: 0 }}
+            style={{
+              background: 'none', border: 'none', cursor: 'pointer', padding: 4,
+              color: UA.textMuted, display: 'flex', flexDirection: 'column', gap: 4.5, flexShrink: 0,
+            }}
           >
             <span style={{ display: 'block', width: 18, height: 1.5, background: 'currentColor' }} />
             <span style={{ display: 'block', width: 12, height: 1.5, background: 'currentColor' }} />
@@ -131,9 +142,9 @@ export function GameSidebar({ game, user, hasPurchased, completedSectors = [], p
           </button>
           {open && (
             <Link href="/" style={{ fontWeight: 900, letterSpacing: '3px', fontSize: 11,
-              color: '#f2ead2', textDecoration: 'none', whiteSpace: 'nowrap' }}>
+              color: UA.textPrimary, textDecoration: 'none', whiteSpace: 'nowrap' }}>
               GET DRONED
-              <span style={{ display: 'block', fontSize: 7, letterSpacing: '2px', color: '#c0562f', marginTop: 1 }}>
+              <span style={{ display: 'block', fontSize: 7, letterSpacing: '2.5px', color: UA.yellow, marginTop: 2, fontWeight: 700 }}>
                 Slava Ukraini
               </span>
             </Link>
@@ -144,22 +155,24 @@ export function GameSidebar({ game, user, hasPurchased, completedSectors = [], p
         <SideRow
           open={open}
           icon={
-            <div style={{ width: 26, height: 26, borderRadius: '50%',
-              background: 'linear-gradient(135deg,#2a3020,#1a1c14)',
-              border: '1px solid rgba(226,177,60,0.25)',
+            <div style={{
+              width: 26, height: 26, borderRadius: '50%',
+              background: `linear-gradient(135deg, ${UA.blue} 0%, #003d80 100%)`,
+              border: `1px solid ${UA.blueMid}`,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 10, fontWeight: 900, color: '#e2b13c', flexShrink: 0 }}>
+              fontSize: 10, fontWeight: 900, color: '#fff', flexShrink: 0,
+            }}>
               {initials}
             </div>
           }
           label={
             user ? (
               <div>
-                <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: '2px', color: '#9db35a', textTransform: 'uppercase' }}>PILOT</div>
-                <div style={{ fontSize: 10, color: '#a9a396', marginTop: 2 }}>{emailShort}</div>
+                <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: '2px', color: UA.yellow, textTransform: 'uppercase' }}>PILOT</div>
+                <div style={{ fontSize: 10, color: UA.textMuted, marginTop: 2 }}>{emailShort}</div>
               </div>
             ) : (
-              <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: '2px', color: '#6e6a60', textTransform: 'uppercase' }}>NOT SIGNED IN</div>
+              <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: '2px', color: UA.textMuted, textTransform: 'uppercase' }}>NOT SIGNED IN</div>
             )
           }
           border
@@ -167,13 +180,22 @@ export function GameSidebar({ game, user, hasPurchased, completedSectors = [], p
 
         {/* ── Sectors label ────────────────────────────────── */}
         {open ? (
-          <div style={{ padding: '10px 14px 6px', borderBottom: '1px solid rgba(255,255,255,0.04)', flexShrink: 0 }}>
-            <span style={{ fontSize: 8, fontWeight: 900, letterSpacing: '3px', color: '#e2b13c', textTransform: 'uppercase' }}>
+          <div style={{
+            padding: '10px 14px 6px',
+            borderBottom: `1px solid ${UA.borderFaint}`,
+            flexShrink: 0,
+            display: 'flex', alignItems: 'center', gap: 8,
+          }}>
+            <span style={{
+              display: 'inline-block', width: 12, height: 2,
+              background: UA.yellow, borderRadius: 1,
+            }} />
+            <span style={{ fontSize: 8, fontWeight: 900, letterSpacing: '3px', color: UA.yellow, textTransform: 'uppercase' }}>
               SECTORS
             </span>
           </div>
         ) : (
-          <div style={{ height: 1, background: 'rgba(255,255,255,0.04)', flexShrink: 0 }} />
+          <div style={{ height: 1, background: UA.borderFaint, flexShrink: 0 }} />
         )}
 
         {/* ── Level list (scrollable) ───────────────────────── */}
@@ -188,39 +210,45 @@ export function GameSidebar({ game, user, hasPurchased, completedSectors = [], p
                 unlocked={unlocked}
                 done={done}
                 open={open}
-                onClick={() => handleLevelClick(s.num)}
+                onClick={() => {
+                  if (unlocked) { if (mobile) setOpen(false); onPlay?.() }
+                }}
               />
             )
           })}
 
           {!hasPurchased && !open && (
             <div style={{ padding: '6px 0', display: 'flex', justifyContent: 'center' }}>
-              <span style={{ fontSize: 9, color: '#4a4840' }}>◼</span>
+              <span style={{ fontSize: 9, color: UA.textDim }}>◼</span>
             </div>
           )}
 
           {!hasPurchased && open && (
             <div style={{
               margin: '8px 10px',
-              padding: '8px 10px',
-              background: 'rgba(226,177,60,0.06)',
-              border: '1px solid rgba(226,177,60,0.16)',
-              borderRadius: 3,
+              padding: '10px 12px',
+              background: UA.blueFaint,
+              border: `1px solid ${UA.blueDim}`,
+              borderRadius: 4,
             }}>
-              <div style={{ fontSize: 8, fontWeight: 900, letterSpacing: '2px', color: '#e2b13c', textTransform: 'uppercase', marginBottom: 4 }}>
+              <div style={{
+                fontSize: 8, fontWeight: 900, letterSpacing: '2px',
+                color: UA.yellow, textTransform: 'uppercase', marginBottom: 4,
+              }}>
                 UNLOCK ALL SECTORS
               </div>
-              <div style={{ fontSize: 9, color: '#6e6a60', marginBottom: 6, lineHeight: 1.5 }}>
-                ${(game.price_cents / 100).toFixed(2)} · one-time purchase
+              <div style={{ fontSize: 9, color: UA.textMuted, marginBottom: 8, lineHeight: 1.5 }}>
+                ${(game.price_cents / 100).toFixed(2)} · one-time · 50% to Ukraine
               </div>
               <a href="/auth/login" style={{
-                display: 'block', textAlign: 'center', fontSize: 8, fontWeight: 900,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                gap: 6, textAlign: 'center', fontSize: 8, fontWeight: 900,
                 letterSpacing: '2px', textTransform: 'uppercase', textDecoration: 'none',
-                padding: '5px 0', borderRadius: 2,
-                background: 'linear-gradient(180deg,#c0562f,#7d3016)',
-                color: '#fff',
+                padding: '6px 0', borderRadius: 3,
+                background: `linear-gradient(180deg, ${UA.yellow} 0%, #c8a000 100%)`,
+                color: '#0a1000',
               }}>
-                BUY · 🇺🇦 50% TO UKRAINE
+                🇺🇦 BUY ACCESS
               </a>
             </div>
           )}
@@ -231,11 +259,11 @@ export function GameSidebar({ game, user, hasPurchased, completedSectors = [], p
           <SideRow
             open={open}
             onClick={onBack}
-            icon={<span style={{ fontSize: 12, color: '#a9a396', flexShrink: 0 }}>↩</span>}
+            icon={<span style={{ fontSize: 12, color: UA.yellow, flexShrink: 0 }}>↩</span>}
             label={
               <div>
-                <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: '2px', color: '#9db35a', textTransform: 'uppercase' }}>NOW PLAYING</div>
-                <div style={{ fontSize: 9, color: '#6e6a60', letterSpacing: '1px', marginTop: 1, textTransform: 'uppercase' }}>← BACK TO INFO</div>
+                <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: '2px', color: UA.yellow, textTransform: 'uppercase' }}>NOW PLAYING</div>
+                <div style={{ fontSize: 9, color: UA.textMuted, letterSpacing: '1px', marginTop: 1, textTransform: 'uppercase' }}>← BACK TO INFO</div>
               </div>
             }
             hover
@@ -249,20 +277,20 @@ export function GameSidebar({ game, user, hasPurchased, completedSectors = [], p
             open={open}
             href={game.play_url}
             target="_blank"
-            icon={<span style={{ fontSize: 13, color: '#6e6a60', flexShrink: 0 }}>↗</span>}
-            label={<span style={{ fontSize: 9, fontWeight: 900, letterSpacing: '2px', color: '#6e6a60', textTransform: 'uppercase' }}>FULLSCREEN</span>}
+            icon={<span style={{ fontSize: 13, color: UA.textMuted, flexShrink: 0 }}>↗</span>}
+            label={<span style={{ fontSize: 9, fontWeight: 900, letterSpacing: '2px', color: UA.textMuted, textTransform: 'uppercase' }}>FULLSCREEN</span>}
             hover
             border
           />
         )}
 
-        {/* ── Reset progress (paid players only) ───────────── */}
+        {/* ── Reset progress ────────────────────────────────── */}
         {user && hasPurchased && onReset && (
           <SideRow
             open={open}
             onClick={() => { if (confirm('Reset all sector progress and start from Sector 1?')) onReset() }}
-            icon={<span style={{ fontSize: 11, color: '#4a4840', flexShrink: 0 }}>↺</span>}
-            label={<span style={{ fontSize: 9, fontWeight: 900, letterSpacing: '2px', color: '#4a4840', textTransform: 'uppercase' }}>RESET PROGRESS</span>}
+            icon={<span style={{ fontSize: 11, color: UA.textDim, flexShrink: 0 }}>↺</span>}
+            label={<span style={{ fontSize: 9, fontWeight: 900, letterSpacing: '2px', color: UA.textDim, textTransform: 'uppercase' }}>RESET PROGRESS</span>}
             hover
             border
           />
@@ -273,41 +301,45 @@ export function GameSidebar({ game, user, hasPurchased, completedSectors = [], p
           <SideRow
             open={open}
             onClick={signOut}
-            icon={<span style={{ fontSize: 12, color: '#6e6a60', flexShrink: 0 }}>→</span>}
-            label={<span style={{ fontSize: 9, fontWeight: 900, letterSpacing: '2px', color: '#6e6a60', textTransform: 'uppercase' }}>SIGN OUT</span>}
+            icon={<span style={{ fontSize: 12, color: UA.textMuted, flexShrink: 0 }}>→</span>}
+            label={<span style={{ fontSize: 9, fontWeight: 900, letterSpacing: '2px', color: UA.textMuted, textTransform: 'uppercase' }}>SIGN OUT</span>}
             hover
           />
         ) : (
           <SideRow
             open={open}
             href="/auth/login"
-            icon={<span style={{ fontSize: 12, color: '#c0562f', flexShrink: 0 }}>→</span>}
-            label={<span style={{ fontSize: 9, fontWeight: 900, letterSpacing: '2px', color: '#c0562f', textTransform: 'uppercase' }}>SIGN IN</span>}
+            icon={<span style={{ fontSize: 12, color: UA.blueMid, flexShrink: 0 }}>→</span>}
+            label={<span style={{ fontSize: 9, fontWeight: 900, letterSpacing: '2px', color: UA.blueMid, textTransform: 'uppercase' }}>SIGN IN</span>}
             hover
           />
         )}
 
-        <div style={{ height: 10 }} />
+        {/* ── Bottom flag stripe ───────────────────────────── */}
+        <div style={{ flexShrink: 0 }}>
+          <div style={{ height: 3, background: `linear-gradient(90deg, ${UA.blue} 0%, ${UA.blueMid} 100%)` }} />
+          <div style={{ height: 3, background: `linear-gradient(90deg, ${UA.yellow} 0%, #f5c800 100%)` }} />
+        </div>
       </aside>
 
-      {/* Mobile hamburger — shown when sidebar is closed */}
+      {/* Mobile hamburger */}
       {mobile && !open && mounted && (
         <button
           onClick={toggle}
           aria-label="Open menu"
           style={{
             position: 'fixed', top: 14, left: 14, zIndex: 60,
-            background: 'rgba(20,22,16,0.92)',
-            border: '1px solid rgba(226,177,60,0.18)',
+            background: `rgba(9,16,31,0.94)`,
+            border: `1px solid ${UA.blueDim}`,
             borderRadius: 4, width: 36, height: 36,
             display: 'flex', flexDirection: 'column', alignItems: 'center',
             justifyContent: 'center', gap: 4, cursor: 'pointer',
             backdropFilter: 'blur(6px)',
           }}
         >
-          <span style={{ width: 14, height: 1.5, background: '#a9a396', display: 'block' }} />
-          <span style={{ width: 10, height: 1.5, background: '#a9a396', display: 'block' }} />
-          <span style={{ width: 14, height: 1.5, background: '#a9a396', display: 'block' }} />
+          <span style={{ width: 14, height: 1.5, background: UA.textMuted, display: 'block' }} />
+          <span style={{ width: 10, height: 1.5, background: UA.textMuted, display: 'block' }} />
+          <span style={{ width: 14, height: 1.5, background: UA.textMuted, display: 'block' }} />
         </button>
       )}
     </>
@@ -316,7 +348,7 @@ export function GameSidebar({ game, user, hasPurchased, completedSectors = [], p
 
 // Per-sector objectives
 const OBJECTIVES: Record<number, string[]> = {
-  1: ['Breach the compound perimeter', 'Neutralize Prigozhin\'s forces', 'Eliminate the commander'],
+  1: ['Breach the compound perimeter', "Neutralize Prigozhin's forces", 'Eliminate the commander'],
   2: ['Push through enemy trenches', 'Clear the front-line network', 'Secure the trench boss'],
   3: ['Establish naval dominance', 'Destroy the Black Sea fleet', 'Defeat the sea commander'],
   4: ['Disrupt enemy supply lines', 'Destroy oil infrastructure', 'Take out the field boss'],
@@ -337,14 +369,13 @@ function LevelRow({ sector, unlocked, done, open, onClick }: LevelRowProps) {
   const [hovered, setHovered] = useState(false)
   const objectives = OBJECTIVES[sector.num] ?? []
 
-  // Pill color
-  const pillBg    = done ? 'rgba(157,179,90,0.18)' : unlocked ? 'rgba(157,179,90,0.08)' : 'rgba(255,255,255,0.03)'
-  const pillBdr   = done ? 'rgba(157,179,90,0.5)'  : unlocked ? 'rgba(157,179,90,0.22)' : 'rgba(255,255,255,0.06)'
-  const pillColor = done ? '#9db35a' : unlocked ? '#7a9a42' : '#3a3830'
+  // Pill: done=yellow, unlocked=blue, locked=dim
+  const pillBg    = done ? UA.yellowFaint : unlocked ? UA.blueFaint  : 'rgba(255,255,255,0.02)'
+  const pillBdr   = done ? 'rgba(255,215,0,0.45)' : unlocked ? UA.blueDim : 'rgba(255,255,255,0.05)'
+  const pillColor = done ? UA.yellow      : unlocked ? UA.blueMid    : UA.textDim
 
   return (
-    <div style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-      {/* ── Main row button ── */}
+    <div style={{ borderBottom: `1px solid ${UA.borderFaint}` }}>
       <button
         onClick={onClick}
         onMouseEnter={() => setHovered(true)}
@@ -353,7 +384,7 @@ function LevelRow({ sector, unlocked, done, open, onClick }: LevelRowProps) {
         style={{
           width: '100%', display: 'flex', alignItems: 'center',
           gap: open ? 10 : 0, padding: open ? '7px 12px' : '7px 0',
-          background: hovered && unlocked ? 'rgba(255,255,255,0.04)' : 'transparent',
+          background: hovered && unlocked ? 'rgba(0,104,204,0.07)' : 'transparent',
           border: 'none',
           cursor: unlocked ? 'pointer' : 'default',
           transition: 'background 140ms',
@@ -370,22 +401,22 @@ function LevelRow({ sector, unlocked, done, open, onClick }: LevelRowProps) {
           <span style={{ fontSize: 8, fontWeight: 900, color: pillColor, letterSpacing: '0.5px' }}>
             {done ? '✓' : `S${sector.num}`}
           </span>
-          {!open && !unlocked && <span style={{ fontSize: 7, marginTop: 1, color: '#3a3830' }}>◼</span>}
-          {!open && unlocked && !done && <span style={{ fontSize: 7, color: '#9db35a', marginTop: 1 }}>▶</span>}
+          {!open && !unlocked && <span style={{ fontSize: 7, marginTop: 1, color: UA.textDim }}>◼</span>}
+          {!open && unlocked && !done && <span style={{ fontSize: 7, color: UA.blueMid, marginTop: 1 }}>▶</span>}
         </div>
 
         {open && (
           <div style={{ overflow: 'hidden', flex: 1 }}>
             <div style={{
               fontSize: 7, fontWeight: 900, letterSpacing: '1.5px',
-              color: done ? '#9db35a' : unlocked ? '#c0562f' : '#3a3830',
+              color: done ? UA.yellow : unlocked ? UA.blueMid : UA.textDim,
               textTransform: 'uppercase', marginBottom: 2,
             }}>
               {done ? '✓ CLEARED' : `SECTOR ${sector.num}`}
             </div>
             <div style={{
               fontSize: 9, fontWeight: 900, letterSpacing: '1px',
-              color: done ? '#7a9a42' : unlocked ? '#d8d0bc' : '#3a3830',
+              color: done ? 'rgba(255,215,0,0.7)' : unlocked ? UA.textPrimary : UA.textDim,
               textTransform: 'uppercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
             }}>
               {sector.name}
@@ -396,43 +427,38 @@ function LevelRow({ sector, unlocked, done, open, onClick }: LevelRowProps) {
         {open && (
           <div style={{ flexShrink: 0, width: 16, textAlign: 'center' }}>
             {done ? (
-              <span style={{ fontSize: 11, color: '#9db35a' }}>✓</span>
+              <span style={{ fontSize: 11, color: UA.yellow }}>✓</span>
             ) : unlocked ? (
-              <span style={{ fontSize: 10, color: hovered ? '#9db35a' : '#4a5640', transition: 'color 140ms' }}>▶</span>
+              <span style={{ fontSize: 10, color: hovered ? UA.blueMid : UA.textDim, transition: 'color 140ms' }}>▶</span>
             ) : (
-              <span style={{ fontSize: 10, color: '#3a3830' }}>◼</span>
+              <span style={{ fontSize: 10, color: UA.textDim }}>◼</span>
             )}
           </div>
         )}
       </button>
 
-      {/* ── Objectives (expanded sidebar only) ── */}
       {open && unlocked && (
         <div style={{ padding: '0 12px 8px 50px' }}>
-          {objectives.map((obj, i) => {
-            const checked = done // all objectives done when sector is done
-            return (
-              <div key={i} style={{
-                display: 'flex', alignItems: 'flex-start', gap: 6,
-                marginBottom: i < objectives.length - 1 ? 4 : 0,
+          {objectives.map((obj, i) => (
+            <div key={i} style={{
+              display: 'flex', alignItems: 'flex-start', gap: 6,
+              marginBottom: i < objectives.length - 1 ? 4 : 0,
+            }}>
+              <span style={{
+                flexShrink: 0, marginTop: 1, fontSize: 8, fontWeight: 900,
+                color: done ? UA.yellow : UA.textMuted,
               }}>
-                <span style={{
-                  flexShrink: 0, marginTop: 1,
-                  fontSize: 8, fontWeight: 900,
-                  color: checked ? '#9db35a' : '#6e6a60',
-                }}>
-                  {checked ? '✓' : '○'}
-                </span>
-                <span style={{
-                  fontSize: 8, letterSpacing: '0.5px', lineHeight: 1.4,
-                  color: checked ? '#9db35a' : '#8a8478',
-                  textDecoration: checked ? 'line-through' : 'none',
-                }}>
-                  {obj}
-                </span>
-              </div>
-            )
-          })}
+                {done ? '✓' : '○'}
+              </span>
+              <span style={{
+                fontSize: 8, letterSpacing: '0.5px', lineHeight: 1.4,
+                color: done ? 'rgba(255,215,0,0.6)' : '#5a7090',
+                textDecoration: done ? 'line-through' : 'none',
+              }}>
+                {obj}
+              </span>
+            </div>
+          ))}
         </div>
       )}
     </div>
@@ -456,7 +482,7 @@ function SideRow({ open, icon, label, href, target, onClick, border, hover }: Ro
     display: 'flex', alignItems: 'center', gap: 12,
     padding: '12px 13px',
     cursor: href || onClick ? 'pointer' : 'default',
-    borderTop: border ? '1px solid rgba(255,255,255,0.04)' : undefined,
+    borderTop: border ? `1px solid ${UA.borderFaint}` : undefined,
     textDecoration: 'none', transition: 'background 150ms',
     minHeight: 44, flexShrink: 0,
   }
@@ -471,7 +497,7 @@ function SideRow({ open, icon, label, href, target, onClick, border, hover }: Ro
   )
 
   const hoverHandlers = hover ? {
-    onMouseEnter: (e: React.MouseEvent<HTMLElement>) => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.04)' },
+    onMouseEnter: (e: React.MouseEvent<HTMLElement>) => { (e.currentTarget as HTMLElement).style.background = 'rgba(0,104,204,0.07)' },
     onMouseLeave: (e: React.MouseEvent<HTMLElement>) => { (e.currentTarget as HTMLElement).style.background = 'transparent' },
   } : {}
 
