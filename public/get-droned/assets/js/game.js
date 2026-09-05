@@ -2732,11 +2732,16 @@ function updateBaseGuards(dt){
     G.patrolT-=dt;
     var nearWP=Math.hypot(G.patrolX-G.x,G.patrolY-G.y)<20;
     if(G.patrolT<=0||nearWP){
-      var tries=0;
-      do{
-        G.patrolX=rr(bx0,bx1); G.patrolY=rr(by0,by1); tries++;
-      } while(blocksMove(T(Math.floor(G.patrolX/TILE),Math.floor(G.patrolY/TILE)))&&tries<20);
-      G.patrolT=rr(3.5,8);
+      // 40% chance: visit the medical station (paying respects to the wounded)
+      if(medStation&&Math.random()<0.4){
+        G.patrolX=medStation.x+rr(-20,20); G.patrolY=medStation.y+rr(-20,20);
+      } else {
+        var tries=0;
+        do{
+          G.patrolX=rr(bx0,bx1); G.patrolY=rr(by0,by1); tries++;
+        } while(blocksMove(T(Math.floor(G.patrolX/TILE),Math.floor(G.patrolY/TILE)))&&tries<20);
+      }
+      G.patrolT=rr(4,10);
     }
     var dx=G.patrolX-G.x, dy=G.patrolY-G.y, dist=Math.hypot(dx,dy)||1;
     if(dist>20){
@@ -2964,6 +2969,45 @@ function drawCiv(c,C){
     c.fillStyle='rgba(240,236,224,.92)'; rrect(c,C.x-tw/2,C.y-58,tw,15,4); c.fill();
     c.fillStyle='#1a1814'; c.fillText(C.line,C.x,C.y-47.5); c.textAlign='start';
   }
+}
+function drawBaseGuard(c,G){
+  // Leader figure — arms at sides, upright, black uniform
+  var mir=Math.cos(G.ang)<0?-1:1, ph=G.walk;
+  var sA=Math.sin(ph)*.85*G.amt, sB=Math.sin(ph+Math.PI)*.85*G.amt;
+  var bob=-Math.abs(Math.sin(ph))*2*G.amt;
+  c.save(); c.translate(G.x,G.y);
+  // Shadow
+  c.fillStyle='rgba(0,0,0,.30)'; c.beginPath(); c.ellipse(0,1,10,4.2,0,0,6.3); c.fill();
+  c.save(); c.scale(mir,1);
+  // Legs — dark trousers
+  leg(c,-3,sB,'#111111',.8,G.sid,['#111111','#111111','#111111','#111111']);
+  leg(c, 3,sA,'#111111',.9,G.sid+4,['#111111','#111111','#111111','#111111']);
+  c.translate(0,bob);
+  // Body — black uniform jacket
+  c.fillStyle='#1a1a1f'; rrect(c,-7,-24,14,13,4); c.fill(); outl(c,'#0a0a0e',2);
+  // Lapel stripe
+  c.fillStyle='rgba(180,160,90,.55)'; c.fillRect(-1,-24,2,10);
+  // Arms down at sides — gentle swing with walk cycle (not raised)
+  var lSwing=Math.sin(ph+Math.PI)*.9*G.amt, rSwing=Math.sin(ph)*.9*G.amt;
+  // Upper arms along body, forearms hanging down
+  c.strokeStyle='#1a1a1f'; c.lineWidth=5; c.lineCap='round'; c.lineJoin='round';
+  c.beginPath(); c.moveTo(-6,-20); c.lineTo(-8,-26+lSwing); c.lineTo(-7,-33+lSwing); c.stroke();
+  c.beginPath(); c.moveTo( 6,-20); c.lineTo( 8,-26+rSwing); c.lineTo( 7,-33+rSwing); c.stroke();
+  c.strokeStyle='#0a0a0e'; c.lineWidth=1.2;
+  c.beginPath(); c.moveTo(-6,-20); c.lineTo(-8,-26+lSwing); c.lineTo(-7,-33+lSwing); c.stroke();
+  c.beginPath(); c.moveTo( 6,-20); c.lineTo( 8,-26+rSwing); c.lineTo( 7,-33+rSwing); c.stroke();
+  // Hands
+  c.fillStyle=SKIN2; c.beginPath(); c.arc(-7,-33+lSwing,2.5,0,6.3); c.fill(); outl(c,'#0a0a0e',1);
+  c.fillStyle=SKIN2; c.beginPath(); c.arc( 7,-33+rSwing,2.5,0,6.3); c.fill(); outl(c,'#0a0a0e',1);
+  // Head
+  c.fillStyle=SKIN; c.beginPath(); c.arc(0,-30,7,0,6.3); c.fill(); outl(c,'#0a0a0e',1.6);
+  // Black hair / close-cropped
+  c.fillStyle='#111111'; c.beginPath(); c.arc(0,-31,7.2,Math.PI*1.1,Math.PI*2.0); c.fill();
+  // Eyes
+  c.fillStyle='#0a0a0e'; c.beginPath(); c.arc(-2,-29,1,0,6.3); c.fill();
+  c.beginPath(); c.arc(3,-29,1,0,6.3); c.fill();
+  c.restore();
+  c.restore();
 }
 function drawNurse(c,N){
   // Male military medic coasts smoothly between the two beds, pausing at each patient.
@@ -7346,6 +7390,7 @@ function draw(){
     if(U===tank){ drawTank(ctx,U); continue; }
     if(U.kit){ drawCrew(ctx,U); continue; }
     if(U.pet){ drawAnimal(ctx,U); continue; }
+    if(U.baseGuard){ drawBaseGuard(ctx,U); continue; }
     if(U.hair){ drawCiv(ctx,U); continue; }
     if(U.p!==undefined&&U.r!==undefined&&!U.d&&!isP){ drawFire(ctx,U); continue; }
     if(!isP && U.d.laser && U.aim>0){
