@@ -1414,128 +1414,34 @@ function sfx(kind,vol){
 // Six procedurally-generated level soundtracks using Web Audio API.
 // Each track: bass line, drum kit (kick/snare/hat), atmospheric pad drone,
 // and a sparse melody — all synthesized in real-time, no audio files needed.
-var MUS={gain:null,active:false,kind:null,step:0,nextT:0,_tid:null,pad:[]};
-var MUSIC={
-  // Level 1 — Compound: tense Am infiltration groove, 88 BPM
-  compound:{bpm:88,steps:16,
-    bass:[[0,110,3],[4,98,2],[6,87.3,3],[8,110,3],[12,87.3,2],[14,98,3]],
-    kick:[0,8],snare:[4,12],hat:[2,6,10,14],
-    pad:[55,65.4,82.4,130.8],
-    mel:[[3,220,2],[7,196,2],[11,246.9,2],[15,220,1]]},
-  // Level 2 — Trench: gritty Em war march, 105 BPM
-  trench:{bpm:105,steps:16,
-    bass:[[0,82.4,2],[3,77.8,2],[4,82.4,2],[7,69.3,2],[8,82.4,2],[11,73.4,2],[12,82.4,2],[15,77.8,2]],
-    kick:[0,2,8,10],snare:[4,12],hat:[1,3,5,7,9,11,13,15],
-    pad:[41.2,49,61.7,82.4],
-    mel:[[6,164.8,2],[14,155.6,2]]},
-  // Level 3 — Sea: slow Dm nautical pulse, 92 BPM
-  sea:{bpm:92,steps:16,
-    bass:[[0,73.4,5],[6,65.4,4],[12,73.4,4]],
-    kick:[0,6,10],snare:[8],hat:[4,12],
-    pad:[73.4,87.3,110,146.8],
-    mel:[[2,293.7,3],[6,261.6,4],[11,329.6,2],[14,293.7,3]]},
-  // Level 4 — Oil: industrial Bm hammer, 128 BPM
-  oil:{bpm:128,steps:16,
-    bass:[[0,61.7,2],[2,61.7,1],[4,58.3,2],[8,61.7,2],[10,55,1],[12,58.3,2],[14,61.7,2]],
-    kick:[0,1,4,8,9,12],snare:[4,12],hat:[0,2,4,6,8,10,12,14],
-    pad:[30.9,38.9,61.7,77.8],
-    mel:[[7,246.9,2],[15,220,2]]},
-  // Level 5 — Airfield: urgent Em sprint, 148 BPM
-  airfield:{bpm:148,steps:16,
-    bass:[[0,82.4,1],[1,87.3,1],[2,98,1],[3,110,1],[4,82.4,1],[5,73.4,1],[6,82.4,1],[7,98,1],
-          [8,110,1],[9,87.3,1],[10,82.4,1],[11,98,1],[12,123.5,1],[13,110,1],[14,98,1],[15,87.3,1]],
-    kick:[0,4,8,12],snare:[4,12],hat:[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15],
-    pad:[82.4,98,123.5,164.8],
-    mel:[[0,329.6,1],[2,349.2,1],[4,392,2],[8,392,1],[10,440,2],[12,392,2]]},
-  // Level 6 — Red Square: epic Am finale, 116 BPM
-  redSquare:{bpm:116,steps:16,
-    bass:[[0,55,3],[3,49,2],[5,41.2,3],[8,55,3],[11,55,2],[13,49,3]],
-    kick:[0,2,8,10],snare:[4,12],hat:[2,6,10,14],
-    pad:[27.5,55,69.3,82.4],
-    mel:[[1,220,3],[5,246.9,2],[8,261.6,3],[12,220,3]]}
-};
+// ── Background music — WAV file for level 1, silent on all others ─────────────
+var _bgm=null; // current HTMLAudioElement
 function stopMusic(fast){
-  MUS.active=false; clearTimeout(MUS._tid); MUS._tid=null;
-  for(var mpi=0;mpi<MUS.pad.length;mpi++){ try{ MUS.pad[mpi].stop(); }catch(e){} }
-  MUS.pad=[];
-  if(MUS.gain){
-    var ma=ac();
-    if(ma){ var mt=ma.currentTime; MUS.gain.gain.setValueAtTime(MUS.gain.gain.value,mt);
-      MUS.gain.gain.linearRampToValueAtTime(0.001,mt+(fast?0.08:1.2)); }
-    var mgr=MUS.gain; MUS.gain=null;
-    setTimeout(function(){ try{ mgr.disconnect(); }catch(e){} },fast?200:1400);
-  }
+  var el=_bgm; _bgm=null; if(!el) return;
+  if(fast){ el.pause(); el.currentTime=0; return; }
+  // ~1.2 s fade-out
+  var steps=15, delta=el.volume/steps;
+  var t=setInterval(function(){
+    if(el.volume>delta){ el.volume=Math.max(0,el.volume-delta); }
+    else{ el.pause(); el.currentTime=0; clearInterval(t); }
+  },80);
 }
 function startMusic(kind){
-  stopMusic(true); MUS.kind=kind; MUS.step=0; MUS.pad=[];
+  stopMusic(true);
+  if(kind!=='compound') return; // only level 1 has a track
   setTimeout(function(){
     if(muted||state!=='play') return;
-    var ma=ac(); if(!ma) return;
-    if(ma.state==='suspended') ma.resume();
-    MUS.gain=ma.createGain(); MUS.gain.gain.setValueAtTime(0,ma.currentTime);
-    MUS.gain.gain.linearRampToValueAtTime(0.18,ma.currentTime+4.5);
-    MUS.gain.connect(ma.destination);
-    var mcfg=MUSIC[kind];
-    if(mcfg&&mcfg.pad) mcfg.pad.forEach(function(freq,mpi2){
-      var mo=ma.createOscillator(), mg2=ma.createGain(); mo.type='sine'; mo.frequency.value=freq;
-      mo.detune.value=(mpi2%2===0)?-5:5;
-      mg2.gain.setValueAtTime(0,ma.currentTime); mg2.gain.linearRampToValueAtTime(0.025,ma.currentTime+6.5);
-      mo.connect(mg2); mg2.connect(MUS.gain); mo.start(); MUS.pad.push(mo);
-    });
-    MUS.active=true; MUS.nextT=ma.currentTime+0.15; _musTick();
+    var el=new Audio('assets/audio/advance-in-contact-92bpm-lvl1.wav');
+    el.loop=true; el.volume=0; _bgm=el;
+    el.play().catch(function(){});
+    // 4 s fade-in to 0.45
+    var target=0.45, steps2=40, delta2=target/steps2;
+    var fi=setInterval(function(){
+      if(_bgm!==el){ clearInterval(fi); return; }
+      if(el.volume<target-delta2){ el.volume=Math.min(target,el.volume+delta2); }
+      else{ el.volume=target; clearInterval(fi); }
+    },100);
   },300);
-}
-function _musTick(){
-  if(!MUS.active||!MUS.gain) return;
-  if(state==='over'||state==='menu'){ stopMusic(); return; }
-  var ma=ac(); if(!ma) return;
-  var mcfg=MUSIC[MUS.kind]; if(!mcfg) return;
-  var msd=60/mcfg.bpm/4;
-  while(MUS.nextT<ma.currentTime+0.22){ _musStep(ma,mcfg,MUS.nextT,MUS.step,msd); MUS.step=(MUS.step+1)%mcfg.steps; MUS.nextT+=msd; }
-  MUS._tid=setTimeout(_musTick,55);
-}
-function _musStep(ma,mcfg,mt,mstep,msd){
-  var mg=MUS.gain; if(!mg) return;
-  // Bass
-  var mbi; for(mbi=0;mbi<mcfg.bass.length;mbi++){ var mb=mcfg.bass[mbi]; if(mb[0]===mstep){
-    var mdur=mb[2]*msd*0.92, mbo=ma.createOscillator(), mbg=ma.createGain(), mbf=ma.createBiquadFilter();
-    mbo.type='sawtooth'; mbo.frequency.setValueAtTime(mb[1],mt);
-    mbf.type='lowpass'; mbf.frequency.value=300; mbf.Q.value=1.0;
-    mbg.gain.setValueAtTime(0.001,mt); mbg.gain.linearRampToValueAtTime(0.32,mt+0.014);
-    mbg.gain.setValueAtTime(0.32,mt+mdur*0.62); mbg.gain.exponentialRampToValueAtTime(0.001,mt+mdur);
-    mbo.connect(mbf); mbf.connect(mbg); mbg.connect(mg); mbo.start(mt); mbo.stop(mt+mdur+0.02); } }
-  // Kick
-  if(mcfg.kick.indexOf(mstep)>=0){
-    var mko=ma.createOscillator(), mkg=ma.createGain(); mko.type='sine';
-    mko.frequency.setValueAtTime(148,mt); mko.frequency.exponentialRampToValueAtTime(36,mt+0.18);
-    mkg.gain.setValueAtTime(0.60,mt); mkg.gain.exponentialRampToValueAtTime(0.001,mt+0.26);
-    mko.connect(mkg); mkg.connect(mg); mko.start(mt); mko.stop(mt+0.28);
-    var mkn=noise(0.04); if(mkn){ var mknf=ma.createBiquadFilter(),mkng=ma.createGain();
-      mknf.type='lowpass'; mknf.frequency.value=1800;
-      mkng.gain.setValueAtTime(0.26,mt); mkng.gain.exponentialRampToValueAtTime(0.001,mt+0.04);
-      mkn.connect(mknf); mknf.connect(mkng); mkng.connect(mg); mkn.start(mt); } }
-  // Snare
-  if(mcfg.snare.indexOf(mstep)>=0){
-    var msn=noise(0.16); if(msn){ var msf=ma.createBiquadFilter(),msg=ma.createGain();
-      msf.type='bandpass'; msf.frequency.value=2200; msf.Q.value=0.9;
-      msg.gain.setValueAtTime(0.22,mt); msg.gain.exponentialRampToValueAtTime(0.001,mt+0.16);
-      msn.connect(msf); msf.connect(msg); msg.connect(mg); msn.start(mt); }
-    var mso=ma.createOscillator(),msog=ma.createGain(); mso.type='triangle';
-    mso.frequency.setValueAtTime(185,mt); mso.frequency.exponentialRampToValueAtTime(78,mt+0.1);
-    msog.gain.setValueAtTime(0.10,mt); msog.gain.exponentialRampToValueAtTime(0.001,mt+0.12);
-    mso.connect(msog); msog.connect(mg); mso.start(mt); mso.stop(mt+0.14); }
-  // Hi-hat
-  if(mcfg.hat.indexOf(mstep)>=0){
-    var mhn=noise(0.045); if(mhn){ var mhf=ma.createBiquadFilter(),mhg=ma.createGain();
-      mhf.type='highpass'; mhf.frequency.value=8500;
-      mhg.gain.setValueAtTime(0.10,mt); mhg.gain.exponentialRampToValueAtTime(0.001,mt+0.045);
-      mhn.connect(mhf); mhf.connect(mhg); mhg.connect(mg); mhn.start(mt); } }
-  // Melody
-  if(mcfg.mel){ var mmi; for(mmi=0;mmi<mcfg.mel.length;mmi++){ var mm=mcfg.mel[mmi]; if(mm[0]===mstep){
-    var mdur2=mm[2]*msd*0.85, mmo=ma.createOscillator(),mmog=ma.createGain(); mmo.type='triangle'; mmo.frequency.value=mm[1];
-    mmog.gain.setValueAtTime(0,mt); mmog.gain.linearRampToValueAtTime(0.05,mt+0.025);
-    mmog.gain.setValueAtTime(0.05,mt+mdur2*0.65); mmog.gain.exponentialRampToValueAtTime(0.001,mt+mdur2);
-    mmo.connect(mmog); mmog.connect(mg); mmo.start(mt); mmo.stop(mt+mdur2+0.02); } } }
 }
 
 var SHOP=[
