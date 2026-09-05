@@ -8562,63 +8562,64 @@ function drawMissionBrief(c,dt){
   if(!missionBriefActive) return;
   missionBriefT+=dt;
   var objs=getBriefObjs();
-  var OBJ_DELAY=0.85; // seconds between each objective appearing
-  var HOLD_AFTER=1.8; // seconds after last obj before fade starts
+  var OBJ_DELAY=0.85;
+  var HOLD_AFTER=1.8;
   var FADE_DUR=0.7;
-  var allShownAt=OBJ_DELAY*objs.length;
-  var fadeStart=allShownAt+HOLD_AFTER;
+  var fadeStart=OBJ_DELAY*objs.length+HOLD_AFTER;
   var t=missionBriefT;
   if(t>fadeStart+FADE_DUR){ missionBriefActive=false; return; }
   var alpha=t<fadeStart?1:Math.max(0,1-(t-fadeStart)/FADE_DUR);
-  c.save(); c.globalAlpha=alpha;
-  // Dark vignette overlay
-  c.fillStyle='rgba(8,10,7,0.72)'; c.fillRect(0,0,VW,VH);
-  // Panel
-  var pw=Math.min(380,VW-40), ph=210, px=(VW-pw)/2, py=(VH-ph)/2-20;
-  // Panel shadow
-  c.shadowColor='rgba(0,0,0,.8)'; c.shadowBlur=32; c.shadowOffsetY=8;
-  c.fillStyle='#0d1009'; rrect(c,px,py,pw,ph,8); c.fill();
-  c.shadowColor='transparent'; c.shadowBlur=0; c.shadowOffsetY=0;
+  c.save();
+  c.globalAlpha=alpha;
+  // Vignette
+  c.fillStyle='rgba(8,10,7,0.68)';
+  c.fillRect(0,0,VW,VH);
+  // Panel dimensions — no shadow (too expensive)
+  var pw=Math.min(370,VW-40), ph=198;
+  var px=(VW-pw)/2, py=(VH-ph)/2-20;
+  // Panel bg
+  c.fillStyle='#0d1009';
+  rrect(c,px,py,pw,ph,7); c.fill();
   // Gold border
-  c.strokeStyle='#c9a83c'; c.lineWidth=1.5; rrect(c,px,py,pw,ph,8); c.stroke();
-  // Header strip
-  c.save(); rrect(c,px,py,pw,ph,8); c.clip();
-  c.fillStyle='rgba(180,140,30,.18)'; c.fillRect(px,py,pw,42); c.restore();
+  c.strokeStyle='#c9a83c'; c.lineWidth=1.5;
+  rrect(c,px,py,pw,ph,7); c.stroke();
+  // Header tint strip (plain rect inside panel, no clip needed)
+  c.fillStyle='rgba(180,140,30,.17)';
+  c.fillRect(px+2,py+2,pw-4,40);
   // Header divider
-  c.strokeStyle='rgba(201,168,60,.45)'; c.lineWidth=1;
+  c.strokeStyle='rgba(201,168,60,.4)'; c.lineWidth=1;
   c.beginPath(); c.moveTo(px+10,py+42); c.lineTo(px+pw-10,py+42); c.stroke();
-  // Sector label — small eyebrow
+  // Eyebrow
+  var sectorLabel='SECTOR '+level+' · '+mapKind.toUpperCase().replace('REDSQUARE','RED SQUARE');
   c.fillStyle='#9a8040'; c.font='bold 8px Arial'; c.textAlign='center';
-  c.fillText('SECTOR '+level+' · '+mapKind.toUpperCase().replace('REDSQUARE','RED SQUARE'),px+pw/2,py+14);
-  // "MISSION OBJECTIVES" title
-  c.fillStyle='#e8d882'; c.font='bold 14px Arial';
-  c.fillText('MISSION OBJECTIVES',px+pw/2,py+33);
-  // Objectives — one by one
-  var itemH=42, listTop=py+58;
+  c.fillText(sectorLabel,px+pw/2,py+13);
+  // Title
+  c.fillStyle='#e8d882'; c.font='bold 13px Arial';
+  c.fillText('MISSION OBJECTIVES',px+pw/2,py+32);
+  // Objectives — one by one, slide in from left
+  var itemH=42, listTop=py+56;
   for(var oi=0;oi<objs.length;oi++){
     var appearAt=OBJ_DELAY*(oi+1);
     if(t<appearAt) break;
-    var age=t-appearAt;
-    var slideAmt=Math.min(1,age/0.22); // 0→1 over 0.22s
-    var ease=slideAmt*slideAmt*(3-2*slideAmt); // smoothstep
-    var oy=listTop+oi*itemH;
-    var slideX=(1-ease)*-22; // slides in from left
-    var itemAlpha=ease;
-    c.save(); c.globalAlpha=itemAlpha;
-    // Number badge
-    var bx=px+22+slideX, by=oy;
-    c.fillStyle='#c9a83c'; rrect(c,bx,by,22,22,4); c.fill();
-    c.fillStyle='#0d1009'; c.font='bold 11px Arial'; c.textAlign='center';
-    c.fillText(''+(oi+1),bx+11,by+15);
+    var age=t-appearAt, sm=Math.min(1,age/0.2);
+    var ease=sm*sm*(3-2*sm);
+    var iy=listTop+oi*itemH;
+    var ix=px+20+(1-ease)*-18;
+    c.globalAlpha=alpha*ease;
+    // Gold number badge
+    c.fillStyle='#c9a83c';
+    rrect(c,ix,iy,20,20,4); c.fill();
+    c.fillStyle='#0d1009'; c.font='bold 10px Arial'; c.textAlign='center';
+    c.fillText(''+(oi+1),ix+10,iy+14);
     // Objective text
     c.fillStyle='#e8e4d4'; c.font='bold 11px Arial'; c.textAlign='left';
-    c.fillText(objs[oi],bx+30,by+15);
-    // Subtle underline
-    c.strokeStyle='rgba(200,190,140,.15)'; c.lineWidth=1;
-    c.beginPath(); c.moveTo(px+16+slideX,oy+26); c.lineTo(px+pw-16,oy+26); c.stroke();
-    c.restore();
+    c.fillText(objs[oi],ix+26,iy+14);
+    // Divider
+    c.strokeStyle='rgba(200,190,140,.13)'; c.lineWidth=1;
+    c.beginPath(); c.moveTo(px+14,iy+24); c.lineTo(px+pw-14,iy+24); c.stroke();
   }
-  c.globalAlpha=1; c.textAlign='start'; c.restore();
+  c.globalAlpha=1; c.textAlign='start';
+  c.restore();
 }
 function drawObjectives(){
   if(!player||state==='menu'||state==='shop'||state==='card') return;
