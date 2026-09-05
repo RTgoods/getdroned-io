@@ -7089,8 +7089,7 @@ function draw(){
     ctx.moveTo(STQ.x,STQ.y-14); ctx.lineTo(STQ.x,STQ.y+14); ctx.stroke();
   }
 
-  // crates
-  for(var i=0;i<crates.length;i++) drawCrate(ctx,crates[i]);
+  // crates drawn later (after flag zones) so they're never covered by flag circles
 
   // Level 5 mini-nukes: bright warning marker, stylized shell and arcade arc.
   for(var mnq=0;mnq<miniNukes.length;mnq++){
@@ -7703,6 +7702,9 @@ function draw(){
       rrect(ctx,fpx-28.5,fpy+11.5,57*(flag.p/2),6,3); ctx.fill();
     }
   }
+
+  // crates — drawn after flag zones so they're always visible on top
+  for(var i=0;i<crates.length;i++) drawCrate(ctx,crates[i]);
 
   // bodies in the water
   for(var fo2=0;fo2<floaters.length;fo2++){

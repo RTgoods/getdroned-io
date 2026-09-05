@@ -10,17 +10,26 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  // Cache game assets for 1 year — they're content-addressed (filenames change on update)
+  // Cache game assets long-term; HTML always revalidated so updates reach players
   async headers() {
     return [
+      // HTML entry point — always revalidate (short TTL, ETag check)
       {
-        source: '/get-droned/:path*',
-        headers: [
-          {
-            key: 'Cache-Control',
-            value: 'public, max-age=31536000, immutable',
-          },
-        ],
+        source: '/get-droned',
+        headers: [{ key: 'Cache-Control', value: 'public, max-age=0, must-revalidate' }],
+      },
+      {
+        source: '/get-droned/',
+        headers: [{ key: 'Cache-Control', value: 'public, max-age=0, must-revalidate' }],
+      },
+      {
+        source: '/get-droned/index.html',
+        headers: [{ key: 'Cache-Control', value: 'public, max-age=0, must-revalidate' }],
+      },
+      // Static assets (JS, CSS, images, audio) — 1 year immutable via ?v= query busting
+      {
+        source: '/get-droned/assets/:path*',
+        headers: [{ key: 'Cache-Control', value: 'public, max-age=31536000, immutable' }],
       },
     ]
   },
