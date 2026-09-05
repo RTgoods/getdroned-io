@@ -3,11 +3,16 @@ import type { CookieOptions } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import type { Database } from '@/types/database'
 
+function safeUrl(value: string | undefined): string {
+  if (!value) return 'https://placeholder.supabase.co'
+  try { new URL(value); return value } catch { return 'https://placeholder.supabase.co' }
+}
+
 export async function createClient() {
   const cookieStore = await cookies()
 
   return createServerClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co',
+    safeUrl(process.env.NEXT_PUBLIC_SUPABASE_URL),
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-anon-key',
     {
       cookies: {

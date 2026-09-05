@@ -1,11 +1,14 @@
 import { createBrowserClient } from '@supabase/ssr'
 import type { Database } from '@/types/database'
 
+function safeUrl(value: string | undefined): string {
+  if (!value) return 'https://placeholder.supabase.co'
+  try { new URL(value); return value } catch { return 'https://placeholder.supabase.co' }
+}
+
 export function createClient() {
-  // Fallbacks let the client instantiate without crashing when env vars aren't set yet.
-  // Queries will return empty data — replace with real values in .env.local to connect.
   return createBrowserClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co',
+    safeUrl(process.env.NEXT_PUBLIC_SUPABASE_URL),
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-anon-key'
   )
 }
