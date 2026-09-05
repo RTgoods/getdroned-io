@@ -32,69 +32,68 @@ export function GameLanding({ game, hasPurchased, onPlay }: Props) {
     : 'FREE'
 
   return (
-    <div style={{
-      height: '100vh',
-      overflowY: 'auto',
-      background: '#0c0d0b',
-      color: '#e8e4d8',
-    }}>
+    <div className="h-full overflow-y-auto" style={{ background: '#0c0d0b', color: '#e8e4d8' }}>
 
       {/* ── HERO ──────────────────────────────────────────────────────── */}
-      <div style={{ position: 'relative', height: '52vh', minHeight: 320, overflow: 'hidden' }}>
+      <div className="relative overflow-hidden" style={{ height: 'clamp(220px, 42vh, 480px)' }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src="/get-droned/assets/images/covers/main-cover.webp"
           alt="Get Droned"
-          style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center top', display: 'block' }}
+          className="w-full h-full object-cover object-top block"
+          fetchPriority="high"
         />
-        {/* Gradient */}
-        <div style={{
-          position: 'absolute', inset: 0,
-          background: 'linear-gradient(to top, #0c0d0b 0%, rgba(12,13,11,0.5) 50%, rgba(12,13,11,0.1) 100%)',
+        <div className="absolute inset-0" style={{
+          background: 'linear-gradient(to top, #0c0d0b 0%, rgba(12,13,11,0.4) 55%, rgba(12,13,11,0.05) 100%)',
         }} />
-        {/* Scan lines */}
-        <div style={{
-          position: 'absolute', inset: 0, pointerEvents: 'none',
-          backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.08) 2px, rgba(0,0,0,0.08) 4px)',
+        {/* scan lines */}
+        <div className="absolute inset-0 pointer-events-none" style={{
+          backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.07) 2px, rgba(0,0,0,0.07) 4px)',
         }} />
 
         {/* Hero text */}
-        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '0 36px 32px' }}>
-          <div style={{ fontSize: 8, fontWeight: 900, letterSpacing: '3px', color: '#c0562f', marginBottom: 8 }}>
+        <div className="absolute bottom-0 left-0 right-0 px-4 sm:px-8 pb-5 sm:pb-8">
+          <div className="text-[8px] font-black tracking-[3px] mb-2" style={{ color: '#c0562f' }}>
             Slava Ukraini
           </div>
-          <h1 style={{
-            fontSize: 'clamp(36px, 5vw, 64px)', fontWeight: 900,
-            letterSpacing: '6px', textTransform: 'uppercase',
-            color: '#f2ead2', textShadow: '0 4px 0 #1a160e',
-            margin: 0, lineHeight: 1,
-          }}>
+          <h1
+            className="font-black uppercase leading-none m-0"
+            style={{
+              fontSize: 'clamp(28px, 5vw, 60px)',
+              letterSpacing: '0.12em',
+              color: '#f2ead2',
+              textShadow: '0 4px 0 #1a160e',
+            }}
+          >
             GET DRONED
           </h1>
-          <p style={{ marginTop: 10, fontSize: 12, letterSpacing: '2px', color: '#9a9288', textTransform: 'uppercase', maxWidth: 480 }}>
+          <p className="mt-2 text-[11px] tracking-[2px] uppercase max-w-md hidden sm:block" style={{ color: '#9a9288' }}>
             {game.tagline ?? 'Six sectors of aerial combat. No installs. No mercy.'}
           </p>
         </div>
       </div>
 
       {/* ── BODY ─────────────────────────────────────────────────────── */}
-      <div style={{ padding: '0 36px 60px' }}>
+      <div className="px-4 sm:px-8 pb-16">
 
-        {/* ── CTA ──────────────────────────────────────────────────── */}
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 16,
-          paddingTop: 28, paddingBottom: 28,
-          borderBottom: '1px solid rgba(226,177,60,0.12)',
-        }}>
+        {/* Tagline on mobile (hidden in hero) */}
+        <p className="sm:hidden mt-3 mb-0 text-[10px] tracking-[1.5px] uppercase leading-relaxed" style={{ color: '#6e6a60' }}>
+          {game.tagline ?? 'Six sectors of aerial combat. No installs. No mercy.'}
+        </p>
+
+        {/* ── CTA ──────────────────────────────────────────────── */}
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4 py-5 sm:py-7"
+          style={{ borderBottom: '1px solid rgba(226,177,60,0.12)' }}>
+
           <button
             onClick={onPlay}
+            className="w-full sm:w-auto"
             style={{
               background: 'linear-gradient(180deg,#c0562f,#7d3016)',
               color: '#fff', border: 'none', borderRadius: 3,
-              padding: '12px 28px', fontWeight: 900, fontSize: 11,
+              padding: '14px 32px', fontWeight: 900, fontSize: 12,
               letterSpacing: '3px', textTransform: 'uppercase',
               cursor: 'pointer', boxShadow: '0 3px 0 #4a1b0c',
-              transition: 'filter 120ms',
               whiteSpace: 'nowrap',
             }}
             onMouseEnter={e => (e.currentTarget.style.filter = 'brightness(1.1)')}
@@ -103,71 +102,63 @@ export function GameLanding({ game, hasPurchased, onPlay }: Props) {
             ▶ DEPLOY NOW
           </button>
 
-          <div>
-            <div style={{ fontSize: 22, fontWeight: 900, color: '#e2b13c', letterSpacing: '1px' }}>
+          <div className="flex sm:flex-col gap-3 sm:gap-0 items-center sm:items-start">
+            <div className="text-2xl font-black" style={{ color: '#e2b13c', letterSpacing: '1px' }}>
               {price}
             </div>
-            {game.price_cents > 0 && (
-              <div style={{ fontSize: 9, color: '#6e6a60', letterSpacing: '1.5px', textTransform: 'uppercase', marginTop: 2 }}>
-                {hasPurchased ? 'OWNED · ONE-TIME PURCHASE' : 'ONE-TIME PURCHASE · NO SUBSCRIPTION'}
-              </div>
-            )}
-            {/* Ukraine donation badge */}
-            {game.price_cents > 0 && (
-              <div style={{
-                display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 8,
-                background: 'rgba(0,87,183,0.15)', border: '1px solid rgba(0,87,183,0.35)',
-                borderRadius: 3, padding: '4px 8px',
-              }}>
-                <span style={{ fontSize: 13, lineHeight: 1 }}>🇺🇦</span>
-                <span style={{ fontSize: 8, fontWeight: 900, letterSpacing: '1.5px', textTransform: 'uppercase', color: '#6b9fd4' }}>
-                  50% TO UKRAINE RELIEF
-                </span>
-              </div>
-            )}
+            <div className="flex flex-col gap-1">
+              {game.price_cents > 0 && (
+                <div className="text-[8px] font-black tracking-[1.5px] uppercase" style={{ color: '#6e6a60' }}>
+                  {hasPurchased ? 'OWNED · ONE-TIME' : 'ONE-TIME · NO SUBSCRIPTION'}
+                </div>
+              )}
+              {game.price_cents > 0 && (
+                <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-sm"
+                  style={{ background: 'rgba(0,87,183,0.15)', border: '1px solid rgba(0,87,183,0.35)' }}>
+                  <span className="text-sm leading-none">🇺🇦</span>
+                  <span className="text-[8px] font-black tracking-[1.5px] uppercase" style={{ color: '#6b9fd4' }}>
+                    50% TO UKRAINE RELIEF
+                  </span>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
-        {/* ── ABOUT ────────────────────────────────────────────────── */}
-        <div style={{ paddingTop: 28, paddingBottom: 28, borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-          <div style={{ fontSize: 8, fontWeight: 900, letterSpacing: '3px', color: '#e2b13c', marginBottom: 12 }}>
+        {/* ── ABOUT ────────────────────────────────────────── */}
+        <div className="py-5 sm:py-7" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+          <div className="text-[8px] font-black tracking-[3px] uppercase mb-3" style={{ color: '#e2b13c' }}>
             ABOUT THIS GAME
           </div>
-          <p style={{ fontSize: 12.5, lineHeight: 1.8, color: '#9a9288', maxWidth: 580 }}>
-            {game.long_description ?? game.description ?? 'A fast-paced browser shooter with six escalating levels of drone warfare. Take command and battle through uniquely themed sectors — compound raids, trench warfare, naval combat, oil field strikes, airfield assaults, and a final confrontation at Red Square.'}
+          <p className="text-[12.5px] leading-relaxed max-w-xl" style={{ color: '#9a9288' }}>
+            {game.long_description ?? game.description ?? 'A fast-paced browser shooter with six escalating levels of drone warfare.'}
           </p>
         </div>
 
-        {/* ── SECTOR INTEL ─────────────────────────────────────────── */}
-        <div style={{ paddingTop: 28, paddingBottom: 28, borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-          <div style={{ fontSize: 8, fontWeight: 900, letterSpacing: '3px', color: '#e2b13c', marginBottom: 16 }}>
+        {/* ── SECTOR INTEL ─────────────────────────────────── */}
+        <div className="py-5 sm:py-7" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+          <div className="text-[8px] font-black tracking-[3px] uppercase mb-4" style={{ color: '#e2b13c' }}>
             SECTOR INTEL
           </div>
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(3, 1fr)',
-            gap: 8,
-          }}>
+          {/* 2-col on mobile, 3-col on sm+ */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
             {SECTORS.map((s) => (
-              <div
-                key={s.num}
-                style={{ position: 'relative', borderRadius: 2, overflow: 'hidden', aspectRatio: '16/9' }}
-              >
+              <div key={s.num} className="relative rounded-sm overflow-hidden" style={{ aspectRatio: '16/9' }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={s.cover}
                   alt={s.name}
-                  style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', filter: 'saturate(0.85) contrast(1.05)' }}
+                  className="w-full h-full object-cover block"
+                  style={{ filter: 'saturate(0.85) contrast(1.05)' }}
                 />
-                <div style={{
-                  position: 'absolute', inset: 0,
-                  background: 'linear-gradient(to top, rgba(12,13,11,0.9) 0%, rgba(12,13,11,0.2) 60%, transparent 100%)',
+                <div className="absolute inset-0" style={{
+                  background: 'linear-gradient(to top, rgba(12,13,11,0.92) 0%, rgba(12,13,11,0.2) 60%, transparent 100%)',
                 }} />
-                <div style={{ position: 'absolute', bottom: 0, left: 0, padding: '6px 8px' }}>
-                  <div style={{ fontSize: 6, fontWeight: 900, letterSpacing: '2px', color: '#c0562f', textTransform: 'uppercase' }}>
+                <div className="absolute bottom-0 left-0 p-1.5 sm:p-2">
+                  <div className="text-[6px] font-black tracking-[2px] uppercase" style={{ color: '#c0562f' }}>
                     SECTOR {s.num}
                   </div>
-                  <div style={{ fontSize: 8, fontWeight: 900, color: '#f2ead2', textTransform: 'uppercase', letterSpacing: '1px', marginTop: 1 }}>
+                  <div className="text-[7px] sm:text-[8px] font-black uppercase tracking-wide mt-0.5" style={{ color: '#f2ead2' }}>
                     {s.name}
                   </div>
                 </div>
@@ -176,18 +167,20 @@ export function GameLanding({ game, hasPurchased, onPlay }: Props) {
           </div>
         </div>
 
-        {/* ── SPECS ────────────────────────────────────────────────── */}
-        <div style={{ paddingTop: 28 }}>
-          <div style={{ fontSize: 8, fontWeight: 900, letterSpacing: '3px', color: '#e2b13c', marginBottom: 16 }}>
+        {/* ── SPECS ────────────────────────────────────────── */}
+        <div className="pt-5 sm:pt-7">
+          <div className="text-[8px] font-black tracking-[3px] uppercase mb-4" style={{ color: '#e2b13c' }}>
             MISSION SPECS
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 24px' }}>
+          {/* 1-col on mobile, 2-col on sm+ */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6">
             {SPECS.map(({ label, value }) => (
-              <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                <span style={{ fontSize: 9, fontWeight: 900, letterSpacing: '2px', color: '#6e6a60', textTransform: 'uppercase' }}>
+              <div key={label} className="flex justify-between items-center py-2"
+                style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                <span className="text-[9px] font-black tracking-[2px] uppercase" style={{ color: '#6e6a60' }}>
                   {label}
                 </span>
-                <span style={{ fontSize: 10, color: '#a9a396' }}>
+                <span className="text-[10px]" style={{ color: '#a9a396' }}>
                   {value}
                 </span>
               </div>

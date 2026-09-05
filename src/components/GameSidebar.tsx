@@ -28,25 +28,34 @@ const SECTORS = [
 ]
 
 export function GameSidebar({ game, user, hasPurchased, playing = false, onPlay, onBack }: Props) {
-  const [open, setOpen] = useState(true)
+  // Start closed — restored after mount so there's no flash
+  const [open, setOpen] = useState(false)
   const [mobile, setMobile] = useState(false)
+  const [mounted, setMounted] = useState(false)
   const supabase = createClient()
 
   useEffect(() => {
-    const saved = localStorage.getItem('sidebar')
-    if (saved === 'closed') setOpen(false)
-  }, [])
+    const isMob = window.innerWidth < 768
+    setMobile(isMob)
+    // Only restore saved state on desktop; mobile always starts closed
+    if (!isMob) {
+      const saved = localStorage.getItem('sidebar')
+      setOpen(saved !== 'closed')
+    }
+    setMounted(true)
 
-  useEffect(() => {
-    const check = () => setMobile(window.innerWidth < 768)
-    check()
+    const check = () => {
+      const mob = window.innerWidth < 768
+      setMobile(mob)
+      if (mob) setOpen(false)
+    }
     window.addEventListener('resize', check)
     return () => window.removeEventListener('resize', check)
   }, [])
 
   const toggle = () => {
     setOpen((v) => {
-      localStorage.setItem('sidebar', v ? 'closed' : 'open')
+      if (!mobile) localStorage.setItem('sidebar', v ? 'closed' : 'open')
       return !v
     })
   }
@@ -65,8 +74,12 @@ export function GameSidebar({ game, user, hasPurchased, playing = false, onPlay,
 
   const handleLevelClick = (num: number) => {
     const unlocked = num === 1 || hasPurchased
-    if (unlocked) onPlay?.()
+    if (unlocked) { if (mobile) setOpen(false); onPlay?.() }
   }
+
+  // Sidebar width — hidden (0) before mount to avoid SSR/client mismatch flash
+  const sideWidth = !mounted ? 0 : mobile ? (open ? W_OPEN : 0) : open ? W_OPEN : W_CLOSED
+  const sideMin   = sideWidth
 
   return (
     <>
@@ -82,9 +95,9 @@ export function GameSidebar({ game, user, hasPurchased, playing = false, onPlay,
       {/* Sidebar */}
       <aside
         style={{
-          width: mobile ? (open ? W_OPEN : 0) : open ? W_OPEN : W_CLOSED,
-          minWidth: mobile ? (open ? W_OPEN : 0) : open ? W_OPEN : W_CLOSED,
-          transition: 'width 220ms cubic-bezier(.4,0,.2,1), min-width 220ms cubic-bezier(.4,0,.2,1)',
+          width: sideWidth,
+          minWidth: sideMin,
+          transition: mounted ? 'width 220ms cubic-bezier(.4,0,.2,1), min-width 220ms cubic-bezier(.4,0,.2,1)' : 'none',
           background: '#141610',
           borderRight: '1px solid rgba(226,177,60,0.12)',
           display: 'flex',
@@ -176,14 +189,12 @@ export function GameSidebar({ game, user, hasPurchased, playing = false, onPlay,
             )
           })}
 
-          {/* Buy prompt when collapsed — subtle lock icon */}
           {!hasPurchased && !open && (
             <div style={{ padding: '6px 0', display: 'flex', justifyContent: 'center' }}>
               <span style={{ fontSize: 9, color: '#4a4840' }}>◼</span>
             </div>
           )}
 
-          {/* Buy prompt when expanded */}
           {!hasPurchased && open && (
             <div style={{
               margin: '8px 10px',
@@ -263,11 +274,11 @@ export function GameSidebar({ game, user, hasPurchased, playing = false, onPlay,
         <div style={{ height: 10 }} />
       </aside>
 
-      {/* Mobile hamburger tab */}
-      {mobile && !open && (
+      {/* Mobile hamburger — shown when sidebar is closed */}
+      {mobile && !open && mounted && (
         <button
           onClick={toggle}
-          aria-label="Open sidebar"
+          aria-label="Open menu"
           style={{
             position: 'fixed', top: 14, left: 14, zIndex: 60,
             background: 'rgba(20,22,16,0.92)',
@@ -315,35 +326,19 @@ function LevelRow({ sector, unlocked, open, onClick }: LevelRowProps) {
         justifyContent: open ? 'flex-start' : 'center',
       }}
     >
-      {/* Number pill — both expanded and collapsed */}
-      {open ? (
-        <div style={{
-          width: 28, height: 28, borderRadius: 2, flexShrink: 0,
-          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-          background: unlocked ? 'rgba(157,179,90,0.12)' : 'rgba(255,255,255,0.03)',
-          border: `1px solid ${unlocked ? 'rgba(157,179,90,0.25)' : 'rgba(255,255,255,0.06)'}`,
-        }}>
-          <span style={{ fontSize: 8, fontWeight: 900, color: unlocked ? '#9db35a' : '#3a3830', letterSpacing: '0.5px' }}>
-            S{sector.num}
-          </span>
-        </div>
-      ) : (
-        /* Collapsed: number pill */
-        <div style={{
-          width: 28, height: 28, borderRadius: 2,
-          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-          background: unlocked ? 'rgba(157,179,90,0.12)' : 'rgba(255,255,255,0.03)',
-          border: `1px solid ${unlocked ? 'rgba(157,179,90,0.25)' : 'rgba(255,255,255,0.06)'}`,
-        }}>
-          <span style={{ fontSize: 8, fontWeight: 900, color: unlocked ? '#9db35a' : '#3a3830', letterSpacing: '0.5px' }}>
-            S{sector.num}
-          </span>
-          {!unlocked && <span style={{ fontSize: 7, marginTop: 1 }}>◼</span>}
-          {unlocked && sector.num === 1 && <span style={{ fontSize: 7, color: '#9db35a', marginTop: 1 }}>▶</span>}
-        </div>
-      )}
+      <div style={{
+        width: 28, height: 28, borderRadius: 2, flexShrink: 0,
+        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+        background: unlocked ? 'rgba(157,179,90,0.12)' : 'rgba(255,255,255,0.03)',
+        border: `1px solid ${unlocked ? 'rgba(157,179,90,0.25)' : 'rgba(255,255,255,0.06)'}`,
+      }}>
+        <span style={{ fontSize: 8, fontWeight: 900, color: unlocked ? '#9db35a' : '#3a3830', letterSpacing: '0.5px' }}>
+          S{sector.num}
+        </span>
+        {!open && !unlocked && <span style={{ fontSize: 7, marginTop: 1 }}>◼</span>}
+        {!open && unlocked && sector.num === 1 && <span style={{ fontSize: 7, color: '#9db35a', marginTop: 1 }}>▶</span>}
+      </div>
 
-      {/* Label (expanded only) */}
       {open && (
         <div style={{ overflow: 'hidden', flex: 1 }}>
           <div style={{
@@ -363,7 +358,6 @@ function LevelRow({ sector, unlocked, open, onClick }: LevelRowProps) {
         </div>
       )}
 
-      {/* Right: play arrow or lock */}
       {open && (
         <div style={{ flexShrink: 0, width: 16, textAlign: 'center' }}>
           {unlocked ? (
