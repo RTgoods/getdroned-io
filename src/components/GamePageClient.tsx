@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { createClient } from '@/lib/supabase/client'
 import { GameSidebar } from './GameSidebar'
 import { GameLanding } from './GameLanding'
 import type { Game } from '@/types/database'
@@ -8,18 +9,51 @@ import type { User } from '@supabase/supabase-js'
 
 interface Props {
   game: Game
-  user: User | null
-  hasPurchased: boolean
 }
 
-export function GamePageClient({ game, user, hasPurchased }: Props) {
+export function GamePageClient({ game }: Props) {
   const [playing, setPlaying] = useState(false)
+  const [user, setUser] = useState<User | null>(null)
+  const [hasPurchased, setHasPurchased] = useState(false)
+  const [authReady, setAuthReady] = useState(false)
+
+  useEffect(() => {
+    const supabase = createClient()
+
+    async function loadAuth() {
+      const { data: { user } } = await supabase.auth.getUser()
+      setUser(user)
+
+      if (user && game.price_cents > 0) {
+        const { data: p } = await supabase
+          .from('purchases')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('game_id', game.id)
+          .eq('status', 'completed')
+          .maybeSingle()
+        setHasPurchased(!!p)
+      }
+
+      setAuthReady(true)
+    }
+
+    loadAuth()
+
+    // Keep auth state in sync (login / logout from another tab)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
+      setUser(session?.user ?? null)
+      if (!session?.user) setHasPurchased(false)
+    })
+
+    return () => subscription.unsubscribe()
+  }, [game.id, game.price_cents])
 
   return (
     <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: '#0c0d0b' }}>
       <GameSidebar
         game={game}
-        user={user}
+        user={authReady ? user : null}
         hasPurchased={hasPurchased}
         playing={playing}
         onPlay={() => setPlaying(true)}
@@ -45,7 +79,7 @@ export function GamePageClient({ game, user, hasPurchased }: Props) {
         ) : (
           <GameLanding
             game={game}
-            user={user}
+            user={authReady ? user : null}
             hasPurchased={hasPurchased}
             onPlay={() => setPlaying(true)}
           />
