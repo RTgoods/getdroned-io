@@ -4059,22 +4059,39 @@ function update(dt){
       var hammerTarget=(piloting&&drone)?drone:player;
       var hdx=hammerTarget.x-en.x,hdy=hammerTarget.y-en.y,hpd=Math.hypot(hdx,hdy);
       en.ang=Math.atan2(hdy,hdx);
-      // Relentless pursuit: close distance whenever possible and circle at close range; never retreat.
       var oldBX=en.x,oldBY=en.y,chDir=hpd>115?1:0,strafeSide=(en.sid%2?1:-1);
       var wantVX,wantVY;
       if(chDir){ wantVX=Math.cos(en.ang)*d.spd*chDir; wantVY=Math.sin(en.ang)*d.spd*chDir; }
       else { wantVX=Math.cos(en.ang+strafeSide*Math.PI/2)*d.spd*.38+Math.cos(en.ang)*d.spd*.16; wantVY=Math.sin(en.ang+strafeSide*Math.PI/2)*d.spd*.38+Math.sin(en.ang)*d.spd*.16; }
+      // Wall-feeler: probe ahead and steer perpendicular before getting jammed
+      if(hitBox(en.x+Math.cos(en.ang)*TILE*1.1,en.y+Math.sin(en.ang)*TILE*1.1,en.r)){
+        var perpAng=en.ang+strafeSide*Math.PI/2;
+        wantVX+=Math.cos(perpAng)*d.spd*.7; wantVY+=Math.sin(perpAng)*d.spd*.7;
+      }
       var smoothMove=Math.min(1,dt*5.2);
       en.cvx+=(wantVX-en.cvx)*smoothMove; en.cvy+=(wantVY-en.cvy)*smoothMove;
       moveEnt(en,en.cvx*dt,en.cvy*dt);
       var movedBoss=Math.hypot(en.x-oldBX,en.y-oldBY),bossSpeed=movedBoss/Math.max(dt,.001);
       if(movedBoss<.18){
         en.stuckT=(en.stuckT||0)+dt;
-        en.cvx=Math.cos(en.ang+strafeSide*Math.PI/2)*d.spd*.62;
-        en.cvy=Math.sin(en.ang+strafeSide*Math.PI/2)*d.spd*.62;
+        // Drain velocity faster so it doesn't keep pushing into the same wall
+        en.cvx*=0.7; en.cvy*=0.7;
+        var perpA=en.ang+strafeSide*Math.PI/2;
+        en.cvx+=Math.cos(perpA)*d.spd*.5; en.cvy+=Math.sin(perpA)*d.spd*.5;
         moveEnt(en,en.cvx*dt,en.cvy*dt);
       } else en.stuckT=Math.max(0,(en.stuckT||0)-dt*2);
-      if(en.stuckT>2.4){ var escape=freeSpot(en.x+Math.cos(en.ang+strafeSide*Math.PI/2)*TILE*1.5,en.y+Math.sin(en.ang+strafeSide*Math.PI/2)*TILE*1.5); en.x=escape.x; en.y=escape.y; en.cvx=en.cvy=0; en.stuckT=0; }
+      // Stuck escape: hitBox-verified sweep across 16 angles (no freeSpot/onWall mismatch)
+      if(en.stuckT>1.6){
+        var cbEscaped=false;
+        for(var cbEa=0;cbEa<16&&!cbEscaped;cbEa++){
+          var cbA=cbEa*Math.PI/8;
+          for(var cbR=TILE*.5;cbR<=TILE*2.5&&!cbEscaped;cbR+=TILE*.5){
+            var cbEx=en.x+Math.cos(cbA)*cbR,cbEy=en.y+Math.sin(cbA)*cbR;
+            if(!hitBox(cbEx,cbEy,en.r)){ en.x=cbEx; en.y=cbEy; cbEscaped=true; }
+          }
+        }
+        en.cvx=0; en.cvy=0; en.stuckT=0;
+      }
       // Keep boss out of player home base
       var bpx0=BASE.x0*TILE,bpx1=BASE.x1*TILE,bpy0=BASE.y0*TILE,bpy1=BASE.y1*TILE;
       if(en.x>bpx0&&en.x<bpx1&&en.y>bpy0&&en.y<bpy1){
