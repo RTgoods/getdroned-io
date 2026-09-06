@@ -3341,6 +3341,28 @@ function hurtEnemy(e,dmg,ang,blast){
   if(e.hp<=0) killEnemy(e,ang,blast||(-e.hp)>28||(blast!==true&&dmg>=60&&Math.random()<.4));
   else sfx('hit',.5);
 }
+function renderBossOnePortrait(){
+  var pc=document.getElementById('bossOnePortrait');
+  if(!pc) return;
+  var ctx=pc.getContext('2d');
+  ctx.clearRect(0,0,112,132);
+  // Dark navy background
+  var bg=ctx.createLinearGradient(0,0,0,132);
+  bg.addColorStop(0,'#06101e'); bg.addColorStop(1,'#010408');
+  ctx.fillStyle=bg; ctx.fillRect(0,0,112,132);
+  // Ground impact glow at bottom
+  var grd=ctx.createRadialGradient(56,132,2,56,118,44);
+  grd.addColorStop(0,'rgba(180,0,0,.32)'); grd.addColorStop(1,'rgba(0,0,0,0)');
+  ctx.fillStyle=grd; ctx.fillRect(0,80,112,52);
+  // Boss fallen backward ~40°: translate to landing point then rotate
+  ctx.save();
+  ctx.translate(32,108);
+  ctx.rotate(0.7);
+  drawCompoundBoss(ctx,{x:0,y:0,walk:0,walkBlend:0,amt:0,bossScale:0.9,hammerWind:0});
+  ctx.restore();
+  // Subtle defeat red tint
+  ctx.fillStyle='rgba(100,0,0,.13)'; ctx.fillRect(0,0,112,132);
+}
 function launchBossVictoryFireworks(){
   var cv=document.getElementById('bossVictoryFx');
   if(!cv) return;
@@ -3407,7 +3429,7 @@ function showCompoundBossClear(x,y){
       dustPuff(bx,by,10,1.4); shake=Math.min(18,shake+5+index*.8); sfx('boom',Math.max(.35,1-index*.08));
     },delay);
   })(blastTimes[bi],bi);
-  setTimeout(function(){ state='pause'; victory.classList.add('show'); sfx('clear'); launchBossVictoryFireworks(); },2850);
+  setTimeout(function(){ state='pause'; victory.classList.add('show'); sfx('clear'); renderBossOnePortrait(); launchBossVictoryFireworks(); },2850);
   setTimeout(function(){ victory.classList.remove('show'); },6500);
   setTimeout(function(){ sectorClear(); },7050);
 }
@@ -9390,6 +9412,7 @@ function closeBossCardPreview(){
 function showBossCardPreview(id){
   closeBossCardPreview();
   if(id==='finalBossVictory') drawFinalBossCard();
+  if(id==='bossVictory') renderBossOnePortrait();
   var card=document.getElementById(id); if(!card) return;
   card.classList.add('preview','show'); sfx('clear');
   bossCardPreviewTimer=setTimeout(closeBossCardPreview,5200);
