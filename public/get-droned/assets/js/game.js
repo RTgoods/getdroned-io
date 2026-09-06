@@ -6908,12 +6908,6 @@ function drawCompoundBoss(c,U){
   c.save(); c.beginPath(); c.arc(0,-43,10,0,Math.PI*2); c.clip();
   c.fillStyle='#1c1812'; c.fillRect(-11,-54,22,13);
   c.restore();
-  // Sculpted wraparound sunglasses with separate lenses, bridge, arms and highlights.
-  var glassG=c.createLinearGradient(-8,-46,8,-40); glassG.addColorStop(0,'#101518'); glassG.addColorStop(.55,'#30434b'); glassG.addColorStop(1,'#080b0d');
-  c.fillStyle=glassG; rrect(c,-9.3,-46.5,8.7,6.5,2.4); c.fill(); rrect(c,.6,-46.5,8.7,6.5,2.4); c.fill();
-  c.strokeStyle='#050708'; c.lineWidth=1.7; rrect(c,-9.3,-46.5,8.7,6.5,2.4); c.stroke(); rrect(c,.6,-46.5,8.7,6.5,2.4); c.stroke();
-  c.beginPath(); c.moveTo(-.8,-43.8); c.quadraticCurveTo(0,-44.8,.8,-43.8); c.moveTo(-9,-44.5); c.lineTo(-11,-45); c.moveTo(9,-44.5); c.lineTo(11,-45); c.stroke();
-  c.strokeStyle='rgba(170,224,236,.62)'; c.lineWidth=1; c.beginPath(); c.moveTo(-7.5,-45); c.lineTo(-3.5,-44.2); c.moveTo(2.5,-45); c.lineTo(6.5,-44.2); c.stroke();
   c.strokeStyle='rgba(111,57,40,.55)'; c.lineWidth=1.2; c.beginPath(); c.moveTo(-7,-39); c.lineTo(-3,-34); c.moveTo(7,-39); c.lineTo(3,-34); c.stroke();
   c.strokeStyle='#6f3b2d'; c.lineWidth=1.5; c.lineCap='round';
   c.beginPath(); c.moveTo(0,-42); c.lineTo(-1,-36); c.lineTo(2,-35); c.stroke();
