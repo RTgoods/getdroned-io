@@ -238,7 +238,7 @@ export function GameSidebar({ game, user, hasPurchased, completedSectors = [], p
                 UNLOCK ALL SECTORS
               </div>
               <div style={{ fontSize: 9, color: UA.textMuted, marginBottom: 8, lineHeight: 1.5 }}>
-                ${(game.price_cents / 100).toFixed(2)} · one-time · 50% to Ukraine
+                ${(game.price_cents / 100).toFixed(2)} · One-Time · 50% To Ukraine
               </div>
               <a href="/auth/login" style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -454,6 +454,7 @@ function LevelRow({ sector, unlocked, done, open, onClick }: LevelRowProps) {
                 fontSize: 8, letterSpacing: '0.5px', lineHeight: 1.4,
                 color: done ? 'rgba(255,215,0,0.6)' : '#5a7090',
                 textDecoration: done ? 'line-through' : 'none',
+                textTransform: 'capitalize',
               }}>
                 {obj}
               </span>
