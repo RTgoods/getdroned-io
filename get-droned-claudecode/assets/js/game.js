@@ -6827,19 +6827,10 @@ function drawCompoundBoss(c,U){
     c.fillStyle=handHammer; rrect(c,-11,-8,22,9,2.5); c.fill(); outl(c,'#171a1c',1.7);
     c.fillStyle='rgba(255,255,255,.5)'; c.fillRect(-7,-6,8,1.5); c.restore();
   }
-  // Raised right arm grips a Wagner flag instead of throwing hammers.
-  var flagSway=Math.sin(Date.now()/320+(U.sid||0))*2+Math.sin(walkPhase*.72)*.7*moveAmt,flagPoleX=20;
-  c.strokeStyle='#aa9670'; c.lineWidth=6; c.beginPath(); c.moveTo(10,-29); c.quadraticCurveTo(16,-27,flagPoleX,-18); c.stroke();
-  c.strokeStyle='#756044'; c.lineWidth=2.2; c.beginPath(); c.moveTo(12,-27); c.lineTo(flagPoleX-1,-19); c.stroke();
-  c.strokeStyle='#4a3420'; c.lineWidth=3.4; c.beginPath(); c.moveTo(flagPoleX,3); c.lineTo(flagPoleX+flagSway,-76); c.stroke();
-  c.strokeStyle='#c5a56a'; c.lineWidth=1; c.beginPath(); c.moveTo(flagPoleX-1,2); c.lineTo(flagPoleX-1+flagSway,-75); c.stroke();
-  c.fillStyle='#bb8061'; c.beginPath(); c.arc(flagPoleX,-18,3.8,0,6.3); c.fill(); outl(c,'#3b291f',1.3);
-  c.save(); c.translate(flagPoleX+flagSway,-73); c.rotate(flagSway*.012);
-  c.fillStyle='#090a0b'; c.beginPath(); c.moveTo(0,0); c.quadraticCurveTo(17,-3,35,1+flagSway); c.lineTo(35,28+flagSway*.45); c.quadraticCurveTo(17,24,0,28); c.closePath(); c.fill(); outl(c,'#b62429',1.8);
-  if(wagnerPatch&&wagnerPatch.complete&&wagnerPatch.naturalWidth){
-    c.save(); c.beginPath(); c.rect(5,2,25,23); c.clip(); c.drawImage(wagnerPatch,5,2,25,23); c.restore();
-  }
-  c.fillStyle='#d5ad45'; c.beginPath(); c.arc(0,-1,2.4,0,6.3); c.fill(); c.restore();
+  // Right arm hangs at side
+  c.strokeStyle='#aa9670'; c.lineWidth=6; c.lineCap='round'; c.beginPath(); c.moveTo(10,-29); c.lineTo(13,-19); c.lineTo(12,-8); c.stroke();
+  c.strokeStyle='#596044'; c.lineWidth=2.2; c.beginPath(); c.moveTo(11,-28); c.lineTo(14,-18); c.stroke();
+  c.fillStyle='#bb8061'; c.beginPath(); c.arc(12,-8,3.7,0,6.3); c.fill(); outl(c,'#3b291f',1.3);
   // Head with short dark hair — no cap.
   c.fillStyle='#bb8061'; c.beginPath(); c.arc(0,-43,10,0,6.3); c.fill(); outl(c,'#3b291f',2);
   c.fillStyle='rgba(245,190,150,.24)'; c.beginPath(); c.ellipse(-2.5,-48.5,5.2,2.2,-.18,0,6.3); c.fill();
