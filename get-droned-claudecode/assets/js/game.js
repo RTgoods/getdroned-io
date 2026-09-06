@@ -4068,6 +4068,14 @@ function update(dt){
       var wantVX,wantVY;
       if(chDir){ wantVX=Math.cos(en.ang)*d.spd*chDir; wantVY=Math.sin(en.ang)*d.spd*chDir; }
       else { wantVX=Math.cos(en.ang+strafeSide*Math.PI/2)*d.spd*.38+Math.cos(en.ang)*d.spd*.16; wantVY=Math.sin(en.ang+strafeSide*Math.PI/2)*d.spd*.38+Math.sin(en.ang)*d.spd*.16; }
+      // Repel boss away from home base boundary before it enters
+      var rbx0=BASE.x0*TILE,rbx1=BASE.x1*TILE,rby0=BASE.y0*TILE,rby1=BASE.y1*TILE;
+      var rbZone=en.r+TILE*1.8;
+      if(en.x>rbx0-rbZone&&en.x<rbx1+rbZone&&en.y>rby0-rbZone&&en.y<rby1+rbZone){
+        var bcx=(rbx0+rbx1)*.5,bcy=(rby0+rby1)*.5;
+        var repD=Math.hypot(en.x-bcx,en.y-bcy)||1;
+        wantVX+=(en.x-bcx)/repD*d.spd*1.4; wantVY+=(en.y-bcy)/repD*d.spd*1.4;
+      }
       // Wall-feeler: probe ahead and steer perpendicular before getting jammed
       if(hitBox(en.x+Math.cos(en.ang)*TILE*1.1,en.y+Math.sin(en.ang)*TILE*1.1,en.r)){
         var perpAng=en.ang+strafeSide*Math.PI/2;
@@ -4097,13 +4105,16 @@ function update(dt){
         }
         en.cvx=0; en.cvy=0; en.stuckT=0;
       }
-      // Keep boss out of player home base
+      // Hard base exclusion — full-radius clearance eject + velocity cancel
       var bpx0=BASE.x0*TILE,bpx1=BASE.x1*TILE,bpy0=BASE.y0*TILE,bpy1=BASE.y1*TILE;
-      if(en.x>bpx0&&en.x<bpx1&&en.y>bpy0&&en.y<bpy1){
-        var dL=en.x-bpx0,dR=bpx1-en.x,dT=en.y-bpy0,dB=bpy1-en.y,mD=Math.min(dL,dR,dT,dB);
-        if(mD===dL) en.x=bpx0-4; else if(mD===dR) en.x=bpx1+4;
-        else if(mD===dT) en.y=bpy0-4; else en.y=bpy1+4;
-        en.cvx=0; en.cvy=0;
+      var bClr=en.r+18;
+      if(en.x>bpx0-bClr&&en.x<bpx1+bClr&&en.y>bpy0-bClr&&en.y<bpy1+bClr){
+        var dL2=en.x-(bpx0-bClr),dR2=(bpx1+bClr)-en.x,dT2=en.y-(bpy0-bClr),dB2=(bpy1+bClr)-en.y;
+        var mD2=Math.min(dL2,dR2,dT2,dB2);
+        if(mD2===dL2){ en.x=bpx0-bClr; en.cvx=Math.min(0,en.cvx); }
+        else if(mD2===dR2){ en.x=bpx1+bClr; en.cvx=Math.max(0,en.cvx); }
+        else if(mD2===dT2){ en.y=bpy0-bClr; en.cvy=Math.min(0,en.cvy); }
+        else { en.y=bpy1+bClr; en.cvy=Math.max(0,en.cvy); }
       }
       // Drive the gait from distance actually travelled, so blocked movement cannot
       // make the boss moonwalk or rapidly cycle his legs in place.
@@ -4121,9 +4132,12 @@ function update(dt){
           en.hammerCd=rr(.48,.68); banner('HAMMER THROW','KEEP MOVING',.42);
         }
       } else if(en.hammerCd<=0&&hpd<680&&los(en.x,en.y,hammerTarget.x,hammerTarget.y)){
-        en.hammerWind=.30;
-        en.hammerTX=hammerTarget.x+(hammerTarget.vx||hammerTarget.lvx||0)*.32;
-        en.hammerTY=hammerTarget.y+(hammerTarget.vy||hammerTarget.lvy||0)*.32;
+        var htInBase=en.x>bpx0-bClr*1.5&&en.x<bpx1+bClr*1.5&&en.y>bpy0-bClr*1.5&&en.y<bpy1+bClr*1.5;
+        if(!htInBase){
+          en.hammerWind=.30;
+          en.hammerTX=hammerTarget.x+(hammerTarget.vx||hammerTarget.lvx||0)*.32;
+          en.hammerTY=hammerTarget.y+(hammerTarget.vy||hammerTarget.lvy||0)*.32;
+        }
       }
       continue;
     }
