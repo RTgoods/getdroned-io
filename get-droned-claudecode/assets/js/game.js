@@ -3888,6 +3888,11 @@ function update(dt){
   for(var hm=bossHammers.length-1;hm>=0;hm--){
     var HM=bossHammers[hm]; HM.t+=dt; HM.rot+=HM.spin*dt;
     var hp0=Math.min(1,HM.t/HM.dur); HM.x=HM.sx+(HM.tx-HM.sx)*hp0; HM.y=HM.sy+(HM.ty-HM.sy)*hp0;
+    // Stop hammer if it crosses a wall mid-flight
+    if(blocksShot(T(Math.floor(HM.x/TILE),Math.floor(HM.y/TILE)))){
+      dustPuff(HM.x,HM.y,5,.9); shake=Math.min(6,shake+2); sfx('ric',.55);
+      bossHammers.splice(hm,1); continue;
+    }
     if(hp0>=1){
       fx.push({t:'ring',x:HM.x,y:HM.y,life:.35,max:.35}); dustPuff(HM.x,HM.y,8,1.1);
       if(Math.hypot(player.x-HM.x,player.y-HM.y)<52) hurtPlayer(30);
