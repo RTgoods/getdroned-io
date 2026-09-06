@@ -5,7 +5,7 @@ import type { Game } from '@/types/database'
 import type { User } from '@supabase/supabase-js'
 
 const SECTORS = [
-  { num: 1, name: 'FRANKS AND HAMMERS', cover: '/get-droned/assets/images/covers/level-1.png' },
+  { num: 1, name: 'FRANKS AND HAMMERS', cover: '/get-droned/assets/images/covers/level-1.png?v=2' },
   { num: 2, name: 'THE TRENCHES',   cover: '/get-droned/assets/images/covers/level-2.webp' },
   { num: 3, name: 'THE BLACK SEA',  cover: '/get-droned/assets/images/covers/level-3.webp' },
   { num: 4, name: 'THE OIL FIELDS', cover: '/get-droned/assets/images/covers/level-4.webp' },
@@ -59,7 +59,7 @@ export function GameLanding({ game, user, hasPurchased, onPlay }: Props) {
       <div className="relative overflow-hidden" style={{ height: 'clamp(220px, 42vh, 480px)' }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src="/get-droned/assets/images/covers/level-1.png"
+          src="/get-droned/assets/images/covers/level-1.png?v=2"
           alt="Get Droned"
           className="w-full h-full object-cover object-top block"
           fetchPriority="high"
