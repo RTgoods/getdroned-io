@@ -6910,13 +6910,6 @@ function drawCompoundBoss(c,U){
   c.fillStyle='#bb8061'; c.beginPath(); c.arc(0,-43,10,0,6.3); c.fill(); outl(c,'#3b291f',2);
   c.fillStyle='rgba(245,190,150,.24)'; c.beginPath(); c.ellipse(-2.5,-48.5,5.2,2.2,-.18,0,6.3); c.fill();
   c.fillStyle='#bb8061'; c.beginPath(); c.arc(-9.2,-43,2.1,0,6.3); c.fill(); c.beginPath(); c.arc(9.2,-43,2.1,0,6.3); c.fill();
-  // Short dark hair swept back
-  c.fillStyle='#1e1914'; c.beginPath(); c.moveTo(-10,-50); c.quadraticCurveTo(-10,-64,0,-65); c.quadraticCurveTo(11,-64,11,-50); c.quadraticCurveTo(5,-55,0,-56); c.quadraticCurveTo(-5,-55,-10,-50); c.closePath(); c.fill(); outl(c,'#0a0807',1.5);
-  // Hair sheen
-  c.fillStyle='rgba(90,65,40,.32)'; c.beginPath(); c.moveTo(-6,-60); c.quadraticCurveTo(0,-65,7,-60); c.lineTo(5,-58); c.quadraticCurveTo(0,-62,-6,-58); c.closePath(); c.fill();
-  // Side hair over temples
-  c.fillStyle='#1e1914'; c.beginPath(); c.ellipse(-10.5,-49,3,5,-.15,0,6.3); c.fill();
-  c.beginPath(); c.ellipse(10.5,-49,3,5,.15,0,6.3); c.fill();
   // Sculpted wraparound sunglasses with separate lenses, bridge, arms and highlights.
   var glassG=c.createLinearGradient(-8,-46,8,-40); glassG.addColorStop(0,'#101518'); glassG.addColorStop(.55,'#30434b'); glassG.addColorStop(1,'#080b0d');
   c.fillStyle=glassG; rrect(c,-9.3,-46.5,8.7,6.5,2.4); c.fill(); rrect(c,.6,-46.5,8.7,6.5,2.4); c.fill();
@@ -6931,9 +6924,6 @@ function drawCompoundBoss(c,U){
   c.fillStyle='#4a211c'; c.beginPath(); c.moveTo(-6,-31); c.quadraticCurveTo(0,-27,7,-33); c.quadraticCurveTo(1,-30,-6,-31); c.closePath(); c.fill();
   c.fillStyle='#e6d6c4'; c.beginPath(); c.moveTo(-4.5,-31); c.quadraticCurveTo(.5,-29,5,-32); c.lineTo(4,-29.8); c.quadraticCurveTo(0,-27.8,-4.5,-29.5); c.closePath(); c.fill();
   c.strokeStyle='#3b1d18'; c.lineWidth=1.1; c.beginPath(); c.moveTo(-5,-27); c.quadraticCurveTo(0,-25,5,-28); c.stroke();
-  // Short trimmed beard — chin only, not full face.
-  c.fillStyle='#2c2620'; c.beginPath(); c.moveTo(-6,-35); c.quadraticCurveTo(-7,-29,-4,-25); c.quadraticCurveTo(0,-23,4,-25); c.quadraticCurveTo(7,-29,6,-35); c.quadraticCurveTo(3,-32,0,-32); c.quadraticCurveTo(-3,-32,-6,-35); c.closePath(); c.fill(); outl(c,'#110f0d',1.1);
-  c.strokeStyle='#4a4038'; c.lineWidth=0.8; for(var bd=-3;bd<=3;bd+=2){ c.beginPath(); c.moveTo(bd,-31); c.lineTo(bd*.5,-25); c.stroke(); }
   c.restore();
 }
 function drawLevelTwoBoss(c,U){
