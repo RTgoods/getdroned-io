@@ -3356,7 +3356,7 @@ function renderBossOnePortrait(){
   ctx.fillStyle=grd; ctx.fillRect(0,80,112,52);
   // Boss fallen backward ~40°: translate to landing point then rotate
   ctx.save();
-  ctx.translate(32,108);
+  ctx.translate(38,88);
   ctx.rotate(0.7);
   drawCompoundBoss(ctx,{x:0,y:0,walk:0,walkBlend:0,amt:0,bossScale:0.9,hammerWind:0});
   ctx.restore();
