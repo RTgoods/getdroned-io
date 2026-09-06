@@ -2461,6 +2461,107 @@ function drawTruck(c){
     c.beginPath(); c.ellipse(K.x,K.y,31,17,K.ang,0,6.3); c.stroke(); }
   c.textAlign='start';
 }
+// ── Hotdog truck — Level 1 right-side easter egg ──────────────────
+var HOTDOG_TX=62*34, HOTDOG_TY=36*34; // world position (tile 62,36)
+function drawHotdogTruck(c){
+  if(mapKind!=='compound') return;
+  var wx=HOTDOG_TX, wy=HOTDOG_TY;
+  if(wx<cam.x-180||wx>cam.x+VW+180||wy<cam.y-180||wy>cam.y+VH+180) return;
+  c.save(); c.translate(wx,wy);
+
+  // ground shadow
+  c.fillStyle='rgba(0,0,0,.32)'; c.beginPath(); c.ellipse(2,14,46,14,0,0,6.3); c.fill();
+
+  // wheels
+  var wheelPos=[[-30,9],[30,9]];
+  wheelPos.forEach(function(w){
+    c.fillStyle='#1c1c1c'; c.beginPath(); c.arc(w[0],w[1],8,0,6.3); c.fill();
+    c.fillStyle='#2e2e2e'; c.beginPath(); c.arc(w[0],w[1],5,0,6.3); c.fill();
+    c.strokeStyle='#444'; c.lineWidth=1.2;
+    for(var sp=0;sp<5;sp++){ var sa=sp/5*6.28;
+      c.beginPath(); c.moveTo(w[0]+Math.cos(sa)*1.8,w[1]+Math.sin(sa)*1.8);
+      c.lineTo(w[0]+Math.cos(sa)*4.5,w[1]+Math.sin(sa)*4.5); c.stroke(); }
+  });
+
+  // truck body
+  c.fillStyle='#f5e87a'; rrect(c,-42,-14,84,26,5); c.fill(); outl(c,'#c8b830',2.2);
+  // side panel stripe
+  c.fillStyle='#e8395c'; rrect(c,-42,-5,84,7,0); c.fill();
+  // re-outline body over stripe
+  rrect(c,-42,-14,84,26,5); outl(c,'#c8b830',2.2);
+
+  // cab section (right side)
+  c.fillStyle='#ddd86a'; rrect(c,22,-14,20,26,5); c.fill(); outl(c,'#c8b830',1.6);
+  // cab window
+  c.fillStyle='#6ab6e8'; rrect(c,26,-11,12,10,2); c.fill(); outl(c,'#1c3a55',1.2);
+  c.fillStyle='rgba(255,255,255,.35)'; c.fillRect(27,-10,3,8); // glass sheen
+
+  // service window / hatch (left side, facing viewer)
+  c.fillStyle='#3a2a12'; rrect(c,-30,-12,24,16,2); c.fill();
+  c.fillStyle='#6ab6e8'; rrect(c,-28,-10,20,12,1.5); c.fill(); outl(c,'#1c3a55',1);
+  // counter ledge
+  c.fillStyle='#c8b830'; rrect(c,-31,-1,26,4,2); c.fill(); outl(c,'#8a7a10',1.4);
+
+  // awning above service window
+  c.save();
+  c.beginPath(); c.moveTo(-34,-14); c.lineTo(-34,-22); c.lineTo(0,-18); c.lineTo(0,-14); c.closePath();
+  c.clip();
+  for(var as=0;as<6;as++){
+    c.fillStyle=(as%2===0)?'#e8395c':'#f5e87a';
+    c.fillRect(-34+as*6,-24,6,14);
+  }
+  c.restore();
+  c.strokeStyle='#b0291e'; c.lineWidth=1.4;
+  c.beginPath(); c.moveTo(-34,-14); c.lineTo(-34,-22); c.lineTo(0,-18); c.lineTo(0,-14); c.stroke();
+  // awning scalloped edge
+  for(var sc2=0;sc2<7;sc2++){
+    c.fillStyle='#f5e87a'; c.beginPath();
+    c.arc(-31+sc2*4.8,-18+sc2*.5,2.8,0,6.3); c.fill();
+  }
+
+  // HOT DOGS sign on body
+  c.fillStyle='#b01010'; c.font='bold 7px Arial'; c.textAlign='center';
+  c.fillText('HOT DOGS',0,-3);
+
+  // stars / dots decoration
+  c.fillStyle='rgba(255,255,255,.6)';
+  [[-18,-9],[18,-9],[-18,6],[18,6]].forEach(function(p){
+    c.beginPath(); c.arc(p[0],p[1],1.5,0,6.3); c.fill(); });
+
+  // ── Hotdog on the roof ───────────────────────────────────────
+  c.save(); c.translate(-4,-24); // raise above truck roof
+
+  // bun bottom half
+  c.fillStyle='#e8a857'; rrect(c,-18,2,36,12,6); c.fill(); outl(c,'#8a5510',1.6);
+  // bun top half
+  c.fillStyle='#f0be6e';
+  c.beginPath(); c.ellipse(0,-2,18,10,0,0,6.3); c.fill(); outl(c,'#8a5510',1.6);
+  // sesame seeds on top bun
+  c.fillStyle='#c89840';
+  [[-10,-5],[-4,-8],[4,-6],[10,-4],[0,-9],[-7,-2]].forEach(function(s){
+    c.save(); c.translate(s[0],s[1]); c.rotate(.4);
+    c.beginPath(); c.ellipse(0,0,2,1.1,0,0,6.3); c.fill(); c.restore(); });
+
+  // sausage
+  c.fillStyle='#b83018'; rrect(c,-20,0,40,8,4); c.fill(); outl(c,'#7a1808',1.4);
+  // sausage highlights/grill marks
+  c.strokeStyle='rgba(80,0,0,.55)'; c.lineWidth=2;
+  [-10,-2,6,14].forEach(function(gx){
+    c.beginPath(); c.moveTo(gx,1); c.lineTo(gx+2,7); c.stroke(); });
+  c.strokeStyle='rgba(255,140,80,.45)'; c.lineWidth=1.2;
+  c.beginPath(); c.moveTo(-18,2); c.quadraticCurveTo(0,0,18,3); c.stroke();
+
+  // mustard squiggle
+  c.strokeStyle='#f0d020'; c.lineWidth=2.2; c.lineJoin='round'; c.lineCap='round';
+  c.beginPath();
+  c.moveTo(-16,3); c.lineTo(-10,1); c.lineTo(-4,5); c.lineTo(2,1); c.lineTo(8,5); c.lineTo(14,1); c.lineTo(18,3);
+  c.stroke();
+
+  c.restore(); // end roof hotdog
+
+  c.textAlign='start';
+  c.restore(); // end truck translate
+}
 function makePlayer(){
   var hs0=freeSpot(homeSpawn.x*TILE,homeSpawn.y*TILE);
   return {x:hs0.x, y:hs0.y, r:11, hp:upgHP, mx:upgHP, ap:0, ang:-1.57, face:-1.57,
@@ -7814,6 +7915,7 @@ function draw(){
   }
 
   drawTruck(ctx);
+  drawHotdogTruck(ctx);
   for(var dtw=0;dtw<depots.length;dtw++) drawDepotTruck(ctx,depots[dtw]);
 
   // AA mounts around the dumps
