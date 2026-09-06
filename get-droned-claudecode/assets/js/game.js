@@ -3341,6 +3341,48 @@ function hurtEnemy(e,dmg,ang,blast){
   if(e.hp<=0) killEnemy(e,ang,blast||(-e.hp)>28||(blast!==true&&dmg>=60&&Math.random()<.4));
   else sfx('hit',.5);
 }
+function launchBossVictoryFireworks(){
+  var cv=document.getElementById('bossVictoryFx');
+  if(!cv) return;
+  var ctx2=cv.getContext('2d');
+  var W=cv.offsetWidth||window.innerWidth, H=cv.offsetHeight||window.innerHeight;
+  cv.width=W; cv.height=H;
+  var parts=[];
+  var cols=['#ffd700','#ff6b35','#4a9eff','#ff3d6e','#00e87a','#ff9900','#ffffff','#e2b13c','#c0f0ff'];
+  function burst(bx,by){
+    var col=cols[Math.floor(Math.random()*cols.length)];
+    for(var i=0;i<45;i++){
+      var ang=Math.random()*Math.PI*2;
+      var spd=1.6+Math.random()*5.5;
+      parts.push({x:bx,y:by,vx:Math.cos(ang)*spd,vy:Math.sin(ang)*spd-2.5,
+        life:1,dec:0.016+Math.random()*0.013,r:2.2+Math.random()*2.3,col:col});
+    }
+  }
+  var bTimes=[0,320,620,950,1280,1600,1950,2320,2700];
+  bTimes.forEach(function(t){
+    setTimeout(function(){
+      burst(W*(.12+Math.random()*.76), H*(.06+Math.random()*.52));
+    },t);
+  });
+  var raf;
+  function frame(){
+    ctx2.clearRect(0,0,W,H);
+    for(var i=parts.length-1;i>=0;i--){
+      var p=parts[i];
+      p.x+=p.vx; p.y+=p.vy;
+      p.vy+=0.13; p.vx*=0.97;
+      p.life-=p.dec;
+      if(p.life<=0){parts.splice(i,1);continue;}
+      ctx2.globalAlpha=p.life;
+      ctx2.fillStyle=p.col;
+      ctx2.beginPath(); ctx2.arc(p.x,p.y,p.r*p.life,0,Math.PI*2); ctx2.fill();
+    }
+    ctx2.globalAlpha=1;
+    raf=requestAnimationFrame(frame);
+  }
+  raf=requestAnimationFrame(frame);
+  setTimeout(function(){ cancelAnimationFrame(raf); ctx2.clearRect(0,0,W,H); },4200);
+}
 function showCompoundBossClear(x,y){
   state='play'; firing=false; actBtn.classList.remove('on');
   var victory=document.getElementById('bossVictory');
@@ -3354,7 +3396,7 @@ function showCompoundBossClear(x,y){
       dustPuff(bx,by,10,1.4); shake=Math.min(18,shake+5+index*.8); sfx('boom',Math.max(.35,1-index*.08));
     },delay);
   })(blastTimes[bi],bi);
-  setTimeout(function(){ state='pause'; victory.classList.add('show'); sfx('clear'); },2850);
+  setTimeout(function(){ state='pause'; victory.classList.add('show'); sfx('clear'); launchBossVictoryFireworks(); },2850);
   setTimeout(function(){ victory.classList.remove('show'); },6500);
   setTimeout(function(){ sectorClear(); },7050);
 }
