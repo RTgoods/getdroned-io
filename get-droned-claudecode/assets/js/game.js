@@ -5544,6 +5544,15 @@ function spawnCompoundBoss(){
     cam.x=player.x-VW/2; cam.y=player.y-VH/2;
   }
   banner('LEVEL 1 BOSS','ENEMY COMMANDER ENTERS THE FIGHT',2.8); hud();
+  // Ramp music to 130% speed over ~1.5 s when boss enters
+  if(_bgm){
+    var _bpmEl=_bgm, _bpmTarget=1.3, _bpmStep=(_bpmTarget-(_bpmEl.playbackRate||1))/30;
+    var _bpmInt=setInterval(function(){
+      if(!_bpmEl||_bpmEl!==_bgm){ clearInterval(_bpmInt); return; }
+      _bpmEl.playbackRate=Math.min(_bpmTarget,(_bpmEl.playbackRate||1)+_bpmStep);
+      if(_bpmEl.playbackRate>=_bpmTarget) clearInterval(_bpmInt);
+    },50);
+  }
 }
 function spawnLevelTwoBoss(){
   if(levelTwoBossSpawned) return;
