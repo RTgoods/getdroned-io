@@ -65,7 +65,7 @@ export function GameLanding({ game, user, hasPurchased, onPlay }: Props) {
           fetchPriority="high"
         />
         <div className="absolute inset-0" style={{
-          background: 'linear-gradient(to top, #0c0d0b 0%, rgba(12,13,11,0.4) 55%, rgba(12,13,11,0.05) 100%)',
+          background: 'linear-gradient(to top, #0c0d0b 0%, rgba(12,13,11,0.3) 55%, rgba(12,13,11,0.0) 100%)',
         }} />
         {/* scan lines */}
         <div className="absolute inset-0 pointer-events-none" style={{
