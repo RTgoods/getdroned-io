@@ -4075,6 +4075,14 @@ function update(dt){
         moveEnt(en,en.cvx*dt,en.cvy*dt);
       } else en.stuckT=Math.max(0,(en.stuckT||0)-dt*2);
       if(en.stuckT>2.4){ var escape=freeSpot(en.x+Math.cos(en.ang+strafeSide*Math.PI/2)*TILE*1.5,en.y+Math.sin(en.ang+strafeSide*Math.PI/2)*TILE*1.5); en.x=escape.x; en.y=escape.y; en.cvx=en.cvy=0; en.stuckT=0; }
+      // Keep boss out of player home base
+      var bpx0=BASE.x0*TILE,bpx1=BASE.x1*TILE,bpy0=BASE.y0*TILE,bpy1=BASE.y1*TILE;
+      if(en.x>bpx0&&en.x<bpx1&&en.y>bpy0&&en.y<bpy1){
+        var dL=en.x-bpx0,dR=bpx1-en.x,dT=en.y-bpy0,dB=bpy1-en.y,mD=Math.min(dL,dR,dT,dB);
+        if(mD===dL) en.x=bpx0-4; else if(mD===dR) en.x=bpx1+4;
+        else if(mD===dT) en.y=bpy0-4; else en.y=bpy1+4;
+        en.cvx=0; en.cvy=0;
+      }
       // Drive the gait from distance actually travelled, so blocked movement cannot
       // make the boss moonwalk or rapidly cycle his legs in place.
       movedBoss=Math.hypot(en.x-oldBX,en.y-oldBY); bossSpeed=movedBoss/Math.max(dt,.001);
@@ -6908,6 +6916,12 @@ function drawCompoundBoss(c,U){
   c.save(); c.beginPath(); c.arc(0,-43,10,0,Math.PI*2); c.clip();
   c.fillStyle='#1c1812'; c.fillRect(-11,-54,22,13);
   c.restore();
+  // Smaller glasses
+  var sg=c.createLinearGradient(-6,-45,6,-40); sg.addColorStop(0,'#101518'); sg.addColorStop(.5,'#2a3b42'); sg.addColorStop(1,'#080b0d');
+  c.fillStyle=sg; rrect(c,-7.5,-45.5,6.8,5,1.8); c.fill(); rrect(c,.8,-45.5,6.8,5,1.8); c.fill();
+  c.strokeStyle='#050708'; c.lineWidth=1.4; rrect(c,-7.5,-45.5,6.8,5,1.8); c.stroke(); rrect(c,.8,-45.5,6.8,5,1.8); c.stroke();
+  c.beginPath(); c.moveTo(-.5,-43.5); c.quadraticCurveTo(0,-44.2,.5,-43.5); c.moveTo(-7.5,-43.2); c.lineTo(-9.5,-44); c.moveTo(7.6,-43.2); c.lineTo(9.5,-44); c.stroke();
+  c.strokeStyle='rgba(170,224,236,.5)'; c.lineWidth=.8; c.beginPath(); c.moveTo(-6,-44.5); c.lineTo(-3,-44); c.moveTo(2,-44.5); c.lineTo(5,-44); c.stroke();
   c.strokeStyle='rgba(111,57,40,.55)'; c.lineWidth=1.2; c.beginPath(); c.moveTo(-7,-39); c.lineTo(-3,-34); c.moveTo(7,-39); c.lineTo(3,-34); c.stroke();
   c.strokeStyle='#6f3b2d'; c.lineWidth=1.5; c.lineCap='round';
   c.beginPath(); c.moveTo(0,-42); c.lineTo(-1,-36); c.lineTo(2,-35); c.stroke();
