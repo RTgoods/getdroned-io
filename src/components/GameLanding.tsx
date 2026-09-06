@@ -74,7 +74,7 @@ export function GameLanding({ game, user, hasPurchased, onPlay }: Props) {
 
         {/* Hero text */}
         <div className="absolute bottom-0 left-0 right-0 px-4 sm:px-8 pb-5 sm:pb-8">
-          <div className="text-[8px] font-black tracking-[3px] mb-2" style={{ color: '#c0562f' }}>
+          <div className="text-[8px] font-black tracking-[3px] mb-2" style={{ color: '#ffd700' }}>
             Slava Ukraini
           </div>
           <h1
@@ -129,7 +129,7 @@ export function GameLanding({ game, user, hasPurchased, onPlay }: Props) {
             </div>
           ) : (
             /* Not owned — two-button split */
-            <><div className="flex flex-col sm:flex-row gap-2">
+            <><div className="flex flex-col sm:flex-row gap-2" style={{ maxWidth: 480 }}>
 
               {/* ── FREE: Sector One — Ukraine blue ── */}
               <button
