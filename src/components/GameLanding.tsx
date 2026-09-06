@@ -5,7 +5,7 @@ import type { Game } from '@/types/database'
 import type { User } from '@supabase/supabase-js'
 
 const SECTORS = [
-  { num: 1, name: 'THE COMPOUND',   cover: '/get-droned/assets/images/covers/level-1.webp' },
+  { num: 1, name: 'THE COMPOUND',   cover: '/get-droned/assets/images/covers/level-1.png' },
   { num: 2, name: 'THE TRENCHES',   cover: '/get-droned/assets/images/covers/level-2.webp' },
   { num: 3, name: 'THE BLACK SEA',  cover: '/get-droned/assets/images/covers/level-3.webp' },
   { num: 4, name: 'THE OIL FIELDS', cover: '/get-droned/assets/images/covers/level-4.webp' },

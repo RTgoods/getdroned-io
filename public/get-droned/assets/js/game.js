@@ -5424,7 +5424,7 @@ function spawnCompoundBoss(){
     player.x=playerSpot.x; player.y=playerSpot.y; player.face=Math.atan2(CB.y-player.y,CB.x-player.x);
     cam.x=player.x-VW/2; cam.y=player.y-VH/2;
   }
-  banner('LEVEL 1 BOSS','YEVGENY PRIGOZHIN ENTERS THE FIGHT',2.8); hud();
+  banner('LEVEL 1 BOSS','ENEMY COMMANDER ENTERS THE FIGHT',2.8); hud();
 }
 function spawnLevelTwoBoss(){
   if(levelTwoBossSpawned) return;
@@ -6839,16 +6839,17 @@ function drawCompoundBoss(c,U){
     c.save(); c.beginPath(); c.rect(5,2,25,23); c.clip(); c.drawImage(wagnerPatch,5,2,25,23); c.restore();
   }
   c.fillStyle='#d5ad45'; c.beginPath(); c.arc(0,-1,2.4,0,6.3); c.fill(); c.restore();
-  // Head, dark beard, wraparound glasses and a desert-camouflage patrol cap.
+  // Head with short dark hair — no cap.
   c.fillStyle='#bb8061'; c.beginPath(); c.arc(0,-43,10,0,6.3); c.fill(); outl(c,'#3b291f',2);
   c.fillStyle='rgba(245,190,150,.24)'; c.beginPath(); c.ellipse(-2.5,-48.5,5.2,2.2,-.18,0,6.3); c.fill();
   c.fillStyle='#bb8061'; c.beginPath(); c.arc(-9.2,-43,2.1,0,6.3); c.fill(); c.beginPath(); c.arc(9.2,-43,2.1,0,6.3); c.fill();
-  var capG=c.createLinearGradient(-10,-57,11,-47); capG.addColorStop(0,'#6d6044'); capG.addColorStop(.5,'#b3a174'); capG.addColorStop(1,'#545b3f');
-  c.fillStyle=capG; c.beginPath(); c.moveTo(-10,-49); c.quadraticCurveTo(-9,-58,0,-59); c.quadraticCurveTo(10,-58,11,-49); c.quadraticCurveTo(0,-52,-10,-49); c.closePath(); c.fill(); outl(c,'#302c20',1.6);
-  c.save(); c.beginPath(); c.moveTo(-10,-49); c.quadraticCurveTo(-9,-58,0,-59); c.quadraticCurveTo(10,-58,11,-49); c.closePath(); c.clip();
-  c.fillStyle='#49503a'; c.beginPath(); c.ellipse(-5,-54,5,2.7,-.3,0,6.3); c.fill(); c.fillStyle='#796548'; c.beginPath(); c.ellipse(6,-52,5,2.5,.25,0,6.3); c.fill(); c.restore();
-  c.fillStyle='#7f7050'; c.beginPath(); c.moveTo(-11,-50); c.quadraticCurveTo(1,-53,14,-49); c.quadraticCurveTo(5,-45,-7,-47); c.closePath(); c.fill(); outl(c,'#302c20',1.4);
-  c.strokeStyle='rgba(225,210,165,.5)'; c.lineWidth=1; c.beginPath(); c.moveTo(-7,-55); c.quadraticCurveTo(0,-58,7,-54); c.stroke();
+  // Short dark hair swept back
+  c.fillStyle='#1e1914'; c.beginPath(); c.moveTo(-10,-50); c.quadraticCurveTo(-10,-64,0,-65); c.quadraticCurveTo(11,-64,11,-50); c.quadraticCurveTo(5,-55,0,-56); c.quadraticCurveTo(-5,-55,-10,-50); c.closePath(); c.fill(); outl(c,'#0a0807',1.5);
+  // Hair sheen
+  c.fillStyle='rgba(90,65,40,.32)'; c.beginPath(); c.moveTo(-6,-60); c.quadraticCurveTo(0,-65,7,-60); c.lineTo(5,-58); c.quadraticCurveTo(0,-62,-6,-58); c.closePath(); c.fill();
+  // Side hair over temples
+  c.fillStyle='#1e1914'; c.beginPath(); c.ellipse(-10.5,-49,3,5,-.15,0,6.3); c.fill();
+  c.beginPath(); c.ellipse(10.5,-49,3,5,.15,0,6.3); c.fill();
   // Sculpted wraparound sunglasses with separate lenses, bridge, arms and highlights.
   var glassG=c.createLinearGradient(-8,-46,8,-40); glassG.addColorStop(0,'#101518'); glassG.addColorStop(.55,'#30434b'); glassG.addColorStop(1,'#080b0d');
   c.fillStyle=glassG; rrect(c,-9.3,-46.5,8.7,6.5,2.4); c.fill(); rrect(c,.6,-46.5,8.7,6.5,2.4); c.fill();
@@ -6863,9 +6864,9 @@ function drawCompoundBoss(c,U){
   c.fillStyle='#4a211c'; c.beginPath(); c.moveTo(-6,-31); c.quadraticCurveTo(0,-27,7,-33); c.quadraticCurveTo(1,-30,-6,-31); c.closePath(); c.fill();
   c.fillStyle='#e6d6c4'; c.beginPath(); c.moveTo(-4.5,-31); c.quadraticCurveTo(.5,-29,5,-32); c.lineTo(4,-29.8); c.quadraticCurveTo(0,-27.8,-4.5,-29.5); c.closePath(); c.fill();
   c.strokeStyle='#3b1d18'; c.lineWidth=1.1; c.beginPath(); c.moveTo(-5,-27); c.quadraticCurveTo(0,-25,5,-28); c.stroke();
-  // Full beard frames the mouth but leaves the expression and glasses visible.
-  c.fillStyle='#24201b'; c.beginPath(); c.moveTo(-8,-38); c.quadraticCurveTo(-10,-28,-5,-21); c.lineTo(0,-17); c.lineTo(5,-21); c.quadraticCurveTo(10,-28,8,-38); c.quadraticCurveTo(5,-34,4,-32); c.quadraticCurveTo(0,-28,-4,-32); c.quadraticCurveTo(-5,-34,-8,-38); c.fill(); outl(c,'#0e0d0b',1.5);
-  c.strokeStyle='#4b4338'; c.lineWidth=1; for(var bd=-5;bd<=5;bd+=2.5){ c.beginPath(); c.moveTo(bd,-32); c.lineTo(bd*.5,-21); c.stroke(); }
+  // Short trimmed beard — chin only, not full face.
+  c.fillStyle='#2c2620'; c.beginPath(); c.moveTo(-6,-35); c.quadraticCurveTo(-7,-29,-4,-25); c.quadraticCurveTo(0,-23,4,-25); c.quadraticCurveTo(7,-29,6,-35); c.quadraticCurveTo(3,-32,0,-32); c.quadraticCurveTo(-3,-32,-6,-35); c.closePath(); c.fill(); outl(c,'#110f0d',1.1);
+  c.strokeStyle='#4a4038'; c.lineWidth=0.8; for(var bd=-3;bd<=3;bd+=2){ c.beginPath(); c.moveTo(bd,-31); c.lineTo(bd*.5,-25); c.stroke(); }
   c.restore();
 }
 function drawLevelTwoBoss(c,U){
@@ -7440,7 +7441,7 @@ function draw(){
     if(U.hurt>0){ ctx.globalAlpha=Math.min(.65,U.hurt*4); ctx.fillStyle=isP?'#ff5a3c':'#fff';
       ctx.beginPath(); ctx.ellipse(U.x,U.y-19,12,20,0,0,6.3); ctx.fill(); ctx.globalAlpha=1; }
     if(!isP && (U.boss||U.elite)){
-      var lbl2=U.airfieldBoss?'KIM JONG UN':(U.oilBoss?'DMITRY MEDVEDEV':(U.levelTwoBoss?'VALERY GERASIMOV':(U.compoundBoss?'YEVGENY PRIGOZHIN':(U.finalBoss?'VLADIMIR PUTIN':(U.boss?(U.elite?'BASE COMMANDER':'COMMANDER'):'ELITE')))));
+      var lbl2=U.airfieldBoss?'KIM JONG UN':(U.oilBoss?'DMITRY MEDVEDEV':(U.levelTwoBoss?'VALERY GERASIMOV':(U.compoundBoss?'':(U.finalBoss?'VLADIMIR PUTIN':(U.boss?(U.elite?'BASE COMMANDER':'COMMANDER'):'ELITE')))));
       var bw2=(U.finalBoss||U.compoundBoss||U.levelTwoBoss||U.oilBoss||U.airfieldBoss)?120:48;
       var bossBarY=U.airfieldBoss?-91:(U.oilBoss?-82:(U.levelTwoBoss?-72:(U.compoundBoss?-78:(U.finalBoss?-82:-69))));
       ctx.fillStyle='rgba(0,0,0,.78)'; ctx.fillRect(U.x-bw2/2,U.y+bossBarY,bw2,7);
