@@ -6949,16 +6949,6 @@ function drawCompoundBoss(c,U){
   c.fillStyle='#bb8061'; c.beginPath(); c.arc(0,-43,10,0,6.3); c.fill(); outl(c,'#3b291f',2);
   c.fillStyle='rgba(245,190,150,.24)'; c.beginPath(); c.ellipse(-2.5,-48.5,5.2,2.2,-.18,0,6.3); c.fill();
   c.fillStyle='#bb8061'; c.beginPath(); c.arc(-9.2,-43,2.1,0,6.3); c.fill(); c.beginPath(); c.arc(9.2,-43,2.1,0,6.3); c.fill();
-  // Buzzcut — close-cropped dark hair flush to skull
-  c.save(); c.beginPath(); c.arc(0,-43,10,0,Math.PI*2); c.clip();
-  c.fillStyle='#1c1812'; c.fillRect(-11,-54,22,13);
-  c.restore();
-  // Smaller glasses
-  var sg=c.createLinearGradient(-6,-45,6,-40); sg.addColorStop(0,'#101518'); sg.addColorStop(.5,'#2a3b42'); sg.addColorStop(1,'#080b0d');
-  c.fillStyle=sg; rrect(c,-7.5,-45.5,6.8,5,1.8); c.fill(); rrect(c,.8,-45.5,6.8,5,1.8); c.fill();
-  c.strokeStyle='#050708'; c.lineWidth=1.4; rrect(c,-7.5,-45.5,6.8,5,1.8); c.stroke(); rrect(c,.8,-45.5,6.8,5,1.8); c.stroke();
-  c.beginPath(); c.moveTo(-.5,-43.5); c.quadraticCurveTo(0,-44.2,.5,-43.5); c.moveTo(-7.5,-43.2); c.lineTo(-9.5,-44); c.moveTo(7.6,-43.2); c.lineTo(9.5,-44); c.stroke();
-  c.strokeStyle='rgba(170,224,236,.5)'; c.lineWidth=.8; c.beginPath(); c.moveTo(-6,-44.5); c.lineTo(-3,-44); c.moveTo(2,-44.5); c.lineTo(5,-44); c.stroke();
   c.strokeStyle='rgba(111,57,40,.55)'; c.lineWidth=1.2; c.beginPath(); c.moveTo(-7,-39); c.lineTo(-3,-34); c.moveTo(7,-39); c.lineTo(3,-34); c.stroke();
   c.strokeStyle='#6f3b2d'; c.lineWidth=1.5; c.lineCap='round';
   c.beginPath(); c.moveTo(0,-42); c.lineTo(-1,-36); c.lineTo(2,-35); c.stroke();
