@@ -59,7 +59,7 @@ export function GameLanding({ game, user, hasPurchased, onPlay }: Props) {
       <div className="relative overflow-hidden" style={{ height: 'clamp(220px, 42vh, 480px)' }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src="/get-droned/assets/images/covers/main-cover.webp"
+          src="/get-droned/assets/images/covers/level-1.png"
           alt="Get Droned"
           className="w-full h-full object-cover object-top block"
           fetchPriority="high"
