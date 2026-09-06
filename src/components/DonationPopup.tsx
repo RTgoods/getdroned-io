@@ -57,7 +57,7 @@ export function DonationPopup({ price, onBuy, onDismiss }: Props) {
           margin: '0 0 8px', textAlign: 'center', lineHeight: 1.7,
           fontSize: 12, color: '#9a9288',
         }}>
-          You just cleared The Compound. Five more sectors are waiting — each one harder,
+          You just cleared Franks And Hammers. Five more sectors are waiting — each one harder,
           stranger, and more worth your time.
         </p>
         <p style={{

@@ -41,7 +41,7 @@ const UA = {
 }
 
 const SECTORS = [
-  { num: 1, name: 'CONCRETE CRUSHERS', cover: '/get-droned/assets/images/covers/level-1.png' },
+  { num: 1, name: 'FRANKS AND HAMMERS', cover: '/get-droned/assets/images/covers/level-1.png' },
   { num: 2, name: 'THE TRENCHES',   cover: '/get-droned/assets/images/covers/level-2.webp' },
   { num: 3, name: 'THE BLACK SEA',  cover: '/get-droned/assets/images/covers/level-3.webp' },
   { num: 4, name: 'THE OIL FIELDS', cover: '/get-droned/assets/images/covers/level-4.webp' },
