@@ -41,7 +41,7 @@ const UA = {
 }
 
 const SECTORS = [
-  { num: 1, name: 'THE COMPOUND',   cover: '/get-droned/assets/images/covers/level-1.png' },
+  { num: 1, name: 'CONCRETE CRUSHERS', cover: '/get-droned/assets/images/covers/level-1.png' },
   { num: 2, name: 'THE TRENCHES',   cover: '/get-droned/assets/images/covers/level-2.webp' },
   { num: 3, name: 'THE BLACK SEA',  cover: '/get-droned/assets/images/covers/level-3.webp' },
   { num: 4, name: 'THE OIL FIELDS', cover: '/get-droned/assets/images/covers/level-4.webp' },
@@ -348,7 +348,7 @@ export function GameSidebar({ game, user, hasPurchased, completedSectors = [], p
 
 // Per-sector objectives
 const OBJECTIVES: Record<number, string[]> = {
-  1: ['Breach the compound perimeter', "Neutralize Prigozhin's forces", 'Eliminate the commander'],
+  1: ['Breach 3 compound perimeters', 'Neutralize enemy forces', 'Eliminate Hammer God'],
   2: ['Push through enemy trenches', 'Clear the front-line network', 'Secure the trench boss'],
   3: ['Establish naval dominance', 'Destroy the Black Sea fleet', 'Defeat the sea commander'],
   4: ['Disrupt enemy supply lines', 'Destroy oil infrastructure', 'Take out the field boss'],
