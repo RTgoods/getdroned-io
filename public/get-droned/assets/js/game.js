@@ -3344,9 +3344,15 @@ function hurtEnemy(e,dmg,ang,blast){
 function launchBossVictoryFireworks(){
   var cv=document.getElementById('bossVictoryFx');
   if(!cv) return;
+  // Move canvas to document.body as position:fixed so it renders above everything
+  // with guaranteed full-viewport dimensions (offsetWidth is 0 inside opacity:0 parent)
+  var origParent=cv.parentNode, origNext=cv.nextSibling;
+  document.body.appendChild(cv);
+  cv.style.cssText='position:fixed;top:0;left:0;pointer-events:none;z-index:9999';
   var ctx2=cv.getContext('2d');
-  var W=cv.offsetWidth||window.innerWidth, H=cv.offsetHeight||window.innerHeight;
+  var W=window.innerWidth, H=window.innerHeight;
   cv.width=W; cv.height=H;
+  cv.style.width=W+'px'; cv.style.height=H+'px';
   var parts=[];
   var cols=['#ffd700','#ff6b35','#4a9eff','#ff3d6e','#00e87a','#ff9900','#ffffff','#e2b13c','#c0f0ff'];
   function burst(bx,by){
@@ -3381,7 +3387,12 @@ function launchBossVictoryFireworks(){
     raf=requestAnimationFrame(frame);
   }
   raf=requestAnimationFrame(frame);
-  setTimeout(function(){ cancelAnimationFrame(raf); ctx2.clearRect(0,0,W,H); },4200);
+  setTimeout(function(){
+    cancelAnimationFrame(raf); ctx2.clearRect(0,0,W,H);
+    // Restore canvas to its original position inside #bossVictory
+    if(origParent) origParent.insertBefore(cv,origNext);
+    cv.style.cssText='position:absolute;inset:0;width:100%;height:100%;pointer-events:none';
+  },4200);
 }
 function showCompoundBossClear(x,y){
   state='play'; firing=false; actBtn.classList.remove('on');
