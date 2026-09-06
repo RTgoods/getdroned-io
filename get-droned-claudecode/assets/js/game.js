@@ -6961,30 +6961,12 @@ function drawCompoundBoss(c,U){
   c.strokeStyle='#2a1a0e'; c.lineWidth=1.8; c.lineCap='round';
   c.beginPath(); c.moveTo(-7,-46); c.lineTo(-1.5,-45.2); c.stroke();
   c.beginPath(); c.moveTo(7,-46); c.lineTo(1.5,-45.2); c.stroke();
-  // Aviator sunglasses — over the eyes
-  c.save();
-  // Left lens — teardrop: wider top, tapered bottom
-  c.beginPath(); c.moveTo(-8,-46); c.bezierCurveTo(-9,-46,-10,-44,-9.5,-41.5); c.bezierCurveTo(-9,-40,-5,-39.5,-4,-39.5); c.bezierCurveTo(-3,-39.5,1,-40,1,-41.5); c.bezierCurveTo(1,-44,0,-46,-8,-46); c.closePath();
-  var lg1=c.createLinearGradient(-8,-46,-4,-40); lg1.addColorStop(0,'rgba(20,36,48,.92)'); lg1.addColorStop(.5,'rgba(10,24,34,.82)'); lg1.addColorStop(1,'rgba(5,12,20,.88)');
-  c.fillStyle=lg1; c.fill();
-  // Right lens
-  c.beginPath(); c.moveTo(0,-46); c.bezierCurveTo(0,-46,1,-44,1,-41.5); c.bezierCurveTo(1,-40,3,-39.5,4,-39.5); c.bezierCurveTo(5,-39.5,9,-40,9.5,-41.5); c.bezierCurveTo(10,-44,9,-46,0,-46); c.closePath();
-  var lg2=c.createLinearGradient(0,-46,4,-40); lg2.addColorStop(0,'rgba(20,36,48,.92)'); lg2.addColorStop(.5,'rgba(10,24,34,.82)'); lg2.addColorStop(1,'rgba(5,12,20,.88)');
-  c.fillStyle=lg2; c.fill();
-  // Gold/chrome frame
-  c.strokeStyle='#c8a030'; c.lineWidth=1.1;
-  c.beginPath(); c.moveTo(-8,-46); c.bezierCurveTo(-9,-46,-10,-44,-9.5,-41.5); c.bezierCurveTo(-9,-40,-5,-39.5,-4,-39.5); c.bezierCurveTo(-3,-39.5,1,-40,1,-41.5); c.bezierCurveTo(1,-44,0,-46,-8,-46); c.closePath(); c.stroke();
-  c.beginPath(); c.moveTo(0,-46); c.bezierCurveTo(0,-46,1,-44,1,-41.5); c.bezierCurveTo(1,-40,3,-39.5,4,-39.5); c.bezierCurveTo(5,-39.5,9,-40,9.5,-41.5); c.bezierCurveTo(10,-44,9,-46,0,-46); c.closePath(); c.stroke();
-  // Bridge
-  c.beginPath(); c.moveTo(-4,-42.5); c.quadraticCurveTo(-1.5,-41.5,1,-42.5); c.stroke();
-  // Arms to ears
-  c.lineWidth=1.2; c.beginPath(); c.moveTo(-8.2,-45); c.lineTo(-10.5,-45.5); c.stroke();
-  c.beginPath(); c.moveTo(8.2,-45); c.lineTo(10.5,-45.5); c.stroke();
-  // Lens sheen
-  c.strokeStyle='rgba(140,200,255,.28)'; c.lineWidth=1;
-  c.beginPath(); c.moveTo(-8.5,-44.5); c.quadraticCurveTo(-7,-43,-6,-42); c.stroke();
-  c.beginPath(); c.moveTo(1.5,-44.5); c.quadraticCurveTo(3,-43,4,-42); c.stroke();
-  c.restore();
+  // Dark glasses
+  var sg=c.createLinearGradient(-6,-46,6,-40); sg.addColorStop(0,'#101518'); sg.addColorStop(.5,'#1c2d36'); sg.addColorStop(1,'#080b0d');
+  c.fillStyle=sg; rrect(c,-8.5,-45.5,7.8,5.5,2); c.fill(); rrect(c,.8,-45.5,7.8,5.5,2); c.fill();
+  c.strokeStyle='#050708'; c.lineWidth=1.3; rrect(c,-8.5,-45.5,7.8,5.5,2); c.stroke(); rrect(c,.8,-45.5,7.8,5.5,2); c.stroke();
+  c.beginPath(); c.moveTo(-.5,-43.5); c.quadraticCurveTo(0,-44.2,.5,-43.5); c.moveTo(-8.5,-43.5); c.lineTo(-10.5,-44); c.moveTo(8.6,-43.5); c.lineTo(10.5,-44); c.stroke();
+  c.strokeStyle='rgba(160,220,240,.35)'; c.lineWidth=.8; c.beginPath(); c.moveTo(-7,-44.5); c.lineTo(-4,-44); c.moveTo(2,-44.5); c.lineTo(5,-44); c.stroke();
   c.strokeStyle='rgba(111,57,40,.55)'; c.lineWidth=1.2; c.beginPath(); c.moveTo(-7,-39); c.lineTo(-3,-34); c.moveTo(7,-39); c.lineTo(3,-34); c.stroke();
   c.strokeStyle='#6f3b2d'; c.lineWidth=1.5; c.lineCap='round';
   c.beginPath(); c.moveTo(0,-42); c.lineTo(-1,-36); c.lineTo(2,-35); c.stroke();
