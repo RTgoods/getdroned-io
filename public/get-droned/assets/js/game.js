@@ -6949,6 +6949,19 @@ function drawCompoundBoss(c,U){
   c.fillStyle='#bb8061'; c.beginPath(); c.arc(0,-43,10,0,6.3); c.fill(); outl(c,'#3b291f',2);
   c.fillStyle='rgba(245,190,150,.24)'; c.beginPath(); c.ellipse(-2.5,-48.5,5.2,2.2,-.18,0,6.3); c.fill();
   c.fillStyle='#bb8061'; c.beginPath(); c.arc(-9.2,-43,2.1,0,6.3); c.fill(); c.beginPath(); c.arc(9.2,-43,2.1,0,6.3); c.fill();
+  // Eyes — whites, irises, pupils, brows
+  c.fillStyle='#f0e8e0'; c.beginPath(); c.ellipse(-4,-43,3.4,2.4,0,0,6.3); c.fill();
+  c.beginPath(); c.ellipse(4,-43,3.4,2.4,0,0,6.3); c.fill();
+  c.fillStyle='#3d6e8a'; c.beginPath(); c.arc(-4,-43,2,0,6.3); c.fill();
+  c.beginPath(); c.arc(4,-43,2,0,6.3); c.fill();
+  c.fillStyle='#0d0d0a'; c.beginPath(); c.arc(-4,-43,1.1,0,6.3); c.fill();
+  c.beginPath(); c.arc(4,-43,1.1,0,6.3); c.fill();
+  c.fillStyle='rgba(255,255,255,.7)'; c.beginPath(); c.arc(-3.2,-43.5,.7,0,6.3); c.fill();
+  c.beginPath(); c.arc(4.8,-43.5,.7,0,6.3); c.fill();
+  // Brows — heavy, slightly angled inward for a stern look
+  c.strokeStyle='#2a1a0e'; c.lineWidth=1.8; c.lineCap='round';
+  c.beginPath(); c.moveTo(-7,-46); c.lineTo(-1.5,-45.2); c.stroke();
+  c.beginPath(); c.moveTo(7,-46); c.lineTo(1.5,-45.2); c.stroke();
   c.strokeStyle='rgba(111,57,40,.55)'; c.lineWidth=1.2; c.beginPath(); c.moveTo(-7,-39); c.lineTo(-3,-34); c.moveTo(7,-39); c.lineTo(3,-34); c.stroke();
   c.strokeStyle='#6f3b2d'; c.lineWidth=1.5; c.lineCap='round';
   c.beginPath(); c.moveTo(0,-42); c.lineTo(-1,-36); c.lineTo(2,-35); c.stroke();
