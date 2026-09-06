@@ -6883,12 +6883,6 @@ function drawCompoundBoss(c,U){
   c.fillStyle='#ded0a8'; c.beginPath(); c.ellipse(0,-23,5,3,.5,0,6.3); c.fill(); c.beginPath(); c.ellipse(12,-10,5,3,-.3,0,6.3); c.fill(); c.restore();
   c.strokeStyle='#4e5139'; c.lineWidth=2; c.beginPath(); c.moveTo(-11,-27); c.quadraticCurveTo(-4,-31,1,-26); c.moveTo(2,-19); c.quadraticCurveTo(8,-23,12,-18); c.moveTo(-12,-13); c.quadraticCurveTo(-6,-17,-1,-13); c.stroke();
   c.fillStyle='#b8aa84'; rrect(c,-10,-26,8,7,1.5); c.fill(); outl(c,'#554936',1); rrect(c,3,-26,8,7,1.5); c.fill(); outl(c,'#554936',1);
-  // Uploaded emblem worn as a compact left-chest uniform patch.
-  var wagnerPatch=document.getElementById('wagnerPatchAsset');
-  if(wagnerPatch&&wagnerPatch.complete&&wagnerPatch.naturalWidth){
-    c.save(); rrect(c,-12,-34,11,11,2); c.clip(); c.drawImage(wagnerPatch,-12,-34,11,11); c.restore();
-    c.strokeStyle='#b62429'; c.lineWidth=1.2; rrect(c,-12,-34,11,11,2); c.stroke();
-  }
   // Left arm winds up and throws while the right hand keeps the flag raised.
   var throwP=U.hammerWind>0?Math.max(0,Math.min(1,1-U.hammerWind/.30)):0;
   var throwArc=Math.sin(throwP*Math.PI),hammerHandX=-18-throwP*9,hammerHandY=-13-throwArc*25-throwP*5;
