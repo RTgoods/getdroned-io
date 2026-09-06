@@ -6904,6 +6904,9 @@ function drawCompoundBoss(c,U){
   c.fillStyle='#bb8061'; c.beginPath(); c.arc(0,-43,10,0,6.3); c.fill(); outl(c,'#3b291f',2);
   c.fillStyle='rgba(245,190,150,.24)'; c.beginPath(); c.ellipse(-2.5,-48.5,5.2,2.2,-.18,0,6.3); c.fill();
   c.fillStyle='#bb8061'; c.beginPath(); c.arc(-9.2,-43,2.1,0,6.3); c.fill(); c.beginPath(); c.arc(9.2,-43,2.1,0,6.3); c.fill();
+  // Short beard on lower face
+  c.fillStyle='#2c2620'; c.beginPath(); c.moveTo(-8,-38); c.quadraticCurveTo(-10,-31,-7,-25); c.quadraticCurveTo(-3,-22,0,-21); c.quadraticCurveTo(3,-22,7,-25); c.quadraticCurveTo(10,-31,8,-38); c.quadraticCurveTo(4,-36,0,-35); c.quadraticCurveTo(-4,-36,-8,-38); c.closePath(); c.fill(); outl(c,'#110f0d',0.8);
+  c.strokeStyle='#4a4038'; c.lineWidth=0.65; for(var bh=-6;bh<=6;bh+=2){ c.beginPath(); c.moveTo(bh,-37); c.lineTo(bh*0.6,-25); c.stroke(); }
   // Sculpted wraparound sunglasses with separate lenses, bridge, arms and highlights.
   var glassG=c.createLinearGradient(-8,-46,8,-40); glassG.addColorStop(0,'#101518'); glassG.addColorStop(.55,'#30434b'); glassG.addColorStop(1,'#080b0d');
   c.fillStyle=glassG; rrect(c,-9.3,-46.5,8.7,6.5,2.4); c.fill(); rrect(c,.6,-46.5,8.7,6.5,2.4); c.fill();
