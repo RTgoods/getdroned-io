@@ -167,17 +167,22 @@ function buildMap(){
   dronePad={x:(64.5)*TILE,y:(8.5)*TILE};
   addProp(55,5,3,1,'shoptable'); addProp(53,3,1,2,'shelf');
   addProp(53,10,4,1,'console');  addProp(57,12,2,1,'console');
-  addProp(65,3,1,2,'dronerack'); addProp(65,11,1,2,'dronerack');
-  addProp(53,12,2,1,'ammocrate');addProp(62,12,2,1,'ammocrate');
-  addProp(58,3,1,1,'barrel');    addProp(62,8,1,1,'crateP');
+  addProp(65,3,1,2,'dronerack');
+  addProp(53,12,2,1,'ammocrate');addProp(60,12,2,1,'ammocrate');
+  addProp(58,3,1,1,'barrel');    addProp(58,10,1,1,'crateP');
   addProp(61,3,2,1,'medbed');    addProp(61,5,2,1,'medbed');
   medStation={x:63.5*TILE,y:4.5*TILE,nurse:1,
     healX:64.35*TILE,healY:5.45*TILE,healR:25,healing:0,healFx:0};
-  // Drone stations shifted down; desk tiles marked PROP so player can't walk through them
-  padList=[{x:64.5*TILE,y:8.5*TILE, standX:61.5*TILE,standY:8.5*TILE, table:1,kind:'droneS',cd:0,cool:24,n:'SCOUT'},
-           {x:64.5*TILE,y:11.0*TILE,standX:61.5*TILE,standY:11.0*TILE,table:1,kind:'drone', cd:0,cool:36,n:'FPV'}];
-  setT(63,8,PROP); setT(64,8,PROP);   // scout drone desk
-  setT(63,11,PROP); setT(64,11,PROP); // FPV drone desk
+  // Two east-wall desks, each with its activation pad directly in front.
+  // Activation pads are floor markings, not additional computer furniture.
+  padList=[{x:64.5*TILE,y:8*TILE,standX:64.5*TILE,standY:8*TILE+35,table:1,clearStand:1,kind:'droneS',cd:0,cool:24,n:'SCOUT'},
+           {x:64.5*TILE,y:11*TILE,standX:64.5*TILE,standY:11*TILE+35,table:1,clearStand:1,kind:'drone',cd:0,cool:36,n:'FPV'}];
+  // Match the full desk and monitor footprint rendered by drawDroneTable.
+  padList.forEach(function(pad){
+    for(var deskY=Math.floor((pad.y-26)/TILE);deskY<=Math.floor((pad.y+18)/TILE);deskY++)
+      for(var deskX=Math.floor((pad.x-32)/TILE);deskX<=Math.floor((pad.x+32)/TILE);deskX++)
+        setT(deskX,deskY,PROP);
+  });
   setTimeout(function(){ spawnBaseGuard(); },200); // deferred so map tiles are ready
   setupTruck(null);
 
@@ -1186,10 +1191,23 @@ var TOOLS={
   plate :{n:'ARMOUR PLATE',c:'#8fb6c8', wt:11}
 };
 var TKEYS=['droneS','drone','droneL','usv','sentry','strike','stim','smoke','incend','flamer','emp','med','plate'];
-// Independent aircraft speed tuning for every playable level.
-// Level 2 is 50% faster than its previous 1.50 multiplier.
-var DRONE_SPEED_BY_LEVEL={1:2.025,2:2.25,3:1.50,4:1.50,5:2.025,6:1.50};
-var SEA_DRONE_SPEED_BY_LEVEL={3:1.50};
+// Shared handling across every level. Speeds are world pixels per second;
+// response/brake are seconds to close 63% of the velocity difference.
+var DRONE_HANDLING={
+  droneS:{speed:480,response:.17,brake:.11},
+  drone:{speed:420,response:.20,brake:.12},
+  droneL:{speed:340,response:.26,brake:.16},
+  usv:{speed:200,response:.32,brake:.24}
+};
+function steerDrone(craft,input,dt){
+  var handling=DRONE_HANDLING[craft.kind]||DRONE_HANDLING.drone;
+  var amount=input.m>.05?Math.min(1,input.m):0;
+  var blend=1-Math.exp(-dt/(amount?handling.response:handling.brake));
+  craft.vx+=(input.x*handling.speed*amount-craft.vx)*blend;
+  craft.vy+=(input.y*handling.speed*amount-craft.vy)*blend;
+  if(amount) craft.ang=Math.atan2(input.y,input.x);
+  return handling.speed;
+}
 function toolAllowed(k){ return (k!=='usv')||mapKind==='sea'; }
 function rollTool(){
   var keys=[],i;
@@ -1847,6 +1865,11 @@ function detonateSeaMine(M,hitDrone){
   banner('SEA MINE','CONTACT DETONATION',1.5);
   if(hitDrone&&drone) droneBoom(drone.x,drone.y);
 }
+function rebuildDroneBay(craft){
+  if(!craft||!craft.pad) return;
+  craft.pad.inFlight=false;
+  craft.pad.cd=craft.pad.clearStand?7:0;
+}
 function droneBoom(x,y){
   var dk=(drone&&drone.kind)||'drone', bl=(TOOLS[dk]&&TOOLS[dk].blast)||[100,145];
   var onTank = tank&&Math.hypot(tank.x-x,tank.y-y)<bl[0]*.55;
@@ -1916,7 +1939,7 @@ function droneBoom(x,y){
   }
   if(wingmen.length){ shake=Math.min(30,shake+14); droneCam={x:x,y:y,t:5.2}; }
   wingmen.length=0;
-  if(dk&&drone&&drone.pad&&!drone.flight) drone.pad.cd=0;          // a lost single frees its bay
+  if(drone&&!drone.flight) rebuildDroneBay(drone);
   drone=null; piloting=false; firing=false; actBtn.classList.remove('on');
 }
 
@@ -2573,7 +2596,23 @@ function moveEnt(e,dx,dy){
 }
 function hitBox(x,y,r){
   var x0=Math.floor((x-r)/TILE), x1=Math.floor((x+r)/TILE), y0=Math.floor((y-r)/TILE), y1=Math.floor((y+r)/TILE);
-  for(var yy=y0;yy<=y1;yy++) for(var xx=x0;xx<=x1;xx++) if(blocksMove(T(xx,yy))) return true;
+  for(var yy=y0;yy<=y1;yy++) for(var xx=x0;xx<=x1;xx++){
+    var tile=T(xx,yy);
+    if(!blocksMove(tile)) continue;
+    // The level-one desks use exact bounds so the operator can approach
+    // their front edge without the grid's extra padding blocking the pad.
+    var desk=null;
+    if(tile===PROP&&mapKind==='compound'){
+      for(var di=0;di<padList.length;di++){
+        var p=padList[di];
+        if(p.clearStand&&xx>=Math.floor((p.x-32)/TILE)&&xx<=Math.floor((p.x+32)/TILE)&&
+           yy>=Math.floor((p.y-26)/TILE)&&yy<=Math.floor((p.y+18)/TILE)){ desk=p; break; }
+      }
+    }
+    if(desk){
+      if(x+r>desk.x-32&&x-r<desk.x+32&&y+r>desk.y-26&&y-r<desk.y+18) return true;
+    } else return true;
+  }
   return false;
 }
 function segDist(px,py,x0,y0,x1,y1){
@@ -2855,7 +2894,7 @@ function updateCivs(dt){
     if(!C.pet) C.panic=Math.max(C.panic,1); // civilians remain frightened and keep fleeing
     for(var b=0;b<bullets.length;b++) if(Math.hypot(bullets[b].x-C.x,bullets[b].y-C.y)<120){ C.panic=2.2; break; }
     for(var e2=0;e2<enemies.length;e2++) if(Math.hypot(enemies[e2].x-C.x,enemies[e2].y-C.y)<130){ C.panic=2.2; break; }
-    var base2=C.pet?(C.pet==='cat'?128:136):112;
+    var base2=C.pet?(C.pet==='cat'?128:136)*.75:112;
     var spd=(C.panic>0?base2*1.78:base2)*(slowT(T(Math.floor(C.x/TILE),Math.floor(C.y/TILE)))?.7:1);
     C.tail=(C.tail||0)+dt*(C.panic>0?14:7);
     var mvx=dx/d, mvy=dy/d;
@@ -2874,7 +2913,7 @@ function updateCivs(dt){
       moveEnt(C,Math.cos(aa)*step,Math.sin(aa)*step);
       if(Math.hypot(C.x-ox,C.y-oy)>step*.7) break;
     }
-    C.ang=base; C.walk+=dt*(C.panic>0?15:9); C.amt=Math.min(1,C.amt+dt*8);
+    C.ang=base; C.walk+=dt*(C.panic>0?15:9)*(C.pet?.75:1); C.amt=Math.min(1,C.amt+dt*8);
     // if they stop making ground, try a new way out, then give up and leave
     C.chk=(C.chk||0)+dt;
     C.moved=(C.moved||0)+Math.hypot(C.x-sx5,C.y-sy5);
@@ -3167,6 +3206,37 @@ function seedCrates(n){
    INPUT
    ========================================================================= */
 var mv={x:0,y:0,m:0}, firing=false, keys={};
+var mouseAim={x:0,y:0,active:false};
+cv.tabIndex=0;
+function focusGame(){ cv.focus({preventScroll:true}); }
+function controlKey(e){
+  var physical={KeyW:'w',KeyA:'a',KeyS:'s',KeyD:'d',KeyG:'g',KeyR:'r',KeyJ:'j',Space:' '};
+  return physical[e.code]||e.key.toLowerCase();
+}
+var reducedMotion=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+function manualAim(){ return mouseAim.active&&player&&!player.dead&&!piloting&&!aboard; }
+function aimAngle(){ return Math.atan2(mouseAim.y+cam.y-player.y,mouseAim.x+cam.x-player.x); }
+window.addEventListener('pointermove',function(e){
+  if(e.pointerType!=='mouse'||state!=='play') return;
+  mouseAim.x=e.clientX; mouseAim.y=e.clientY;
+  mouseAim.active=e.target===cv;
+});
+cv.addEventListener('mousedown',function(e){
+  if((e.button===0||e.button===2)&&state==='play'){
+    if(gunHit(e.clientX,e.clientY)>=0||beltHit(e.clientX,e.clientY)>=0) return;
+    focusGame();
+    mouseAim.x=e.clientX; mouseAim.y=e.clientY; mouseAim.active=true;
+    if(e.button===2){ e.preventDefault(); throwNade(); }
+    else actDown(e);
+  }
+});
+cv.addEventListener('contextmenu',function(e){e.preventDefault();});
+window.addEventListener('touchstart',function(){mouseAim.active=false;},{passive:true});
+function releaseControls(){
+  keys={}; mv.m=0; joyId=null; mouseAim.active=false; actUp(); placeJoyHome();
+}
+window.addEventListener('blur',releaseControls);
+document.addEventListener('visibilitychange',function(){if(document.hidden) releaseControls();});
 var joyZone=document.getElementById('joyZone'), joyBase=document.getElementById('joyBase'), joyKnob=document.getElementById('joyKnob');
 var actBtn=document.getElementById('act'), nadeBtn=document.getElementById('nade');
 var joyId=null, joyOx=0, joyOy=0, joyHX=0, joyHY=0;
@@ -3178,6 +3248,7 @@ function placeJoyHome(){
 window.addEventListener('resize',placeJoyHome); placeJoyHome();
 
 function joyStart(e){
+  if(joyId!==null) return;
   var t=e.changedTouches?e.changedTouches[0]:e;
   if(gunHit(t.clientX,t.clientY)>=0) return;
   joyId=e.changedTouches?t.identifier:'m';
@@ -3192,7 +3263,7 @@ function joyMove(e){
     if(joyId===null) continue;
     var dx=t.clientX-joyOx, dy=t.clientY-joyOy, d=Math.hypot(dx,dy), R=58;
     var cl=Math.min(d,R);
-    if(d>0.001){ mv.x=dx/d; mv.y=dy/d; mv.m=Math.min(1,d/45); } else { mv.m=0; }
+    if(d>0.001){ mv.x=dx/d; mv.y=dy/d; mv.m=Math.min(1,Math.max(0,(d-7)/38)); } else { mv.m=0; }
     joyVis.kx=joyOx+(dx/(d||1))*cl; joyVis.ky=joyOy+(dy/(d||1))*cl; joyVis.on=1;
   }
   e.preventDefault();
@@ -3231,17 +3302,22 @@ function actDown(e){ firing=true; actBtn.classList.add('on'); if(ac()&&AC.state=
 function actUp(e){ firing=false; actBtn.classList.remove('on'); if(player){player.open=0; player.openC=null;} if(e)e.preventDefault(); }
 actBtn.addEventListener('touchstart',actDown,{passive:false});
 actBtn.addEventListener('touchend',actUp); actBtn.addEventListener('touchcancel',actUp);
-actBtn.addEventListener('mousedown',actDown); window.addEventListener('mouseup',function(){ if(firing) actUp(); });
+actBtn.addEventListener('mousedown',actDown); window.addEventListener('mouseup',function(e){ if(firing&&(e.buttons&1)===0) actUp(); });
 bindTap(nadeBtn,throwNade);
 
 window.addEventListener('keydown',function(e){
-  keys[e.key.toLowerCase()]=true;
-  if(e.key===' '||e.key.toLowerCase()==='j'){ firing=true; e.preventDefault(); }
-  if(e.key.toLowerCase()==='g') throwNade();
+  if(state!=='play') return;
+  var key=controlKey(e);
+  if(['w','a','s','d',' ','g','r','j','arrowup','arrowdown','arrowleft','arrowright'].indexOf(key)>=0) e.preventDefault();
+  keys[key]=true;
+  if(key===' '||key==='j'){ firing=true; e.preventDefault(); }
+  if(key==='g'&&!e.repeat) throwNade();
+  if(key==='r'&&!e.repeat&&player) startReload();
 });
 window.addEventListener('keyup',function(e){
-  keys[e.key.toLowerCase()]=false;
-  if(e.key===' '||e.key.toLowerCase()==='j'){ firing=false; if(player){player.open=0;player.openC=null;} }
+  var key=controlKey(e);
+  keys[key]=false;
+  if(key===' '||key==='j'){ firing=false; if(player){player.open=0;player.openC=null;} }
 });
 function keyVec(){
   var x=0,y=0;
@@ -3297,7 +3373,8 @@ function addGun(id){
 function spray(dt){
   var tgt=nearestTarget(), ang=player.face;
   var moving=Math.hypot(player.lvx||0,player.lvy||0)>8;
-  if(!moving&&tgt&&Math.hypot(tgt.x-player.x,tgt.y-player.y)<150) ang=Math.atan2(tgt.y-player.y,tgt.x-player.x);
+  if(manualAim()) ang=aimAngle();
+  if(!manualAim()&&!moving&&tgt&&Math.hypot(tgt.x-player.x,tgt.y-player.y)<150) ang=Math.atan2(tgt.y-player.y,tgt.x-player.x);
   player.face=ang; player.ang=ang;
   for(var i=0;i<3&&flames.length<190;i++){
     var a=ang+rr(-.26,.26), sp=rr(170,330);
@@ -3330,7 +3407,8 @@ function shoot(){
   if(player.mag<=0){ startReload(); return; }
   var tgt=nearestTarget(), ang=player.face;
   var moving=Math.hypot(player.lvx||0,player.lvy||0)>8;
-  if(tgt&&(!moving||tgt.compoundBoss||tgt.levelTwoBoss||tgt.oilBoss||tgt.airfieldBoss)){
+  if(manualAim()){ ang=aimAngle(); player.face=ang; }
+  if(!manualAim()&&tgt&&(!moving||tgt.compoundBoss||tgt.levelTwoBoss||tgt.oilBoss||tgt.airfieldBoss)){
     var aimX=tgt.x,aimY=tgt.y;
     if(tgt.compoundBoss){
       var shotTravel=Math.min(.48,Math.hypot(tgt.x-player.x,tgt.y-player.y)/Math.max(1,W.spd));
@@ -3366,9 +3444,11 @@ function finishReload(){
 function throwNade(){
   if(!player||state!=='play'||player.nades<=0) return;
   var tgt=nearestTarget(),targetX=tgt?tgt.x:player.x+Math.cos(player.face)*220,targetY=tgt?tgt.y:player.y+Math.sin(player.face)*220;
+  if(manualAim()){ targetX=mouseAim.x+cam.x; targetY=mouseAim.y+cam.y; tgt=null; }
   if(tgt&&tgt.compoundBoss){ targetX+=(tgt.cvx||0)*.62; targetY+=(tgt.cvy||0)*.62; }
   var ang=Math.atan2(targetY-player.y,targetX-player.x);
   var dist2=tgt?Math.min(tgt.compoundBoss?460:300,Math.hypot(targetX-player.x,targetY-player.y)):220;
+  if(manualAim()) dist2=Math.min(300,Math.hypot(targetX-player.x,targetY-player.y));
   player.nades--; player.face=ang;
   nades.push({x:player.x,y:player.y,sx:player.x,sy:player.y,
     tx:player.x+Math.cos(ang)*dist2, ty:player.y+Math.sin(ang)*dist2, t:0, dur:.62, spin:0});
@@ -3399,7 +3479,12 @@ function explode(x,y,r,dmg,fromPlayer){
   }
 }
 function hurtEnemy(e,dmg,ang,blast){
-  e.hp-=dmg; e.hurt=.14; e.stag=Math.min(.28,(e.stag||0)+.1);
+  e.hp-=dmg;
+  if((e.feedbackAt||0)<=timeAlive){
+    fx.push({t:'confirm',x:e.x,y:e.y-18,life:.28,max:.28,kill:e.hp<=0});
+    e.feedbackAt=timeAlive+.09;
+  }
+  e.hurt=.14; e.stag=Math.min(.28,(e.stag||0)+.1);
   mistBurst(e.x,e.y-16,ang,Math.min(14,3+Math.round(dmg/6)),.8+dmg/90);
   bloodSpray(e.x,e.y,(ang||0),18+dmg*.8,Math.min(20,4+Math.round(dmg/5)));
   if(dmg>22) wallHit(e.x,e.y,(ang||0),90);
@@ -3603,7 +3688,7 @@ function downPlayer(){
   droneCam={x:player.x,y:player.y,t:2.6};
   shake=Math.min(18,shake+8); sfx('hurt',1); screenSplat(ri(8,14));
   firing=false; actBtn.classList.remove('on');
-  piloting=false; drone=null;
+  rebuildDroneBay(drone); piloting=false; drone=null;
   respawnT=2.8;
   banner('MAN DOWN', crew.length? crew.length+' STILL STANDING':'NO ONE LEFT',2.2);
   hud();
@@ -3639,7 +3724,7 @@ function hurtPlayer(dmg){
 /* =========================================================================
    UPDATE
    ========================================================================= */
-function update(dt){
+function update(dt,realDt){
   timeAlive+=dt;
   if(player.dead&&state==='play'){
     respawnT-=dt;
@@ -3656,24 +3741,8 @@ function update(dt){
   if(piloting&&drone){
     var kv2=keyVec(), dm=kv2||mv;
     drone.t-=dt;
-    // Faster response and top speed for player-controlled aircraft.
-    var dacc=drone.kind==='usv'?450:(drone.kind==='droneL'?1225:(drone.kind==='droneS'?1950:1700));
-    var dmax=drone.kind==='usv'?135:(drone.kind==='droneL'?270:(drone.kind==='droneS'?380:335));
-    if(drone.kind==='usv'){
-      var seaDroneSpeed=SEA_DRONE_SPEED_BY_LEVEL[level]||1;
-      dacc*=seaDroneSpeed; dmax*=seaDroneSpeed;
-    } else {
-      var levelDroneSpeed=DRONE_SPEED_BY_LEVEL[level]||1.50;
-      dacc*=levelDroneSpeed; dmax*=levelDroneSpeed;
-    }
-    if(dm.m>0.05){
-      drone.vx+=dm.x*dacc*dt*dm.m; drone.vy+=dm.y*dacc*dt*dm.m;
-      drone.ang=Math.atan2(dm.y,dm.x);
-    }
-    var drag=drone.kind==='usv'?.93:.955;
-    drone.vx*=drag; drone.vy*=drag;
-    var dsp=Math.hypot(drone.vx,drone.vy);
-    if(dsp>dmax){ drone.vx=drone.vx/dsp*dmax; drone.vy=drone.vy/dsp*dmax; }
+    // Exponential steering gives the same response at 30, 60 and 120 Hz.
+    var dmax=steerDrone(drone,dm,dt);
     var nx3=Math.max(8,Math.min(WW-8,drone.x+drone.vx*dt));
     var ny3=Math.max(8,Math.min(WH-8,drone.y+drone.vy*dt));
     if(drone.kind==='usv'&&mapKind==='sea'){
@@ -3716,7 +3785,7 @@ function update(dt){
       W.vy+=(drone.vy-W.vy)*Math.min(1,dt*7);
       var pull=Math.min(2200,700+dd*12);
       if(dd>1){ W.vx+=dx/dd*pull*dt; W.vy+=dy/dd*pull*dt; }
-      W.vx*=.965; W.vy*=.965;
+      var wingDrag=Math.pow(.965,dt*60); W.vx*=wingDrag; W.vy*=wingDrag;
       var wsp=Math.hypot(W.vx,W.vy), wmax=dmax*1.08;
       if(wsp>wmax){ W.vx=W.vx/wsp*wmax; W.vy=W.vy/wsp*wmax; }
       W.x+=W.vx*dt; W.y+=W.vy*dt; W.rot+=dt*40;
@@ -3864,8 +3933,7 @@ function update(dt){
     var v=sp*m.m*dt;
     moveEnt(player,m.x*v,m.y*v);
     player.lvx=m.x*sp*m.m; player.lvy=m.y*sp*m.m;
-    // Movement owns the character's facing direction. Auto-aim may only turn
-    // the character while standing still, preventing backward moonwalking.
+    // Touch/keyboard face movement; explicit mouse aim overrides below.
     player.face=Math.atan2(m.y,m.x);
     player.walk+=dt*m.m*12;
     // Footfalls trigger sound only. No player footprint or ground-trail marks
@@ -3877,6 +3945,8 @@ function update(dt){
     }
     player.amt=Math.min(1,(player.amt||0)+dt*9);
   } else { player.amt=Math.max(0,(player.amt||0)-dt*9); player.lvx=0; player.lvy=0; }
+
+  if(manualAim()){ player.face=aimAngle(); player.ang=player.face; }
 
   // --- ACT
   if(onCrate&&!piloting){
@@ -3950,7 +4020,7 @@ function update(dt){
       fx.push({t:'miniNuke',x:MN.x,y:MN.y,life:1.45,max:1.45,r:112}); fx.push({t:'boom',x:MN.x,y:MN.y,life:.6,max:.6,r:112}); fx.push({t:'ring',x:MN.x,y:MN.y,life:.75,max:.75});
       for(var nc=0;nc<18;nc++) plume.push({x:MN.x+rr(-18,18),y:MN.y+rr(-12,12),vx:rr(-35,35),vy:-rr(35,95),life:rr(.8,1.7),max:1.7,s:rr(6,13),hot:.75});
       if(Math.hypot(player.x-MN.x,player.y-MN.y)<105) hurtPlayer(38);
-      if(drone&&Math.hypot(drone.x-MN.x,drone.y-MN.y)<110){ drone.hp-=90; if(drone.hp<=0){ if(drone.pad) drone.pad.cd=0; drone=null; piloting=false; banner('DRONE LOST','MINI-NUKE BLAST',1.5); } }
+      if(drone&&Math.hypot(drone.x-MN.x,drone.y-MN.y)<110){ drone.hp-=90; if(drone.hp<=0){ rebuildDroneBay(drone); drone=null; piloting=false; banner('DRONE LOST','MINI-NUKE BLAST',1.5); } }
       shake=Math.min(16,shake+10); sfx('boom',.85); miniNukes.splice(mn,1);
     }
   }
@@ -3971,8 +4041,8 @@ function update(dt){
       if(drone&&Math.hypot(drone.x-HM.x,drone.y-HM.y)<58){
         drone.hp-=75; fx.push({t:'spark',x:drone.x,y:drone.y,life:.2,max:.2});
         if(drone.hp<=0){
-          explode(drone.x,drone.y,40,0,true); if(drone.pad) drone.pad.cd=0;
-          drone=null; piloting=false; firing=false; actBtn.classList.remove('on'); banner('DRONE HIT BY HAMMER','ANOTHER IS READY',1.6);
+          explode(drone.x,drone.y,40,0,true); rebuildDroneBay(drone);
+          drone=null; piloting=false; firing=false; actBtn.classList.remove('on'); banner('DRONE HIT BY HAMMER','RETURN TO THE LAUNCH STATION',1.6);
         }
       }
       shake=Math.min(10,shake+4); sfx('ric',.8); bossHammers.splice(hm,1);
@@ -3989,7 +4059,7 @@ function update(dt){
       if(Math.hypot(player.x-MS.x,player.y-MS.y)<62) hurtPlayer(34);
       if(drone&&Math.hypot(drone.x-MS.x,drone.y-MS.y)<72){
         drone.hp-=85; fx.push({t:'spark',x:drone.x,y:drone.y,life:.25,max:.25});
-        if(drone.hp<=0){ explode(drone.x,drone.y,45,0,true); if(drone.pad) drone.pad.cd=0; drone=null; piloting=false; firing=false; actBtn.classList.remove('on'); banner('DRONE HIT BY GRINDER SHOT','ANOTHER DRONE IS READY',1.6); }
+        if(drone.hp<=0){ explode(drone.x,drone.y,45,0,true); rebuildDroneBay(drone); drone=null; piloting=false; firing=false; actBtn.classList.remove('on'); banner('DRONE HIT BY GRINDER SHOT','ANOTHER DRONE IS READY',1.6); }
       }
       // Impact: skull + hand fly out, plus a handful of meat — same as a frag kill but capped.
       launchPart(MS.x,MS.y-10,'skull',null,null,rr(0,6.3),rr(.9,1.3));
@@ -4015,7 +4085,7 @@ function update(dt){
       fires.push({x:F4.x,y:F4.y,r:30,p:rr(0,6),life:10,sp:0});
       for(var ff4=0;ff4<4&&fires.length<16;ff4++) fires.push({x:F4.x+rr(-38,38),y:F4.y+rr(-28,28),r:rr(9,17),p:rr(0,6),life:rr(5,9),sp:0});
       if(Math.hypot(player.x-F4.x,player.y-F4.y)<82) hurtPlayer(34);
-      if(drone&&Math.hypot(drone.x-F4.x,drone.y-F4.y)<88){ drone.hp-=80; if(drone.hp<=0){ explode(drone.x,drone.y,45,0,true); if(drone.pad) drone.pad.cd=0; drone=null; piloting=false; firing=false; actBtn.classList.remove('on'); banner('DRONE LOST','FIRE-BOTTLE IMPACT',1.5); } }
+      if(drone&&Math.hypot(drone.x-F4.x,drone.y-F4.y)<88){ drone.hp-=80; if(drone.hp<=0){ explode(drone.x,drone.y,45,0,true); rebuildDroneBay(drone); drone=null; piloting=false; firing=false; actBtn.classList.remove('on'); banner('DRONE LOST','FIRE-BOTTLE IMPACT',1.5); } }
       shake=Math.min(13,shake+7); sfx('boom',.7); fireBottles.splice(fb4,1);
     }
   }
@@ -4584,9 +4654,9 @@ function update(dt){
           fx.push({t:'spark',x:e2b.x,y:e2b.y,life:.14,max:.14});
           if(drone.hp<=0){
             explode(drone.x,drone.y,40,0,true);
-            if(drone.pad) drone.pad.cd=0;
+            rebuildDroneBay(drone);
             drone=null; piloting=false; firing=false; actBtn.classList.remove('on');
-            banner('DRONE SHOT DOWN','ANOTHER IS READY',1.8); sfx('ric',.8);
+            banner('DRONE SHOT DOWN','RETURN TO THE LAUNCH STATION',1.8); sfx('ric',.8);
           }
           done=true; break;
         }
@@ -4699,16 +4769,17 @@ function update(dt){
     var PL0=padList[pl0];
     // Every fixed drone station uses a table plus a separate square two tiles in front.
     if(!PL0.mobile&&PL0.standX===undefined){ PL0.table=1; PL0.standX=PL0.x-2*TILE; PL0.standY=PL0.y; }
-    if(PL0.cd>0) PL0.cd-=dt;
+    if(PL0.cd>0) PL0.cd=Math.max(0,PL0.cd-(PL0.clearStand?(realDt||dt):dt));
     if(PL0.mobile&&(!truck||truck.down>0)) continue;
     var useX=PL0.standX===undefined?PL0.x:PL0.standX;
     var useY=PL0.standY===undefined?PL0.y:PL0.standY;
-    if(!piloting&&!player.dead&&PL0.cd<=0&&Math.abs(player.x-useX)<25&&Math.abs(player.y-useY)<25) onPad=PL0;
+    if(!piloting&&!player.dead&&PL0.cd<=0&&!PL0.inFlight&&Math.abs(player.x-useX)<25&&Math.abs(player.y-useY)<25) onPad=PL0;
   }
   if(onPad){
     player.dHold=(player.dHold||0)+dt/(firing?.4:.85);
     if(player.dHold>=1){
-      player.dHold=0; onPad.cd=onPad.cool;
+      player.dHold=0; onPad.cd=onPad.clearStand?0:onPad.cool;
+      if(onPad.clearStand) onPad.inFlight=true;
       var kk0=onPad.kind, hp0=(kk0==='droneL')?340:((kk0==='drone')?260:180);
       var extra=(mapKind==='oil')?14:4;
       var lx0=onPad.table?onPad.x:player.x, ly0=onPad.table?onPad.y:player.y, from='';
@@ -4936,7 +5007,8 @@ function update(dt){
   }
   var foc=(piloting&&drone)?drone:(droneCam?droneCam:player);
   var tx=foc.x-VW/2, ty=foc.y-VH/2;
-  cam.x+=(tx-cam.x)*Math.min(1,dt*7); cam.y+=(ty-cam.y)*Math.min(1,dt*7);
+  var cameraBlend=1-Math.exp(-7*dt);
+  cam.x+=(tx-cam.x)*cameraBlend; cam.y+=(ty-cam.y)*cameraBlend;
   cam.x=Math.max(0,Math.min(WW-VW,cam.x)); cam.y=Math.max(0,Math.min(WH-VH,cam.y));
   if(WW<VW) cam.x=(WW-VW)/2; if(WH<VH) cam.y=(WH-VH)/2;
 }
@@ -5797,9 +5869,9 @@ function updateOil(dt){
       drone.hp-=mapKind==='redSquare'?999:rr(38,62);
       if(drone.hp<=0){
         explode(drone.x,drone.y,50,0,true);
-        if(drone.pad) drone.pad.cd=0;
+        rebuildDroneBay(drone);
         drone=null; piloting=false; firing=false; actBtn.classList.remove('on');
-        banner('DRONE SHOT DOWN','ANOTHER IS READY',1.8); sfx('ric',.8);
+        banner('DRONE SHOT DOWN','RETURN TO THE LAUNCH STATION',1.8); sfx('ric',.8);
       }
       samShots.splice(mi,1); continue;
     }
@@ -6283,7 +6355,7 @@ function startSector(n){
   buildFlow();
   cam.x=player.x-VW/2; cam.y=player.y-VH/2;
   if(n===1&&player.nades<5) player.nades=5;
-  state='play'; hud(); startMusic(mapKind);
+  state='play'; focusGame(); hud(); startMusic(mapKind);
   intro=(mapKind==='redSquare')?[{t:0,a:'SECTOR '+n,b:'RED SQUARE · MOSCOW'},
         {t:2.4,a:'RED SQUARE CATHEDRAL AND KREMLIN',b:'TWO PRIMARY OBJECTIVES'},
         {t:4.8,a:'MOTORCADE CHECKS THE STREETS',b:'SECURITY TEAMS DEPLOY AT STOPS'},
@@ -6464,10 +6536,11 @@ function camoFleck(c,seed,x0,y0,w,h,n,pal){
 }
 /* Upright 3/4 unit: board is overhead, figures stand up and face the camera-ish.
    Feet sit at (x,y); everything else is built upward from there. */
-function drawUnit(c,x,y,ang,col,band,walk,amt,kind,gun,dark,noHead,rus,seed,recoil){
+function drawUnit(c,x,y,ang,col,band,walk,amt,kind,gun,dark,noHead,rus,seed,recoil,workPose){
+  var kit=workPose?PKITS[workPose.scout?2:3]:PK;
   seed=seed||7;
   recoil=recoil||0;
-  var PAL=rus?EMR:PK.pal;
+  var PAL=rus?EMR:kit.pal;
   var mir = Math.cos(ang)<0 ? -1 : 1;
   var facing = Math.sin(ang);
   var front = facing > -0.30, back = facing < -0.55;
@@ -6509,10 +6582,10 @@ function drawUnit(c,x,y,ang,col,band,walk,amt,kind,gun,dark,noHead,rus,seed,reco
     c.fillStyle='#b2312a'; c.fillRect(-8.2,-19.6,3.4,1.5);
     c.fillStyle=band; rrect(c,-8.4,-16.4,3.6,4,1.4); c.fill(); outl(c,'#15130e',1);  // ID armband
   } else {
-    c.fillStyle=PK.rig; rrect(c,-5.6,-23.4,11.2,11,3); c.fill(); outl(c,'#15130e',1.4);      // plate carrier
-    c.fillStyle=shade(PK.rig,.8); rrect(c,-4.4,-22.4,3.6,4.4,1.2); c.fill(); rrect(c,-.2,-22.4,3.6,4.4,1.2); c.fill();
-    c.fillStyle=shade(PK.rig,.68); rrect(c,-4.4,-16.8,7.8,3,1); c.fill();
-    if(PK.scarf){ c.fillStyle=shade(col,.72); rrect(c,-4,-26,9,3.6,1.4); c.fill(); outl(c,'#15130e',1); }
+    c.fillStyle=kit.rig; rrect(c,-5.6,-23.4,11.2,11,3); c.fill(); outl(c,'#15130e',1.4);      // plate carrier
+    c.fillStyle=shade(kit.rig,.8); rrect(c,-4.4,-22.4,3.6,4.4,1.2); c.fill(); rrect(c,-.2,-22.4,3.6,4.4,1.2); c.fill();
+    c.fillStyle=shade(kit.rig,.68); rrect(c,-4.4,-16.8,7.8,3,1); c.fill();
+    if(kit.scarf){ c.fillStyle=shade(col,.72); rrect(c,-4,-26,9,3.6,1.4); c.fill(); outl(c,'#15130e',1); }
     c.fillStyle=band; rrect(c,-8.4,-22.6,3.6,5,1.4); c.fill(); outl(c,'#15130e',1);            // armband
     c.fillStyle='rgba(255,255,255,.55)'; c.fillRect(-8.4,-20.8,3.6,1);
     // MOLLE webbing and buckles give the player carrier more readable detail.
@@ -6527,7 +6600,7 @@ function drawUnit(c,x,y,ang,col,band,walk,amt,kind,gun,dark,noHead,rus,seed,reco
     c.fillStyle='rgba(126,16,12,.95)'; c.beginPath(); c.arc(1.2,-26,4.2,0,6.3); c.fill();
     c.restore(); c.restore(); return;
   }
-  c.fillStyle=rus?(mapKind==='airfield'?'#6f4937':'#31352e'):(PK.mask?'#31352e':SKIN); c.beginPath(); c.arc(1.2,-31.5,7.2,0,6.3); c.fill(); outl(c,'#15130e',1.9);
+  c.fillStyle=rus?(mapKind==='airfield'?'#6f4937':'#31352e'):(kit.mask?'#31352e':SKIN); c.beginPath(); c.arc(1.2,-31.5,7.2,0,6.3); c.fill(); outl(c,'#15130e',1.9);
   c.fillStyle= rus?shade(col,1.02):shade(col,1.1);
   c.beginPath(); c.arc(1.2,-32.5,8,Math.PI,0); c.lineTo(9.2,-30.4); c.lineTo(-6.8,-30.4); c.closePath();
   c.fill();
@@ -6538,11 +6611,11 @@ function drawUnit(c,x,y,ang,col,band,walk,amt,kind,gun,dark,noHead,rus,seed,reco
   c.strokeStyle='rgba(20,18,13,.7)'; c.lineWidth=1;
   c.beginPath(); c.arc(1.2,-32,6.2,Math.PI*.08,Math.PI*.92); c.stroke();
   c.fillStyle='#292d27'; rrect(c,5.5,-36,3.2,2.1,.7); c.fill(); // helmet rail block
-  if(!rus&&PK.gog){ c.fillStyle='rgba(40,52,58,.7)'; rrect(c,-5.4,-35.6,10,3,1.2); c.fill(); outl(c,'#15130e',1.1); }
+  if(!rus&&kit.gog){ c.fillStyle='rgba(40,52,58,.7)'; rrect(c,-5.4,-35.6,10,3,1.2); c.fill(); outl(c,'#15130e',1.1); }
   c.fillStyle=shade(col,.9); rrect(c,3.4,-31.6,6.6,2.6,1.2); c.fill(); outl(c,'#15130e',1.2); // brim
   if(rus){ c.fillStyle=shade(col,.72); rrect(c,-6.4,-33.4,3,2.2,.8); c.fill(); }              // helmet rail
-  if(!rus&&PK.beard&&!back){                                    // full beard
-    c.fillStyle=PK.beard;
+  if(!rus&&kit.beard&&!back){                                    // full beard
+    c.fillStyle=kit.beard;
     c.beginPath();
     c.moveTo(-5.6,-31.4);
     c.quadraticCurveTo(-7.2,-25.4,-2.6,-21.6);
@@ -6550,14 +6623,14 @@ function drawUnit(c,x,y,ang,col,band,walk,amt,kind,gun,dark,noHead,rus,seed,reco
     c.quadraticCurveTo(8.6,-25.6,7.8,-31.6);
     c.quadraticCurveTo(1.2,-28.4,-5.6,-31.4);
     c.closePath(); c.fill(); outl(c,'#15130e',1.6);
-    c.fillStyle=shade(PK.beard,.78);
+    c.fillStyle=shade(kit.beard,.78);
     c.beginPath(); c.moveTo(-3.4,-26.6); c.quadraticCurveTo(1.2,-24.2,5.4,-26.4);
     c.quadraticCurveTo(1.4,-22.4,-3.4,-26.6); c.closePath(); c.fill();
   }
   if(!back){
     if(rus&&kind==='heavy'){ c.fillStyle='rgba(40,52,58,.85)'; rrect(c,-4.6,-30.4,11,5,1.6); c.fill(); outl(c,'#15130e',1.2); }
-    else if(rus||PK.mask){ c.fillStyle=SKIN; rrect(c,-3.6,-30.2,9.4,3.1,1.3); c.fill(); }      // balaclava eye slit
-    if(!rus&&PK.shades){                                        // sunglasses
+    else if(rus||kit.mask){ c.fillStyle=SKIN; rrect(c,-3.6,-30.2,9.4,3.1,1.3); c.fill(); }      // balaclava eye slit
+    if(!rus&&kit.shades){                                        // sunglasses
       c.fillStyle='#15130e'; rrect(c,-5.2,-31.1,11.4,4,1.5); c.fill();
       c.fillStyle='rgba(126,196,224,.4)';
       rrect(c,-4.4,-30.6,4.6,2.7,1); c.fill(); rrect(c,1.4,-30.6,4.6,2.7,1); c.fill();
@@ -6578,13 +6651,15 @@ function drawUnit(c,x,y,ang,col,band,walk,amt,kind,gun,dark,noHead,rus,seed,reco
 
   // Arms, weapon, and hands are only drawn when facing the player.
   // When back-facing (moving north) they would incorrectly appear in front of the body.
-  if(!back){
+  if(workPose){
+    drawAssemblyArms(c,col,workPose);
+  } else if(!back){
     // ---- support arm reaches across the chest to the weapon's front grip
     // Drawn here (above the torso) so the second arm cannot disappear behind the body.
     var ssx=-4.2, ssy=-22.2+bob, sax=gripX-ssx, say=gripY-ssy, sal=Math.hypot(sax,say);
     c.save(); c.translate(ssx,ssy); c.rotate(Math.atan2(say,sax));
     c.fillStyle=shade(col,.76); rrect(c,-1,-2.6,sal+1.2,5.2,2.6); c.fill(); outl(c,'#15130e',1.5);
-    c.fillStyle=rus?band:PK.band; rrect(c,1,-2.8,3.4,5.6,1); c.fill(); outl(c,'#15130e',.9);
+    c.fillStyle=rus?band:kit.band; rrect(c,1,-2.8,3.4,5.6,1); c.fill(); outl(c,'#15130e',.9);
     c.restore();
 
     // Weapon sling runs from the shoulder to the forward weapon mount.
@@ -7321,14 +7396,100 @@ function drawOnionDome(c,x,y,w,h,base,accent,pattern){
   c.fillStyle='#d8c6ad'; rrect(c,x-w*.42,y-1,w*.84,7,2); c.fill(); outl(c,'#5b3b32',1.2); c.restore();
 }
 
+
+/* Combat polish: bounded, culled effects; cosmetic variation never uses gameplay RNG. */
+function lightPool(c,x,y,r,color,alpha){
+  if(r<=0||x<cam.x-r||x>cam.x+VW+r||y<cam.y-r||y>cam.y+VH+r) return;
+  var g=c.createRadialGradient(x,y,0,x,y,r);
+  g.addColorStop(0,'rgba('+color+','+alpha+')');
+  g.addColorStop(.35,'rgba('+color+','+(alpha*.4)+')');
+  g.addColorStop(1,'rgba('+color+',0)');
+  c.fillStyle=g; c.fillRect(x-r,y-r,r*2,r*2);
+}
+function drawCombatLighting(c){
+  c.save();
+  // A cool ambient wash gives warm muzzle and blast light visible contrast.
+  c.fillStyle=mapKind==='airfield'?'rgba(25,49,78,.10)':'rgba(19,34,49,.08)';
+  c.fillRect(cam.x,cam.y,VW,VH);
+  c.globalCompositeOperation='lighter';
+  for(var i=0,n=0;i<fx.length&&n<24;i++){
+    var f=fx[i], k=Math.max(0,f.life/f.max);
+    if(f.x<cam.x-300||f.x>cam.x+VW+300||f.y<cam.y-300||f.y>cam.y+VH+300) continue;
+    if(f.t==='boom'){lightPool(c,f.x,f.y,Math.min(280,f.r*1.8),'255,150,52',k*(reducedMotion?.13:.28)); n++;}
+    else if(f.t==='flash'){lightPool(c,f.x+Math.cos(f.a)*20,f.y+Math.sin(f.a)*20,75,'255,196,102',k*.19); n++;}
+    else if(f.t==='spark'){lightPool(c,f.x,f.y,32,'255,205,122',k*.2); n++;}
+  }
+  if(player&&!player.dead) lightPool(c,player.x,player.y-12,105,'106,162,190',.055);
+  c.restore();
+}
+function drawBlastDetails(c,f,k){
+  if(f.x<cam.x-f.r*2||f.x>cam.x+VW+f.r*2||f.y<cam.y-f.r*2||f.y>cam.y+VH+f.r*2) return;
+  var age=1-k, radius=Math.max(1,f.r), wave=radius*Math.sqrt(age);
+  c.save();
+  // Low dust ring and a fast pressure wave under the existing fireball.
+  c.strokeStyle='rgba(178,151,111,'+(k*.24)+')'; c.lineWidth=5+age*14;
+  c.beginPath(); c.ellipse(f.x,f.y,wave*1.2,wave*.78,0,0,Math.PI*2); c.stroke();
+  c.globalCompositeOperation='lighter';
+  c.strokeStyle='rgba(255,223,158,'+(k*k*.7)+')'; c.lineWidth=1+k*2;
+  c.beginPath(); c.ellipse(f.x,f.y,wave*1.32,wave*.88,0,0,Math.PI*2); c.stroke();
+  var count=window.matchMedia('(pointer: coarse)').matches?10:18;
+  for(var i=0;i<count;i++){
+    var a=i*2.39996+f.x*.013, speed=.6+(i%5)*.14;
+    var reach=radius*age*speed, tail=Math.min(18,3+age*22);
+    var x=f.x+Math.cos(a)*reach,y=f.y+Math.sin(a)*reach*.76+age*age*22;
+    c.strokeStyle='rgba(255,'+(175+i%3*25)+',85,'+(k*k)+')'; c.lineWidth=i%3===0?2:1;
+    c.beginPath(); c.moveTo(x,y); c.lineTo(x-Math.cos(a)*tail,y-Math.sin(a)*tail*.76); c.stroke();
+  }
+  c.restore();
+}
+function drawAimReticle(c){
+  if(!manualAim()||state!=='play') return;
+  c.save(); c.translate(mouseAim.x,mouseAim.y);
+  var r=8+(player.recoil||0)*5;
+  c.strokeStyle='rgba(8,18,24,.85)'; c.lineWidth=4;
+  for(var pass=0;pass<2;pass++){
+    c.beginPath();
+    for(var i=0;i<4;i++){ var a=i*Math.PI/2;
+      c.moveTo(Math.cos(a)*r,Math.sin(a)*r); c.lineTo(Math.cos(a)*(r+6),Math.sin(a)*(r+6)); }
+    c.stroke(); c.strokeStyle='#c9edf0'; c.lineWidth=1.4;
+  }
+  c.fillStyle='#fff0b3'; c.fillRect(-1,-1,2,2); c.restore();
+}
+
+// Animate only monitor interiors; furniture stays on the cached map layer.
+function drawConsoleScreens(c){
+  c.save();
+  var tick=reducedMotion?0:Math.floor(now*5);
+  for(var pi=0;pi<props.length;pi++){
+    var p=props[pi]; if(p.kind!=='console') continue;
+    var x=p.x*TILE,y=p.y*TILE;
+    if(x>cam.x+VW||x+p.w*TILE<cam.x||y>cam.y+VH+10||y<cam.y-20) continue;
+    for(var monitor=0;monitor<Math.max(1,p.w);monitor++){
+      if(T(p.x+monitor,p.y)!==PROP) continue;
+      var mx=x+10+monitor*TILE,my=y-4,sd=p.x*17+p.y*31+monitor*7;
+      c.fillStyle=['#1d5f52','#1b4a66','#4a3a1b'][monitor%3];c.fillRect(mx,my,16,10);
+      c.fillStyle='rgba(150,240,220,.55)';
+      for(var row=0;row<4;row++)c.fillRect(mx+1,my+1+row*2.2,4+hs(sd+row*13+tick)*10,1);
+      if(!reducedMotion){
+        c.fillStyle='rgba(120,220,255,'+(.10+Math.sin(now*3+sd)*.04)+')';c.fillRect(mx,my,16,10);
+        c.fillStyle='rgba(180,245,240,.18)';c.fillRect(mx,my+((now*6+sd)%9),16,1);
+      }
+    }
+  }
+  c.restore();
+}
+
 function draw(){
+  cv.classList.toggle('aiming',!!manualAim()&&state==='play');
   ctx.setTransform(DPR,0,0,DPR,0,0);
   ctx.fillStyle='#0c0d0b'; ctx.fillRect(0,0,VW,VH);
   if(!player) return;
-  var sx=shake>0?rr(-shake,shake)*.5:0, sy=shake>0?rr(-shake,shake)*.5:0;
+  var shakeScale=reducedMotion?0:.32;
+  var sx=shake>0?(Math.random()*2-1)*shake*shakeScale:0, sy=shake>0?(Math.random()*2-1)*shake*shakeScale:0;
   ctx.save(); ctx.translate(-Math.round(cam.x)+sx,-Math.round(cam.y)+sy);
 
   ctx.drawImage(stat,0,0);
+  drawConsoleScreens(ctx);
   drawMovingWater(ctx);
   paintDamaged(ctx);
   ctx.drawImage(deco,0,0);
@@ -7566,7 +7727,7 @@ function draw(){
   for(var cp=0;cp<captives.length;cp++) units.push(captives[cp]);
   for(var dwu=0;dwu<depotWorkers.length;dwu++) if(depotWorkers[dwu].alive) units.push(depotWorkers[dwu]);
   for(var ff=0;ff<fires.length;ff++) units.push(fires[ff]);
-  for(var cv=0;cv<civs.length;cv++) units.push(civs[cv]);
+  for(var civIndex=0;civIndex<civs.length;civIndex++) units.push(civs[civIndex]);
   for(var bg=0;bg<baseGuards.length;bg++) units.push(baseGuards[bg]);
   for(var cw=0;cw<crew.length;cw++) units.push(crew[cw]);
   if(tank) units.push(tank);
@@ -7709,7 +7870,17 @@ function draw(){
       ctx.globalAlpha=Math.min(1,k*1.5); ctx.fillStyle=F.c||'#e8e4d8';
       ctx.font='bold 13px Arial'; ctx.textAlign='center';
       ctx.fillText(F.s,F.x,F.y-24-(1-k)*22); ctx.textAlign='start'; ctx.globalAlpha=1;
+    } else if(F.t==='confirm'){
+      ctx.save(); ctx.translate(F.x,F.y); ctx.globalAlpha=k;
+      ctx.strokeStyle=F.kill?'#ffc76b':'#e8fcff'; ctx.lineWidth=F.kill?2.7:1.8;
+      var gap=5+(1-k)*5, reach=gap+5;
+      ctx.beginPath();
+      for(var hi=0;hi<4;hi++){ var ha=Math.PI/4+hi*Math.PI/2;
+        ctx.moveTo(Math.cos(ha)*gap,Math.sin(ha)*gap);
+        ctx.lineTo(Math.cos(ha)*reach,Math.sin(ha)*reach); }
+      ctx.stroke(); ctx.restore();
     } else if(F.t==='boom'){
+      drawBlastDetails(ctx,F,k);
       var rr2=(1-k)*F.r;
       if(F.lobe===undefined){ F.lobe=[]; for(var lb=0;lb<7;lb++)
         F.lobe.push([Math.random()*6.283,.55+Math.random()*.7,.35+Math.random()*.5]); }
@@ -8561,6 +8732,7 @@ function draw(){
     ctx.fillStyle='#5fa8d3'; rrect(ctx,rx+1.5,ry+1.5,49*p2,5,3); ctx.fill();
   }
 
+  drawCombatLighting(ctx);
   ctx.restore();
 
   // Screen-space snowfall stays visible while the camera moves across the airfield.
@@ -8616,6 +8788,8 @@ function draw(){
     ctx.fillStyle='#d84a34'; ctx.beginPath(); ctx.moveTo(7,0); ctx.lineTo(-5,-5); ctx.lineTo(-5,5); ctx.closePath(); ctx.fill();
     ctx.restore(); ctx.globalAlpha=1;
   }
+
+  drawAimReticle(ctx);
 
   // vignette
   if(arty.flash>0){ ctx.fillStyle='rgba(255,222,168,'+(arty.flash*.5)+')'; ctx.fillRect(0,0,VW,VH); }
@@ -8827,6 +9001,7 @@ function drawObjectives(){
 }
 
 function drawStick(){
+  if(window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
   var J=joyVis, R=66, act=J.on;
   ctx.save();
   // outer ring
@@ -9281,10 +9456,10 @@ function drawShopBay(){
   ctx.fillText('STAND HERE TO TRADE',shopPad.x,y+h+9); ctx.textAlign='start';
 }
 function drawDroneStand(P,col,cd){
-  var live=cd<=0, pulse=.5+Math.abs(Math.sin(now*2.4))*.5;
-  var sx=P.standX, sy=P.standY, sw=42;
-  // Distinct Level 1 command desks surround the operator position without hiding the player.
-  if(P.table){
+  var live=cd<=0&&!P.inFlight, pulse=.5+Math.abs(Math.sin(now*2.4))*.5;
+  var sx=P.standX, sy=P.standY, sw=P.clearStand?34:42;
+  // Legacy stations retain their surrounding furniture; clear stands are floor-only.
+  if(P.table&&!P.clearStand){
     var glow=live?'rgba(92,210,235,'+(.58+pulse*.25)+')':'rgba(110,130,136,.35)';
     ctx.fillStyle='rgba(7,12,14,.34)';
     if(P.kind==='droneS'){
@@ -9333,12 +9508,52 @@ function drawDroneStand(P,col,cd){
   ctx.lineWidth=1.2; ctx.setLineDash([5,4]);
   rrect(ctx,sx-sw/2+5,sy-sw/2+5,sw-10,sw-10,2); ctx.stroke(); ctx.setLineDash([]);
   ctx.fillStyle=live?col:'#83949b'; ctx.font='bold 7px Arial'; ctx.textAlign='center';
-  ctx.fillText(live?'ACTIVATE':Math.ceil(cd)+'s',sx,sy+3);
+  ctx.fillText(P.inFlight?'IN FLIGHT':(live?'ACTIVATE':Math.ceil(cd)+'s'),sx,sy+3);
   ctx.textAlign='start';
 }
 
+// A relaxed two-handed hold, matching the base soldiers' weapon-ready posture.
+function drawAssemblyArms(c,col,pose){
+  var phase=now*(pose.working?2:1.5)+pose.phase;
+  var sway=Math.sin(phase*.7)*.3;
+  // The forward hand supports the assembly; the rear hand rests near the chest.
+  var arms=[[-4.2,-22.2,-1,-17,13,-19],[5,-22,8,-16,7,-19]];
+  for(var i=0;i<arms.length;i++){
+    var breath=Math.sin(phase*(i?1.6:1)+(i?.6:0))*1.4;
+    var a=arms[i],hx=a[4]+sway,hy=a[5]+breath;
+    c.lineCap='round';c.lineJoin='round';
+    c.beginPath();c.moveTo(a[0],a[1]);c.lineTo(a[2]+sway*.5,a[3]+breath*.5);c.lineTo(hx,hy);
+    c.strokeStyle='#15130e';c.lineWidth=6;c.stroke();
+    c.strokeStyle=shade(col,i?.95:.78);c.lineWidth=3.8;c.stroke();
+    c.fillStyle=SKIN2;c.beginPath();c.arc(hx,hy,2.3,0,6.3);c.fill();outl(c,'#15130e',1);
+    c.strokeStyle='#34382f';c.lineWidth=1;c.beginPath();c.arc(hx,hy,2.7,.2,2.6);c.stroke();
+  }
+}
+
+// Base technicians assemble and inspect airframes beside their own desks.
+function drawDroneTechnician(P,col){
+  var c=ctx, working=P.cd>0, scout=P.kind==='droneS';
+  var kit=PKITS[scout?2:3];
+  // A visible airframe and tools under the technician's hands.
+  c.save(); c.translate(P.x-28,P.y-4); c.strokeStyle=col; c.lineWidth=2;
+  c.beginPath(); c.moveTo(-7,-6); c.lineTo(7,6); c.moveTo(-7,6); c.lineTo(7,-6); c.stroke();
+  c.fillStyle='#bac5be'; c.fillRect(-3,-4,6,8);
+  c.strokeStyle='#18282f'; c.lineWidth=1;
+  [[-7,-6],[7,6],[-7,6],[7,-6]].forEach(function(a){c.beginPath();c.arc(a[0],a[1],3,0,6.3);c.stroke();}); c.restore();
+  // Share the base soldiers' exact proportions, camouflage, faces and outlines.
+  drawUnit(c,P.x-40,P.y+7,0,kit.col,kit.band,0,0,'rifleman',null,false,false,false,
+    scout?317:619,0,{scout:scout,working:working,phase:P.y});
+  if(working){
+    var progress=1-Math.min(1,P.cd/7), x=P.x-35,y=P.y-47;
+    c.fillStyle='rgba(7,16,21,.9)'; rrect(c,x-3,y-13,76,23,3);c.fill();
+    c.font='bold 7px Arial';c.textAlign='center';c.fillStyle='#f0cf87';
+    c.fillText('BUILDING '+P.cd.toFixed(1)+'s',P.x,y-4);
+    c.fillStyle='#253b43';c.fillRect(x,y,70,4);c.fillStyle=col;c.fillRect(x,y,70*progress,4);c.textAlign='start';
+  }
+}
+
 function drawDroneTable(P,col,label,cd,icon){
-  var live=cd<=0;
+  var live=cd<=0&&!P.inFlight;
   var sx=P.standX, sy=P.standY, sw=42;
 
   // Drone control desk — styled like the console prop
@@ -9371,10 +9586,13 @@ function drawDroneTable(P,col,label,cd,icon){
   ctx.fillStyle=live?'rgba(8,12,14,.82)':'rgba(20,20,20,.68)';
   rrect(ctx,tx+3,ty-14,tw-6,12,2); ctx.fill();
   ctx.fillStyle=live?col:'#8fa0a6'; ctx.font='bold 7px Arial'; ctx.textAlign='center';
-  ctx.fillText(live?label:label+' '+Math.ceil(cd)+'s',P.x,ty-5);
-  // Connector line from stand to desk
-  ctx.strokeStyle=live?col:'rgba(150,160,166,.3)'; ctx.lineWidth=1.5;
-  ctx.beginPath(); ctx.moveTo(sx+sw/2,sy); ctx.lineTo(tx-4,P.y); ctx.stroke();
+  ctx.fillText(P.clearStand?label:(live?label:label+' '+Math.ceil(cd)+'s'),P.x,ty-5);
+  if(P.clearStand) drawDroneTechnician(P,col);
+  // Offset stations elsewhere still use a connector; front-facing pads do not.
+  if(!P.clearStand){
+    ctx.strokeStyle=live?col:'rgba(150,160,166,.3)'; ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.moveTo(sx+sw/2,sy); ctx.lineTo(tx-4,P.y); ctx.stroke();
+  }
   ctx.textAlign='start';
 }
 function drawPadBay(P,col,label,cd,icon){
@@ -9481,7 +9699,7 @@ function frame(t){
     else dt=raw*(1-.58*Math.min(1,droneCam.t/1.1));
   }
   if(state==='card'){ cardT+=dt; if(!pendingCard||!cardData) closeCard(); }
-  if(state==='play') update(dt);
+  if(state==='play') update(dt,raw);
   if(player) draw();
   requestAnimationFrame(frame);
 }
@@ -9561,14 +9779,6 @@ Array.prototype.forEach.call(document.querySelectorAll('#bossVictory,#levelTwoBo
 })();
 var levelIntroTimer=0,levelIntroActive=0;
 var levelIntroIds={1:'levelOneIntro',2:'levelTwoIntro',3:'levelThreeIntro',4:'levelFourIntro',5:'levelFiveIntro',6:'levelSixIntro'};
-var LEVEL_OBJECTIVES={
-  1:['Breach 3 compound perimeters','Neutralize enemy forces','Eliminate Level One Boss'],
-  2:['Push through enemy trenches','Clear the front-line network','Secure the trench boss'],
-  3:['Establish naval dominance','Destroy the Black Sea fleet','Defeat the sea commander'],
-  4:['Disrupt enemy supply lines','Destroy oil infrastructure','Take out the field boss'],
-  5:['Suppress air defenses','Ground the enemy air force','Neutralize the airfield boss'],
-  6:['Breach the inner circle','Push to Red Square','Final confrontation — finish it']
-};
 function beginLevelFromIntro(level){
   level=parseInt(level,10);
   if(levelIntroActive!==level) return;
@@ -9582,26 +9792,9 @@ function showLevelIntro(level){
   var intro=document.getElementById(levelIntroIds[level]);
   if(!intro){ levelIntroActive=level; beginLevelFromIntro(level); return; }
   levelIntroActive=level; intro.setAttribute('aria-hidden','false'); intro.classList.add('show');
-  // Inject objectives (clear any previous injection first)
-  var controls=intro.querySelector('.levelIntroControls');
-  if(controls){
-    var old=controls.querySelector('.introObjectives');
-    if(old) old.parentNode.removeChild(old);
-    var objs=LEVEL_OBJECTIVES[level]||[];
-    if(objs.length){
-      var html='<div class="introObjectives"><div class="introObjTitle">OBJECTIVES</div>';
-      for(var oi=0;oi<objs.length;oi++){
-        html+='<div class="introObjRow"><span class="introObjDot">○</span><span class="introObjText">'+objs[oi]+'</span></div>';
-      }
-      html+='</div>';
-      var barEl=controls.querySelector('.levelIntroBar');
-      if(barEl) barEl.insertAdjacentHTML('beforebegin',html);
-      else controls.insertAdjacentHTML('afterbegin',html);
-    }
-  }
   var bar=intro.querySelector('.levelIntroBar i');
   if(bar){ bar.style.animation='none'; void bar.offsetWidth; bar.style.animation=''; }
-  clearTimeout(levelIntroTimer); levelIntroTimer=setTimeout(function(){ beginLevelFromIntro(level); },5000);
+  clearTimeout(levelIntroTimer); levelIntroTimer=setTimeout(function(){ beginLevelFromIntro(level); },3000);
 }
 Array.prototype.forEach.call(document.querySelectorAll('.levelIntroStart'),function(button){
   bindTap(button,function(){ beginLevelFromIntro(button.getAttribute('data-intro-level')); });

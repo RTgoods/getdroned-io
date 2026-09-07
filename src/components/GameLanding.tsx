@@ -55,8 +55,17 @@ export function GameLanding({ game, user, hasPurchased, onPlay }: Props) {
   return (
     <div className="h-full overflow-y-auto" style={{ background: '#0c0d0b', color: '#e8e4d8' }}>
 
+      {/* ── Responsive hero height ─────────────────────────────────────── */}
+      <style>{`
+        .gd-hero { height: clamp(340px, 68vh, 640px); }
+        @media (max-width: 640px) {
+          .gd-hero { height: clamp(200px, 38vh, 320px); }
+          .gd-hero img { object-position: center 20%; }
+        }
+      `}</style>
+
       {/* ── HERO ──────────────────────────────────────────────────────── */}
-      <div className="relative overflow-hidden" style={{ height: 'clamp(340px, 68vh, 640px)' }}>
+      <div className="gd-hero relative overflow-hidden">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src="/get-droned/assets/images/covers/main-cover.png?v=2"
