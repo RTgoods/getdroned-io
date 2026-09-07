@@ -377,10 +377,11 @@ function LevelRow({ sector, unlocked, done, open, expanded, onToggle, onPlay, pr
   const [hovered, setHovered] = useState(false)
   const objectives = OBJECTIVES[sector.num] ?? []
 
-  // Pill: done=yellow, unlocked=blue, locked=dim
-  const pillBg    = done ? UA.yellowFaint : unlocked ? UA.blueFaint  : 'rgba(255,255,255,0.02)'
-  const pillBdr   = done ? 'rgba(255,215,0,0.45)' : unlocked ? UA.blueDim : 'rgba(255,255,255,0.05)'
-  const pillColor = done ? UA.yellow      : unlocked ? UA.blueMid    : UA.textDim
+  // Pill: done=yellow, unlocked/active=blue, locked-idle=dim
+  const active = expanded || unlocked
+  const pillBg    = done ? UA.yellowFaint : active ? UA.blueFaint  : 'rgba(255,255,255,0.02)'
+  const pillBdr   = done ? 'rgba(255,215,0,0.45)' : active ? UA.blueDim : 'rgba(255,255,255,0.05)'
+  const pillColor = done ? UA.yellow      : active ? UA.blueMid    : UA.textDim
 
   return (
     <div style={{ borderBottom: `1px solid ${UA.borderFaint}` }}>
@@ -418,14 +419,14 @@ function LevelRow({ sector, unlocked, done, open, expanded, onToggle, onPlay, pr
           <div style={{ overflow: 'hidden', flex: 1 }}>
             <div style={{
               fontSize: 7, fontWeight: 900, letterSpacing: '1.5px',
-              color: done ? UA.yellow : unlocked ? UA.blueMid : UA.textDim,
+              color: done ? UA.yellow : active ? UA.blueMid : UA.textDim,
               textTransform: 'uppercase', marginBottom: 2,
             }}>
               {done ? '✓ CLEARED' : `SECTOR ${sector.num}`}
             </div>
             <div style={{
               fontSize: 9, fontWeight: 900, letterSpacing: '1px',
-              color: done ? 'rgba(255,215,0,0.7)' : unlocked ? UA.textPrimary : UA.textDim,
+              color: done ? 'rgba(255,215,0,0.7)' : active ? UA.textPrimary : UA.textDim,
               textTransform: 'uppercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
             }}>
               {sector.name}
@@ -450,10 +451,10 @@ function LevelRow({ sector, unlocked, done, open, expanded, onToggle, onPlay, pr
         }}>
           {/* Sector title */}
           <div style={{ marginBottom: 8 }}>
-            <div style={{ fontSize: 7, fontWeight: 900, letterSpacing: '2px', color: UA.textMuted, textTransform: 'uppercase', marginBottom: 2 }}>
+            <div style={{ fontSize: 7, fontWeight: 900, letterSpacing: '2px', color: UA.blueMid, textTransform: 'uppercase', marginBottom: 2 }}>
               SECTOR {sector.num}
             </div>
-            <div style={{ fontSize: 10, fontWeight: 900, letterSpacing: '1px', color: unlocked ? UA.textPrimary : UA.textDim, textTransform: 'uppercase' }}>
+            <div style={{ fontSize: 10, fontWeight: 900, letterSpacing: '1px', color: UA.textPrimary, textTransform: 'uppercase' }}>
               {sector.name}
             </div>
           </div>
