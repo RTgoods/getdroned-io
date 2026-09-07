@@ -288,24 +288,6 @@ export function GameSidebar({ game, user, hasPurchased, completedSectors = [], p
           />
         )}
 
-        {/* ── Level / Boss select ──────────────────────────── */}
-        {game.play_url && (
-          <SideRow
-            open={open}
-            href={game.play_url}
-            target="_blank"
-            icon={<span style={{ fontSize: 12, color: UA.textMuted, flexShrink: 0 }}>☰</span>}
-            label={
-              <div>
-                <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: '2px', color: UA.textMuted, textTransform: 'uppercase' }}>STAGE SELECT</div>
-                <div style={{ fontSize: 8, color: UA.textDim, letterSpacing: '1px', marginTop: 1 }}>Levels · Bosses · Cards</div>
-              </div>
-            }
-            hover
-            border
-          />
-        )}
-
         {/* ── Reset progress ────────────────────────────────── */}
         {user && hasPurchased && onReset && (
           <SideRow

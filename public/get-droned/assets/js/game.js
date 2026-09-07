@@ -9561,14 +9561,6 @@ Array.prototype.forEach.call(document.querySelectorAll('#bossVictory,#levelTwoBo
 })();
 var levelIntroTimer=0,levelIntroActive=0;
 var levelIntroIds={1:'levelOneIntro',2:'levelTwoIntro',3:'levelThreeIntro',4:'levelFourIntro',5:'levelFiveIntro',6:'levelSixIntro'};
-var LEVEL_OBJECTIVES={
-  1:['Breach 3 compound perimeters','Neutralize enemy forces','Eliminate Level One Boss'],
-  2:['Push through enemy trenches','Clear the front-line network','Secure the trench boss'],
-  3:['Establish naval dominance','Destroy the Black Sea fleet','Defeat the sea commander'],
-  4:['Disrupt enemy supply lines','Destroy oil infrastructure','Take out the field boss'],
-  5:['Suppress air defenses','Ground the enemy air force','Neutralize the airfield boss'],
-  6:['Breach the inner circle','Push to Red Square','Final confrontation — finish it']
-};
 function beginLevelFromIntro(level){
   level=parseInt(level,10);
   if(levelIntroActive!==level) return;
@@ -9582,26 +9574,9 @@ function showLevelIntro(level){
   var intro=document.getElementById(levelIntroIds[level]);
   if(!intro){ levelIntroActive=level; beginLevelFromIntro(level); return; }
   levelIntroActive=level; intro.setAttribute('aria-hidden','false'); intro.classList.add('show');
-  // Inject objectives (clear any previous injection first)
-  var controls=intro.querySelector('.levelIntroControls');
-  if(controls){
-    var old=controls.querySelector('.introObjectives');
-    if(old) old.parentNode.removeChild(old);
-    var objs=LEVEL_OBJECTIVES[level]||[];
-    if(objs.length){
-      var html='<div class="introObjectives"><div class="introObjTitle">OBJECTIVES</div>';
-      for(var oi=0;oi<objs.length;oi++){
-        html+='<div class="introObjRow"><span class="introObjDot">○</span><span class="introObjText">'+objs[oi]+'</span></div>';
-      }
-      html+='</div>';
-      var barEl=controls.querySelector('.levelIntroBar');
-      if(barEl) barEl.insertAdjacentHTML('beforebegin',html);
-      else controls.insertAdjacentHTML('afterbegin',html);
-    }
-  }
   var bar=intro.querySelector('.levelIntroBar i');
   if(bar){ bar.style.animation='none'; void bar.offsetWidth; bar.style.animation=''; }
-  clearTimeout(levelIntroTimer); levelIntroTimer=setTimeout(function(){ beginLevelFromIntro(level); },5000);
+  clearTimeout(levelIntroTimer); levelIntroTimer=setTimeout(function(){ beginLevelFromIntro(level); },6000);
 }
 Array.prototype.forEach.call(document.querySelectorAll('.levelIntroStart'),function(button){
   bindTap(button,function(){ beginLevelFromIntro(button.getAttribute('data-intro-level')); });
@@ -9609,19 +9584,6 @@ Array.prototype.forEach.call(document.querySelectorAll('.levelIntroStart'),funct
 bindTap(document.getElementById('go'),function(){
   document.getElementById('start').classList.add('hide'); ac(); showLevelIntro(1);
 });
-// Auto-start: when loaded with ?autostart=N, skip splash + menu and go straight to level intro
-(function(){
-  var params=new URLSearchParams(window.location.search);
-  var autolvl=parseInt(params.get('autostart')||'0',10);
-  if(autolvl>=1&&autolvl<=6){
-    var sp2=document.getElementById('splash');
-    if(sp2&&sp2.parentNode) sp2.parentNode.removeChild(sp2);
-    var st=document.getElementById('start');
-    if(st){ st.classList.add('hide'); }
-    ac();
-    showLevelIntro(autolvl);
-  }
-})();
 Array.prototype.forEach.call(document.querySelectorAll('.lvl'),function(b){
   bindTap(b,function(){
     var level=parseInt(b.getAttribute('data-l'),10);
