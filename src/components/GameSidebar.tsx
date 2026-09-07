@@ -381,16 +381,16 @@ function LevelRow({ sector, unlocked, done, open, expanded, onToggle, onPlay }: 
     <div style={{ borderBottom: `1px solid ${UA.borderFaint}` }}>
       {/* Row header — click to toggle objectives accordion */}
       <button
-        onClick={open ? onToggle : onPlay}
+        onClick={open ? onToggle : (unlocked ? onPlay : undefined)}
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
         title={!unlocked ? `Buy to unlock Sector ${sector.num}` : done ? `Sector ${sector.num} complete` : `Sector ${sector.num} — ${sector.name}`}
         style={{
           width: '100%', display: 'flex', alignItems: 'center',
           gap: open ? 10 : 0, padding: open ? '7px 12px' : '7px 0',
-          background: hovered && unlocked ? 'rgba(0,104,204,0.07)' : expanded ? 'rgba(0,104,204,0.05)' : 'transparent',
+          background: hovered ? 'rgba(0,104,204,0.06)' : expanded ? 'rgba(0,104,204,0.05)' : 'transparent',
           border: 'none',
-          cursor: unlocked ? 'pointer' : 'default',
+          cursor: 'pointer',
           transition: 'background 140ms',
           textAlign: 'left',
           justifyContent: open ? 'flex-start' : 'center',
@@ -441,7 +441,7 @@ function LevelRow({ sector, unlocked, done, open, expanded, onToggle, onPlay }: 
       </button>
 
       {/* Objectives panel — accordion */}
-      {open && unlocked && expanded && (
+      {open && expanded && (
         <div style={{
           padding: '6px 12px 10px 50px',
           background: 'rgba(0,60,120,0.04)',
@@ -468,26 +468,37 @@ function LevelRow({ sector, unlocked, done, open, expanded, onToggle, onPlay }: 
               </span>
             </div>
           ))}
-          {/* Play button inside expanded panel */}
-          <button
-            onClick={onPlay}
-            style={{
-              marginTop: 2, width: '100%', padding: '5px 0',
-              background: done
-                ? `linear-gradient(180deg, rgba(255,215,0,0.15) 0%, rgba(255,215,0,0.08) 100%)`
-                : `linear-gradient(180deg, ${UA.blue} 0%, #004a99 100%)`,
-              border: `1px solid ${done ? 'rgba(255,215,0,0.3)' : UA.blueDim}`,
-              borderRadius: 3, cursor: 'pointer',
+          {/* Play button — only for unlocked levels */}
+          {unlocked ? (
+            <button
+              onClick={onPlay}
+              style={{
+                marginTop: 2, width: '100%', padding: '5px 0',
+                background: done
+                  ? `linear-gradient(180deg, rgba(255,215,0,0.15) 0%, rgba(255,215,0,0.08) 100%)`
+                  : `linear-gradient(180deg, ${UA.blue} 0%, #004a99 100%)`,
+                border: `1px solid ${done ? 'rgba(255,215,0,0.3)' : UA.blueDim}`,
+                borderRadius: 3, cursor: 'pointer',
+                fontSize: 8, fontWeight: 900, letterSpacing: '2px',
+                color: done ? UA.yellow : '#e8f4ff',
+                textTransform: 'uppercase',
+                transition: 'filter 140ms',
+              }}
+              onMouseEnter={e => (e.currentTarget.style.filter = 'brightness(1.15)')}
+              onMouseLeave={e => (e.currentTarget.style.filter = 'none')}
+            >
+              {done ? '↺ REPLAY' : '▶ PLAY'}
+            </button>
+          ) : (
+            <div style={{
+              marginTop: 2, padding: '5px 0', textAlign: 'center',
               fontSize: 8, fontWeight: 900, letterSpacing: '2px',
-              color: done ? UA.yellow : '#e8f4ff',
-              textTransform: 'uppercase',
-              transition: 'filter 140ms',
-            }}
-            onMouseEnter={e => (e.currentTarget.style.filter = 'brightness(1.15)')}
-            onMouseLeave={e => (e.currentTarget.style.filter = 'none')}
-          >
-            {done ? '↺ REPLAY' : '▶ PLAY'}
-          </button>
+              color: UA.textDim, textTransform: 'uppercase',
+              border: `1px solid rgba(255,255,255,0.05)`, borderRadius: 3,
+            }}>
+              ◼ LOCKED
+            </div>
+          )}
         </div>
       )}
     </div>
