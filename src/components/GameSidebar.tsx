@@ -55,6 +55,7 @@ export function GameSidebar({ game, user, hasPurchased, completedSectors = [], p
   const [mounted, setMounted] = useState(false)
   const [expandedSector, setExpandedSector] = useState<number | null>(null)
   const supabase = createClient()
+  const price = `$${(game.price_cents / 100).toFixed(2)}`
 
   useEffect(() => {
     const isMob = window.innerWidth < 768
@@ -214,6 +215,8 @@ export function GameSidebar({ game, user, hasPurchased, completedSectors = [], p
                 expanded={expandedSector === s.num}
                 onToggle={() => setExpandedSector(prev => prev === s.num ? null : s.num)}
                 onPlay={() => { if (unlocked) { if (mobile) setOpen(false); onPlay?.() } }}
+                price={price}
+                hasUser={!!user}
               />
             )
           })}
@@ -241,7 +244,7 @@ export function GameSidebar({ game, user, hasPurchased, completedSectors = [], p
               <div style={{ fontSize: 9, color: UA.textMuted, marginBottom: 8, lineHeight: 1.5 }}>
                 ${(game.price_cents / 100).toFixed(2)} · One-Time · 50% To Ukraine
               </div>
-              <a href="/auth/login" style={{
+              <a id="sidebar-unlock-btn" href="/auth/login" style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 gap: 6, textAlign: 'center', fontSize: 8, fontWeight: 900,
                 letterSpacing: '2px', textTransform: 'uppercase', textDecoration: 'none',
@@ -366,9 +369,11 @@ interface LevelRowProps {
   expanded: boolean
   onToggle: () => void
   onPlay: () => void
+  price: string
+  hasUser: boolean
 }
 
-function LevelRow({ sector, unlocked, done, open, expanded, onToggle, onPlay }: LevelRowProps) {
+function LevelRow({ sector, unlocked, done, open, expanded, onToggle, onPlay, price, hasUser }: LevelRowProps) {
   const [hovered, setHovered] = useState(false)
   const objectives = OBJECTIVES[sector.num] ?? []
 
@@ -431,11 +436,7 @@ function LevelRow({ sector, unlocked, done, open, expanded, onToggle, onPlay }: 
         {/* Chevron expand indicator */}
         {open && (
           <div style={{ flexShrink: 0, width: 16, textAlign: 'center', transition: 'transform 200ms', transform: expanded ? 'rotate(90deg)' : 'none' }}>
-            {!unlocked ? (
-              <span style={{ fontSize: 10, color: UA.textDim }}>◼</span>
-            ) : (
-              <span style={{ fontSize: 9, color: expanded ? UA.blueMid : UA.textMuted, transition: 'color 140ms' }}>▶</span>
-            )}
+            <span style={{ fontSize: 9, color: expanded ? UA.blueMid : UA.textMuted, transition: 'color 140ms' }}>▶</span>
           </div>
         )}
       </button>
@@ -468,7 +469,7 @@ function LevelRow({ sector, unlocked, done, open, expanded, onToggle, onPlay }: 
               </span>
             </div>
           ))}
-          {/* Play button — only for unlocked levels */}
+          {/* Play / Unlock button */}
           {unlocked ? (
             <button
               onClick={onPlay}
@@ -490,14 +491,24 @@ function LevelRow({ sector, unlocked, done, open, expanded, onToggle, onPlay }: 
               {done ? '↺ REPLAY' : '▶ PLAY'}
             </button>
           ) : (
-            <div style={{
-              marginTop: 2, padding: '5px 0', textAlign: 'center',
-              fontSize: 8, fontWeight: 900, letterSpacing: '2px',
-              color: UA.textDim, textTransform: 'uppercase',
-              border: `1px solid rgba(255,255,255,0.05)`, borderRadius: 3,
-            }}>
-              ◼ LOCKED
-            </div>
+            <a
+              href={hasUser ? '#unlock' : '/auth/login'}
+              onClick={hasUser ? (e) => { e.preventDefault(); document.getElementById('sidebar-unlock-btn')?.click() } : undefined}
+              style={{
+                marginTop: 4, display: 'block', width: '100%', padding: '6px 0',
+                background: `linear-gradient(180deg, #f5c800 0%, #c89e00 100%)`,
+                border: '1px solid rgba(245,200,0,0.4)',
+                borderRadius: 3, cursor: 'pointer', textAlign: 'center',
+                fontSize: 8, fontWeight: 900, letterSpacing: '2px',
+                color: '#1a1000', textTransform: 'uppercase',
+                textDecoration: 'none', transition: 'filter 140ms',
+                boxSizing: 'border-box' as const,
+              }}
+              onMouseEnter={e => (e.currentTarget.style.filter = 'brightness(1.1)')}
+              onMouseLeave={e => (e.currentTarget.style.filter = 'none')}
+            >
+              🇺🇦 UNLOCK · {price}
+            </a>
           )}
         </div>
       )}
