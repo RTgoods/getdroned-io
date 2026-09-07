@@ -56,7 +56,7 @@ export function GameLanding({ game, user, hasPurchased, onPlay }: Props) {
     <div className="h-full overflow-y-auto" style={{ background: '#0c0d0b', color: '#e8e4d8' }}>
 
       {/* ── HERO ──────────────────────────────────────────────────────── */}
-      <div className="relative overflow-hidden" style={{ height: 'clamp(220px, 42vh, 480px)' }}>
+      <div className="relative overflow-hidden" style={{ height: 'clamp(340px, 68vh, 640px)' }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src="/get-droned/assets/images/covers/main-cover.png?v=2"
@@ -65,16 +65,16 @@ export function GameLanding({ game, user, hasPurchased, onPlay }: Props) {
           fetchPriority="high"
         />
         <div className="absolute inset-0" style={{
-          background: 'linear-gradient(to top, #0c0d0b 0%, rgba(12,13,11,0.3) 55%, rgba(12,13,11,0.0) 100%)',
+          background: 'linear-gradient(to top, #0c0d0b 0%, rgba(12,13,11,0.55) 30%, rgba(12,13,11,0.0) 65%)',
         }} />
         {/* scan lines */}
         <div className="absolute inset-0 pointer-events-none" style={{
           backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.07) 2px, rgba(0,0,0,0.07) 4px)',
         }} />
 
-        {/* Hero text */}
-        <div className="absolute bottom-0 left-0 right-0 px-4 sm:px-8 pb-5 sm:pb-8">
-          <div className="text-[8px] font-black tracking-[3px] mb-2" style={{ color: '#ffd700' }}>
+        {/* Hero text — pushed to very bottom */}
+        <div className="absolute bottom-0 left-0 right-0 px-4 sm:px-8 pb-3 sm:pb-5">
+          <div className="text-[8px] font-black tracking-[3px] mb-1" style={{ color: '#ffd700' }}>
             Slava Ukraini
           </div>
           <h1
@@ -88,7 +88,7 @@ export function GameLanding({ game, user, hasPurchased, onPlay }: Props) {
           >
             GET DRONED
           </h1>
-          <p className="mt-2 text-[11px] tracking-[2px] uppercase max-w-md hidden sm:block" style={{ color: '#9a9288' }}>
+          <p className="mt-1 text-[11px] tracking-[2px] uppercase max-w-md hidden sm:block" style={{ color: '#9a9288' }}>
             {game.tagline ?? 'Six sectors of aerial combat. No installs. No mercy.'}
           </p>
         </div>
