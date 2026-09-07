@@ -242,7 +242,7 @@ export function GameSidebar({ game, user, hasPurchased, completedSectors = [], p
                 UNLOCK ALL SECTORS
               </div>
               <div style={{ fontSize: 9, color: UA.textMuted, marginBottom: 8, lineHeight: 1.5 }}>
-                ${(game.price_cents / 100).toFixed(2)} · One-Time · 50% To Ukraine
+                ${(game.price_cents / 100).toFixed(2)} · One-Time · 100% To Ukraine
               </div>
               <a id="sidebar-unlock-btn" href="/auth/login" style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -449,15 +449,6 @@ function LevelRow({ sector, unlocked, done, open, expanded, onToggle, onPlay, pr
           background: 'rgba(0,60,120,0.04)',
           borderTop: `1px solid ${UA.borderFaint}`,
         }}>
-          {/* Sector title */}
-          <div style={{ marginBottom: 8 }}>
-            <div style={{ fontSize: 7, fontWeight: 900, letterSpacing: '2px', color: UA.blueMid, textTransform: 'uppercase', marginBottom: 2 }}>
-              SECTOR {sector.num}
-            </div>
-            <div style={{ fontSize: 10, fontWeight: 900, letterSpacing: '1px', color: UA.textPrimary, textTransform: 'uppercase' }}>
-              {sector.name}
-            </div>
-          </div>
           {objectives.map((obj, i) => (
             <div key={i} style={{
               display: 'flex', alignItems: 'flex-start', gap: 6,
@@ -517,7 +508,7 @@ function LevelRow({ sector, unlocked, done, open, expanded, onToggle, onPlay, pr
               onMouseEnter={e => (e.currentTarget.style.filter = 'brightness(1.1)')}
               onMouseLeave={e => (e.currentTarget.style.filter = 'none')}
             >
-              🇺🇦 UNLOCK · {price}
+              🇺🇦 UNLOCK ALL · {price}
             </a>
           )}
         </div>

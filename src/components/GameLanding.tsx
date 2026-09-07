@@ -190,8 +190,8 @@ export function GameLanding({ game, user, hasPurchased, onPlay }: Props) {
               </button>
 
             </div>
-            <p style={{ margin: '6px 0 0', fontSize: 8, letterSpacing: '1.5px', color: '#4a4840', textTransform: 'uppercase' }}>
-              50% of every purchase donated to Ukraine relief · one-time payment
+            <p style={{ margin: '6px 0 0', fontSize: 8, letterSpacing: '1.5px', color: '#9a9288', textTransform: 'uppercase' }}>
+              100% of proceeds go to Ukraine relief · one-time payment
             </p></>
           )}
 

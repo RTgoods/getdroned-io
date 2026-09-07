@@ -1495,7 +1495,7 @@ var SHOP=[
 function shopBox(){
   var w=Math.min(300,VW-28), x=(VW-w)/2;
   var top=Math.max(56,VH*.07), bot=Math.min(VH-72,VH*.88);
-  return {x:x,w:w,top:top,bot:bot,listTop:top+68,listBot:bot-48};
+  return {x:x,w:w,top:top,bot:bot,listTop:top+80,listBot:bot-60};
 }
 function shopList(){
   var out=[];
@@ -1507,13 +1507,12 @@ function shopList(){
   return out;
 }
 function shopRect(i){
-  var B=shopBox(), cw=(B.w-30)/2, ch=46;
-  return {x:B.x+8+(i%2)*(cw+14),y:B.listTop+4-shopScroll+Math.floor(i/2)*(ch+8),
-          w:cw,h:ch,pw:B.w,px:B.x};
+  var B=shopBox(), rh=42;
+  return {x:B.x+4, y:B.listTop+2-shopScroll+i*44, w:B.w-8, h:rh};
 }
 function shopMaxScroll(){
-  var B=shopBox(), rows=Math.ceil(shopList().length/2);
-  return Math.max(0, rows*54+8-(B.listBot-B.listTop));
+  var B=shopBox();
+  return Math.max(0, shopList().length*44+2-(B.listBot-B.listTop));
 }
 function shopClose(){ var B=shopBox(); return {x:B.x+8,y:B.listBot+10,w:B.w-16,h:42}; }
 function buy(i){
@@ -1605,55 +1604,127 @@ function drawShopIcon(c,id,x,y,s){
   c.restore();
 }
 function drawShop(){
-  var B=shopBox();
+  var B=shopBox(), vRuleX=B.x+B.w-64;
   shopScroll=Math.max(0,Math.min(shopMaxScroll(),shopScroll));
-  ctx.fillStyle='rgba(4,4,3,.78)'; ctx.fillRect(0,0,VW,VH);
-  ctx.fillStyle='#2a271f'; rrect(ctx,B.x,B.top,B.w,B.bot-B.top,10); ctx.fill();
-  ctx.strokeStyle='#8a7a4c'; ctx.lineWidth=2; rrect(ctx,B.x,B.top,B.w,B.bot-B.top,10); ctx.stroke();
-  ctx.textAlign='center';
-  ctx.fillStyle='#f2ead2'; ctx.font='bold 17px Arial'; ctx.fillText('QUARTERMASTER',VW/2,B.top+30);
-  ctx.fillStyle='#e2b13c'; ctx.font='bold 14px Arial'; ctx.fillText('$'+money,VW/2,B.top+52);
-  ctx.strokeStyle='rgba(255,255,255,.1)'; ctx.lineWidth=1;
-  ctx.beginPath(); ctx.moveTo(B.x+8,B.listTop-4); ctx.lineTo(B.x+B.w-8,B.listTop-4); ctx.stroke();
 
+  // ── Backdrop ─────────────────────────────────────────────
+  ctx.fillStyle='rgba(2,5,2,.9)'; ctx.fillRect(0,0,VW,VH);
+
+  // ── Panel — dark olive steel ──────────────────────────────
+  ctx.fillStyle='#0b1608'; rrect(ctx,B.x,B.top,B.w,B.bot-B.top,8); ctx.fill();
+  // Outer border
+  ctx.strokeStyle='#3d5c2a'; ctx.lineWidth=2; rrect(ctx,B.x,B.top,B.w,B.bot-B.top,8); ctx.stroke();
+  // Inner inset
+  ctx.strokeStyle='rgba(80,120,50,.25)'; ctx.lineWidth=1;
+  rrect(ctx,B.x+3,B.top+3,B.w-6,B.bot-B.top-6,6); ctx.stroke();
+
+  // ── Header ───────────────────────────────────────────────
+  // Corner tick marks — top-left and top-right
+  ctx.strokeStyle='rgba(80,120,50,.5)'; ctx.lineWidth=1;
+  ctx.beginPath();
+  ctx.moveTo(B.x+8,B.top+10); ctx.lineTo(B.x+8,B.top+20);
+  ctx.moveTo(B.x+8,B.top+10); ctx.lineTo(B.x+18,B.top+10);
+  ctx.moveTo(B.x+B.w-8,B.top+10); ctx.lineTo(B.x+B.w-8,B.top+20);
+  ctx.moveTo(B.x+B.w-8,B.top+10); ctx.lineTo(B.x+B.w-18,B.top+10);
+  ctx.stroke();
+
+  ctx.textAlign='center';
+  ctx.fillStyle='rgba(80,120,50,.18)';
+  ctx.fillRect(B.x+22,B.top+8,B.w-44,28);
+
+  ctx.fillStyle='#a8d88a'; ctx.font='bold 14px Arial';
+  ctx.fillText('QUARTERMASTER',VW/2,B.top+21);
+  ctx.fillStyle='rgba(80,120,50,.5)'; ctx.font='7px Arial'; ctx.letterSpacing='2px';
+  ctx.fillText('F.O.B. SUPPLY DEPOT',VW/2,B.top+32); ctx.letterSpacing='0px';
+
+  // Balance badge
+  ctx.fillStyle='rgba(226,177,60,.12)'; rrect(ctx,VW/2-30,B.top+38,60,20,3); ctx.fill();
+  ctx.strokeStyle='rgba(226,177,60,.35)'; ctx.lineWidth=1;
+  rrect(ctx,VW/2-30,B.top+38,60,20,3); ctx.stroke();
+  ctx.fillStyle='#e2b13c'; ctx.font='bold 12px Arial';
+  ctx.fillText('$'+money,VW/2,B.top+52);
+
+  // ── Table column header ───────────────────────────────────
+  ctx.strokeStyle='rgba(80,120,50,.5)'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(B.x+6,B.listTop-16); ctx.lineTo(B.x+B.w-6,B.listTop-16); ctx.stroke();
+
+  ctx.textAlign='left'; ctx.fillStyle='#4a7038'; ctx.font='bold 8px Arial';
+  ctx.fillText('EQUIPMENT',B.x+40,B.listTop-5);
+  ctx.textAlign='right';
+  ctx.fillText('COST',B.x+B.w-10,B.listTop-5);
+
+  ctx.strokeStyle='rgba(80,120,50,.45)'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(B.x+6,B.listTop-1); ctx.lineTo(B.x+B.w-6,B.listTop-1); ctx.stroke();
+  // Vertical column rule in header
+  ctx.strokeStyle='rgba(80,120,50,.4)'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(vRuleX,B.listTop-16); ctx.lineTo(vRuleX,B.listTop-1); ctx.stroke();
+
+  // ── Item rows ─────────────────────────────────────────────
   ctx.save();
   ctx.beginPath(); ctx.rect(B.x+2,B.listTop,B.w-4,B.listBot-B.listTop); ctx.clip();
   var SL=shopList();
   for(var i=0;i<SL.length;i++){
     var R=shopRect(i), it=SL[i], own=(it.once&&bought[it.id]), can=money>=it.p&&!own;
     if(R.y>B.listBot+8||R.y+R.h<B.listTop-8) continue;
-    ctx.fillStyle=own?'rgba(80,110,70,.35)':(can?'rgba(255,255,255,.09)':'rgba(255,255,255,.03)');
-    rrect(ctx,R.x,R.y,R.w,R.h,6); ctx.fill();
-    ctx.strokeStyle=own?'#6f9a5e':(can?'rgba(226,177,60,.55)':'rgba(255,255,255,.12)');
-    ctx.lineWidth=1.5; rrect(ctx,R.x,R.y,R.w,R.h,6); ctx.stroke();
-    // Icon (top-right of card)
-    drawShopIcon(ctx,it.id,R.x+R.w-38,R.y+4,32);
+    // Zebra row bg — army tones
+    ctx.fillStyle=own?'rgba(40,80,25,.55)':(i%2===0?'rgba(80,120,50,.07)':'rgba(5,12,3,.2)');
+    ctx.fillRect(R.x,R.y,R.w,R.h);
+    // Row bottom rule
+    ctx.strokeStyle='rgba(80,120,50,.2)'; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(R.x+2,R.y+R.h); ctx.lineTo(R.x+R.w-2,R.y+R.h); ctx.stroke();
+    // Vertical cost column rule
+    ctx.strokeStyle='rgba(80,120,50,.2)'; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(vRuleX,R.y+3); ctx.lineTo(vRuleX,R.y+R.h-3); ctx.stroke();
+    // Status dot (left of cost column)
+    ctx.fillStyle=own?'#5a9a40':(can?'#c8a020':'#2a3a22');
+    ctx.beginPath(); ctx.arc(vRuleX-8,R.y+R.h/2,3.5,0,6.3); ctx.fill();
+    // Icon
+    drawShopIcon(ctx,it.id,R.x+3,R.y+7,28);
+    // Name
     ctx.textAlign='left';
-    ctx.fillStyle=can||own?'#f2ead2':'#7d786c'; ctx.font='bold 11px Arial';
-    ctx.fillText(it.n,R.x+9,R.y+18);
-    ctx.fillStyle='#8f8a7c'; ctx.font='9px Arial'; ctx.fillText(it.d,R.x+9,R.y+31);
+    ctx.fillStyle=own?'#7ac858':(can?'#c8e8a8':'#3a5030'); ctx.font='bold 10px Arial';
+    ctx.fillText(it.n,R.x+38,R.y+16);
+    // Description
+    ctx.fillStyle=own?'#4a8038':(can?'#6a8a5a':'#2a3a28'); ctx.font='9px Arial';
+    ctx.fillText(it.d,R.x+38,R.y+29);
+    // Price / status
     ctx.textAlign='right';
-    ctx.fillStyle=own?'#6f9a5e':(can?'#e2b13c':'#7d786c'); ctx.font='bold 11px Arial';
-    ctx.fillText(own?'FITTED':'$'+it.p,R.x+R.w-9,R.y+41);
+    if(own){
+      ctx.fillStyle='#5a9a40'; ctx.font='bold 9px Arial';
+      ctx.fillText('DEPLOYED',R.x+R.w-6,R.y+24);
+    } else {
+      ctx.fillStyle=can?'#e2b13c':'#2e4228'; ctx.font='bold 11px Arial';
+      ctx.fillText('$'+it.p,R.x+R.w-6,R.y+24);
+      if(!can){
+        ctx.fillStyle='#2e4228'; ctx.font='8px Arial';
+        ctx.fillText('LOCKED',R.x+R.w-6,R.y+34);
+      }
+    }
   }
   ctx.restore();
 
+  // ── Scrollbar ─────────────────────────────────────────────
   var ms=shopMaxScroll();
-  if(ms>0){                                   // scrollbar
-    var trH=B.listBot-B.listTop, thH=Math.max(30,trH*trH/(trH+ms));
+  if(ms>0){
+    var trH=B.listBot-B.listTop, thH=Math.max(24,trH*trH/(trH+ms));
     var thY=B.listTop+(trH-thH)*(shopScroll/ms);
-    ctx.fillStyle='rgba(255,255,255,.08)'; rrect(ctx,B.x+B.w-7,B.listTop,4,trH,2); ctx.fill();
-    ctx.fillStyle='rgba(226,177,60,.6)'; rrect(ctx,B.x+B.w-7,thY,4,thH,2); ctx.fill();
+    ctx.fillStyle='rgba(80,120,50,.1)'; rrect(ctx,B.x+B.w-6,B.listTop,4,trH,2); ctx.fill();
+    ctx.fillStyle='rgba(80,120,50,.7)'; rrect(ctx,B.x+B.w-6,thY,4,thH,2); ctx.fill();
     if(shopScroll<ms-1){
-      ctx.fillStyle='rgba(226,177,60,'+(.35+Math.abs(Math.sin(now*3))*.35)+')';
-      ctx.font='bold 9px Arial'; ctx.textAlign='center';
-      ctx.fillText('MORE BELOW',VW/2,B.listBot-4);
+      ctx.fillStyle='rgba(100,160,60,'+(.35+Math.abs(Math.sin(now*3))*.45)+')';
+      ctx.font='bold 8px Arial'; ctx.textAlign='center';
+      ctx.fillText('MORE ▼',VW/2,B.listBot-3);
     }
   }
+
+  // ── Return button ─────────────────────────────────────────
   var C=shopClose();
-  ctx.fillStyle='#c0562f'; rrect(ctx,C.x,C.y,C.w,C.h,5); ctx.fill();
-  ctx.textAlign='center'; ctx.fillStyle='#fff'; ctx.font='bold 13px Arial';
-  ctx.fillText('BACK TO IT',C.x+C.w/2,C.y+27); ctx.textAlign='start';
+  ctx.strokeStyle='rgba(80,120,50,.4)'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(B.x+8,C.y-5); ctx.lineTo(B.x+B.w-8,C.y-5); ctx.stroke();
+  ctx.fillStyle='#0a2a4a'; rrect(ctx,C.x,C.y,C.w,C.h,4); ctx.fill();
+  ctx.strokeStyle='rgba(0,104,204,.55)'; ctx.lineWidth=1; rrect(ctx,C.x,C.y,C.w,C.h,4); ctx.stroke();
+  ctx.textAlign='center'; ctx.fillStyle='#7bbeff'; ctx.font='bold 12px Arial';
+  ctx.fillText('RETURN TO FIGHT',C.x+C.w/2,C.y+C.h/2+4); ctx.textAlign='start';
 }
 function shopPoint(cx,cy){
   if(state!=='shop') return;
@@ -4132,6 +4203,7 @@ function update(dt){
           en.hammerCd=rr(.48,.68); banner('HAMMER THROW','KEEP MOVING',.42);
         }
       } else if(en.hammerCd<=0&&hpd<680&&los(en.x,en.y,hammerTarget.x,hammerTarget.y)){
+        // Don't throw if boss is inside or too close to the home base
         var htInBase=en.x>bpx0-bClr*1.5&&en.x<bpx1+bClr*1.5&&en.y>bpy0-bClr*1.5&&en.y<bpy1+bClr*1.5;
         if(!htInBase){
           en.hammerWind=.30;

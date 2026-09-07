@@ -78,7 +78,7 @@ export function DonationPopup({ price, onBuy, onDismiss }: Props) {
           background: 'rgba(0,87,183,0.1)', border: '1px solid rgba(0,87,183,0.25)',
         }}>
           <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', letterSpacing: '1px', textTransform: 'uppercase' }}>
-            50% of your purchase goes to Ukraine relief
+            100% of your purchase goes to Ukraine relief
           </span>
         </div>
 
