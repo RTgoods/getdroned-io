@@ -448,6 +448,15 @@ function LevelRow({ sector, unlocked, done, open, expanded, onToggle, onPlay, pr
           background: 'rgba(0,60,120,0.04)',
           borderTop: `1px solid ${UA.borderFaint}`,
         }}>
+          {/* Sector title */}
+          <div style={{ marginBottom: 8 }}>
+            <div style={{ fontSize: 7, fontWeight: 900, letterSpacing: '2px', color: UA.textMuted, textTransform: 'uppercase', marginBottom: 2 }}>
+              SECTOR {sector.num}
+            </div>
+            <div style={{ fontSize: 10, fontWeight: 900, letterSpacing: '1px', color: unlocked ? UA.textPrimary : UA.textDim, textTransform: 'uppercase' }}>
+              {sector.name}
+            </div>
+          </div>
           {objectives.map((obj, i) => (
             <div key={i} style={{
               display: 'flex', alignItems: 'flex-start', gap: 6,
