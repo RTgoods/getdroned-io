@@ -53,6 +53,7 @@ export function GameSidebar({ game, user, hasPurchased, completedSectors = [], p
   const [open, setOpen] = useState(false)
   const [mobile, setMobile] = useState(false)
   const [mounted, setMounted] = useState(false)
+  const [expandedSector, setExpandedSector] = useState<number | null>(null)
   const supabase = createClient()
 
   useEffect(() => {
@@ -210,9 +211,9 @@ export function GameSidebar({ game, user, hasPurchased, completedSectors = [], p
                 unlocked={unlocked}
                 done={done}
                 open={open}
-                onClick={() => {
-                  if (unlocked) { if (mobile) setOpen(false); onPlay?.() }
-                }}
+                expanded={expandedSector === s.num}
+                onToggle={() => setExpandedSector(prev => prev === s.num ? null : s.num)}
+                onPlay={() => { if (unlocked) { if (mobile) setOpen(false); onPlay?.() } }}
               />
             )
           })}
@@ -362,10 +363,12 @@ interface LevelRowProps {
   unlocked: boolean
   done: boolean
   open: boolean
-  onClick: () => void
+  expanded: boolean
+  onToggle: () => void
+  onPlay: () => void
 }
 
-function LevelRow({ sector, unlocked, done, open, onClick }: LevelRowProps) {
+function LevelRow({ sector, unlocked, done, open, expanded, onToggle, onPlay }: LevelRowProps) {
   const [hovered, setHovered] = useState(false)
   const objectives = OBJECTIVES[sector.num] ?? []
 
@@ -376,15 +379,16 @@ function LevelRow({ sector, unlocked, done, open, onClick }: LevelRowProps) {
 
   return (
     <div style={{ borderBottom: `1px solid ${UA.borderFaint}` }}>
+      {/* Row header — click to toggle objectives accordion */}
       <button
-        onClick={onClick}
+        onClick={open ? onToggle : onPlay}
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
-        title={!unlocked ? `Buy to unlock Sector ${sector.num}` : done ? `Sector ${sector.num} complete` : `Play Sector ${sector.num} — ${sector.name}`}
+        title={!unlocked ? `Buy to unlock Sector ${sector.num}` : done ? `Sector ${sector.num} complete` : `Sector ${sector.num} — ${sector.name}`}
         style={{
           width: '100%', display: 'flex', alignItems: 'center',
           gap: open ? 10 : 0, padding: open ? '7px 12px' : '7px 0',
-          background: hovered && unlocked ? 'rgba(0,104,204,0.07)' : 'transparent',
+          background: hovered && unlocked ? 'rgba(0,104,204,0.07)' : expanded ? 'rgba(0,104,204,0.05)' : 'transparent',
           border: 'none',
           cursor: unlocked ? 'pointer' : 'default',
           transition: 'background 140ms',
@@ -424,25 +428,29 @@ function LevelRow({ sector, unlocked, done, open, onClick }: LevelRowProps) {
           </div>
         )}
 
+        {/* Chevron expand indicator */}
         {open && (
-          <div style={{ flexShrink: 0, width: 16, textAlign: 'center' }}>
-            {done ? (
-              <span style={{ fontSize: 11, color: UA.yellow }}>✓</span>
-            ) : unlocked ? (
-              <span style={{ fontSize: 10, color: hovered ? UA.blueMid : UA.textDim, transition: 'color 140ms' }}>▶</span>
-            ) : (
+          <div style={{ flexShrink: 0, width: 16, textAlign: 'center', transition: 'transform 200ms', transform: expanded ? 'rotate(90deg)' : 'none' }}>
+            {!unlocked ? (
               <span style={{ fontSize: 10, color: UA.textDim }}>◼</span>
+            ) : (
+              <span style={{ fontSize: 9, color: expanded ? UA.blueMid : UA.textMuted, transition: 'color 140ms' }}>▶</span>
             )}
           </div>
         )}
       </button>
 
-      {open && unlocked && (
-        <div style={{ padding: '0 12px 8px 50px' }}>
+      {/* Objectives panel — accordion */}
+      {open && unlocked && expanded && (
+        <div style={{
+          padding: '6px 12px 10px 50px',
+          background: 'rgba(0,60,120,0.04)',
+          borderTop: `1px solid ${UA.borderFaint}`,
+        }}>
           {objectives.map((obj, i) => (
             <div key={i} style={{
               display: 'flex', alignItems: 'flex-start', gap: 6,
-              marginBottom: i < objectives.length - 1 ? 4 : 0,
+              marginBottom: i < objectives.length - 1 ? 5 : 10,
             }}>
               <span style={{
                 flexShrink: 0, marginTop: 1, fontSize: 8, fontWeight: 900,
@@ -460,6 +468,26 @@ function LevelRow({ sector, unlocked, done, open, onClick }: LevelRowProps) {
               </span>
             </div>
           ))}
+          {/* Play button inside expanded panel */}
+          <button
+            onClick={onPlay}
+            style={{
+              marginTop: 2, width: '100%', padding: '5px 0',
+              background: done
+                ? `linear-gradient(180deg, rgba(255,215,0,0.15) 0%, rgba(255,215,0,0.08) 100%)`
+                : `linear-gradient(180deg, ${UA.blue} 0%, #004a99 100%)`,
+              border: `1px solid ${done ? 'rgba(255,215,0,0.3)' : UA.blueDim}`,
+              borderRadius: 3, cursor: 'pointer',
+              fontSize: 8, fontWeight: 900, letterSpacing: '2px',
+              color: done ? UA.yellow : '#e8f4ff',
+              textTransform: 'uppercase',
+              transition: 'filter 140ms',
+            }}
+            onMouseEnter={e => (e.currentTarget.style.filter = 'brightness(1.15)')}
+            onMouseLeave={e => (e.currentTarget.style.filter = 'none')}
+          >
+            {done ? '↺ REPLAY' : '▶ PLAY'}
+          </button>
         </div>
       )}
     </div>
