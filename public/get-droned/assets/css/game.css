@@ -129,12 +129,17 @@ h1 small{display:block;font-size:11px;letter-spacing:6px;color:#c0562f;margin-to
 #levelOneIntro,#levelTwoIntro,#levelThreeIntro,#levelFourIntro,#levelFiveIntro,#levelSixIntro{position:absolute;inset:0;z-index:56;display:flex;align-items:center;justify-content:center;background:#03070c;opacity:0;visibility:hidden;pointer-events:none;transition:opacity .38s ease,visibility 0s linear .38s}
 #levelOneIntro.show,#levelTwoIntro.show,#levelThreeIntro.show,#levelFourIntro.show,#levelFiveIntro.show,#levelSixIntro.show{opacity:1;visibility:visible;pointer-events:auto;transition:opacity .38s ease}
 .levelIntroImg{display:block;width:100%;height:100%;object-fit:contain;filter:contrast(1.03) saturate(1.04)}
-.levelIntroControls{position:absolute;bottom:max(28px,calc(env(safe-area-inset-bottom) + 24px));left:50%;transform:translateX(-50%);width:min(260px,55vw);padding:10px;border:1px solid rgba(226,177,60,.65);border-radius:7px;background:rgba(3,7,12,.82);box-shadow:0 7px 28px rgba(0,0,0,.65);backdrop-filter:blur(5px)}
+.levelIntroControls{position:absolute;bottom:max(28px,calc(env(safe-area-inset-bottom) + 24px));left:50%;transform:translateX(-50%);width:min(280px,62vw);padding:12px;border:1px solid rgba(160,190,220,.28);border-radius:7px;background:rgba(3,7,12,.88);box-shadow:0 7px 28px rgba(0,0,0,.65);backdrop-filter:blur(6px)}
+.introObjectives{margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,.1)}
+.introObjTitle{font:900 7px Arial,sans-serif;letter-spacing:3px;color:rgba(140,170,200,.55);text-transform:uppercase;margin-bottom:7px}
+.introObjRow{display:flex;align-items:flex-start;gap:6px;margin-bottom:5px}
+.introObjDot{font-size:8px;color:rgba(120,160,200,.5);flex-shrink:0;line-height:1.5}
+.introObjText{font:9px/1.4 Arial,sans-serif;color:#b8cede;letter-spacing:.4px}
 .levelIntroStart{display:block;width:100%;min-height:48px;padding:12px 8px;border:1px solid #f3ca48;border-radius:4px;background:linear-gradient(#e5b72d,#a96d08);color:#100c04;font:900 clamp(12px,2.3vw,18px) Arial,sans-serif;letter-spacing:2px;text-shadow:0 1px rgba(255,255,255,.3);box-shadow:inset 0 1px rgba(255,255,255,.3);touch-action:manipulation;cursor:pointer}
 .levelIntroStart:active{transform:translateY(1px);filter:brightness(.9)}
 .levelIntroBar{height:3px;margin-top:8px;border-radius:2px;overflow:hidden;background:rgba(255,255,255,.17)}
 .levelIntroBar i{display:block;width:0;height:100%;background:#f3ca48;box-shadow:0 0 10px #f3ca48}
-#levelOneIntro.show .levelIntroBar i,#levelTwoIntro.show .levelIntroBar i,#levelThreeIntro.show .levelIntroBar i,#levelFourIntro.show .levelIntroBar i,#levelFiveIntro.show .levelIntroBar i,#levelSixIntro.show .levelIntroBar i{animation:levelOneIntroLoad 6s linear forwards}
+#levelOneIntro.show .levelIntroBar i,#levelTwoIntro.show .levelIntroBar i,#levelThreeIntro.show .levelIntroBar i,#levelFourIntro.show .levelIntroBar i,#levelFiveIntro.show .levelIntroBar i,#levelSixIntro.show .levelIntroBar i{animation:levelOneIntroLoad 5s linear forwards}
 @keyframes levelOneIntroLoad{from{width:0}to{width:100%}}
 @media(max-width:700px){.levelIntroControls{width:min(220px,70vw);padding:8px}.levelIntroStart{min-height:44px;padding:10px 5px;letter-spacing:1.5px}}
 #dmgFlash{position:absolute;inset:0;z-index:7;pointer-events:none;background:radial-gradient(circle at 50% 50%,transparent 40%,rgba(180,20,10,.55));opacity:0;transition:opacity .18s}
