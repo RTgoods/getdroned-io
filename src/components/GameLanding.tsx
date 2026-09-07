@@ -10,7 +10,7 @@ const SECTORS = [
   { num: 3, name: 'THE BLACK SEA',  cover: '/get-droned/assets/images/covers/level-3.png?v=1' },
   { num: 4, name: 'THE OIL FIELDS', cover: '/get-droned/assets/images/covers/level-4.png?v=1' },
   { num: 5, name: 'THE AIRFIELD',   cover: '/get-droned/assets/images/covers/level-5.png?v=2' },
-  { num: 6, name: 'RED SQUARE',     cover: '/get-droned/assets/images/covers/level-6-red-square.webp' },
+  { num: 6, name: 'RED SQUARE',     cover: '/get-droned/assets/images/covers/level-6.png?v=1' },
 ]
 
 const SPECS = [
