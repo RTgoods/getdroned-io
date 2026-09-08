@@ -4592,7 +4592,7 @@ function update(dt,realDt){
       for(var dq5=0;dq5<edrones.length;dq5++){
         var ED=edrones[dq5];
         if(Math.hypot(ED.x-bu.x,ED.y-bu.y)<15){
-          ED.hp-=bu.dmg; ED.hurt=.12; impact(bu.x,bu.y);
+          ED.hp-=1; ED.hurt=.18; impact(bu.x,bu.y);
           if(ED.hp<=0) killEDrone(ED,false);
           bullets.splice(b,1); bu=null; break;
         }
@@ -4909,7 +4909,7 @@ function update(dt,realDt){
       var eb2=bases[0];
       if(eb2&&edrones.length<3){
         edrones.push({x:eb2.fx,y:eb2.fy,vx:0,vy:0,hx:eb2.fx,hy:eb2.fy,base:0,state:'hunt',
-          rot:0,hp:14,mx:14,bob:rr(0,6.3),hurt:0,warn:1.6});
+          rot:0,hp:3,mx:3,bob:rr(0,6.3),hurt:0,warn:1.6});
         banner('DRONE SORTIE','SHOOT IT DOWN OR JAM IT',1.8); sfx('ric',.5);
       }
     }
@@ -6293,7 +6293,7 @@ function startSector(n){
   for(var bg=0;bg<bases.length&&mapKind!=='sea';bg++){
     var BK=bases[bg];
     edrones.push({x:BK.fx+rr(-30,30),y:BK.fy+rr(-30,30),vx:0,vy:0,hx:BK.fx,hy:BK.fy,
-      base:bg,state:'idle',rot:rr(0,6.3),hp:14,mx:14,bob:rr(0,6.3),hurt:0,warn:0});
+      base:bg,state:'idle',rot:rr(0,6.3),hp:3,mx:3,bob:rr(0,6.3),hurt:0,warn:0});
     spawnEnemy(mapKind==='trench'?'elite':'heavy',BK.fx+rr(-18,18),BK.fy+rr(-18,18),false,BK,true);
     var garrison=(mapKind==='trench'?5:5+Math.min(4,Math.floor(n/2)));
     for(var g=0;g<garrison;g++){
@@ -8436,8 +8436,20 @@ function draw(){
     ctx.restore();
     if(ED2.hurt>0){ ctx.globalAlpha=Math.min(.7,ED2.hurt*5); ctx.fillStyle='#fff';
       ctx.beginPath(); ctx.arc(ED2.x,ED2.y-ealt,13,0,6.3); ctx.fill(); ctx.globalAlpha=1; }
-    if(ED2.hp<ED2.mx){ ctx.fillStyle='rgba(0,0,0,.6)'; ctx.fillRect(ED2.x-11,ED2.y-ealt-20,22,3.5);
-      ctx.fillStyle='#d84a34'; ctx.fillRect(ED2.x-10,ED2.y-ealt-19.3,20*(ED2.hp/ED2.mx),2); }
+    // 3-pip health bar — always visible on hunt, fades in on idle when damaged
+    var barA=(ED2.state==='hunt')?1:(ED2.hp<ED2.mx?0.8:0);
+    if(barA>0){
+      ctx.globalAlpha=barA;
+      var bx0=ED2.x-11, by0=ED2.y-ealt-21, pw=6, ph=5, gap=2;
+      for(var pp=0;pp<3;pp++){
+        ctx.fillStyle='rgba(0,0,0,.65)';
+        ctx.fillRect(bx0+pp*(pw+gap),by0,pw,ph);
+        if(pp<ED2.hp){ ctx.fillStyle=ED2.hp===1?'#ff3d2e':(ED2.hp===2?'#e89226':'#6fc96f'); }
+        else { ctx.fillStyle='rgba(0,0,0,.2)'; }
+        ctx.fillRect(bx0+pp*(pw+gap)+1,by0+1,pw-2,ph-2);
+      }
+      ctx.globalAlpha=1;
+    }
   }
   // jammer pulse
   for(var ez=0;ez<emps.length;ez++){
