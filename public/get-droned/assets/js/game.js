@@ -201,8 +201,7 @@ function buildMap(){
     {x:51.6*TILE,y:1.8*TILE, h:62,crest:0},   // NW corner
     {x:67.4*TILE,y:1.8*TILE, h:62,crest:0},   // NE corner
     {x:51.6*TILE,y:14.2*TILE,h:62,crest:0},   // SW corner
-    {x:67.4*TILE,y:14.2*TILE,h:62,crest:0},   // SE corner
-    {x:59.5*TILE,y:16.4*TILE,h:66,crest:2}    // south gate — branded Get Droned flag
+    {x:67.4*TILE,y:14.2*TILE,h:62,crest:0}    // SE corner
   ];
 
   // ===== barricades around the base =====
