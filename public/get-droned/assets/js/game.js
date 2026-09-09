@@ -1803,7 +1803,8 @@ function drawShopIcon(c,id,x,y,s){
   c.restore();
 }
 function drawShop(){
-  var B=shopBox(), vRuleX=B.x+B.w-64;
+  var B=shopBox(), vRuleX=B.x+B.w-76;
+  var arW=36,arH=36,arX=B.x+B.w-40;   // scroll-arrow button geometry
   shopScroll=Math.max(0,Math.min(shopMaxScroll(),shopScroll));
 
   // ── Backdrop ─────────────────────────────────────────────
@@ -1859,7 +1860,7 @@ function drawShop(){
   ctx.textAlign='left'; ctx.fillStyle='#4a7038'; ctx.font='bold 8px Arial';
   ctx.fillText('EQUIPMENT',B.x+40,B.listTop-5);
   ctx.textAlign='right';
-  ctx.fillText('COST',B.x+B.w-10,B.listTop-5);
+  ctx.fillText('COST',arX-4,B.listTop-5);
 
   ctx.strokeStyle='rgba(80,120,50,.45)'; ctx.lineWidth=1;
   ctx.beginPath(); ctx.moveTo(B.x+6,B.listTop-1); ctx.lineTo(B.x+B.w-6,B.listTop-1); ctx.stroke();
@@ -1895,34 +1896,40 @@ function drawShop(){
     // Description
     ctx.fillStyle=own?'#4a8038':(can?'#a8b899':'#788570'); ctx.font='9px Arial';
     ctx.fillText(it.d,R.x+48,R.y+29);
-    // Price / status
+    // Price / status (right-aligned, 4 px gap left of arrow column)
     ctx.textAlign='right';
     if(own){
       ctx.fillStyle='#5a9a40'; ctx.font='bold 9px Arial';
-      ctx.fillText('DEPLOYED',R.x+R.w-6,R.y+24);
+      ctx.fillText('DEPLOYED',arX-4,R.y+24);
     } else {
       ctx.fillStyle=can?'#e2b13c':'#2e4228'; ctx.font='bold 11px Arial';
-      ctx.fillText('$'+it.p,R.x+R.w-6,R.y+24);
+      ctx.fillText('$'+it.p,arX-4,R.y+24);
       if(!can){
         ctx.fillStyle='#2e4228'; ctx.font='8px Arial';
-        ctx.fillText('LOCKED',R.x+R.w-6,R.y+34);
+        ctx.fillText('LOCKED',arX-4,R.y+34);
       }
     }
   }
   ctx.restore();
 
-  // ── Scrollbar ─────────────────────────────────────────────
-  var ms=shopMaxScroll();
+  // ── Scroll arrow buttons ──────────────────────────────────
+  var ms=shopMaxScroll(), canUp=shopScroll>0, canDn=ms>0&&shopScroll<ms;
+  function _arBtn(ax,ay,label,active){
+    ctx.fillStyle=active?'rgba(72,120,44,.72)':'rgba(16,28,10,.42)';
+    rrect(ctx,ax,ay,arW,arH,6); ctx.fill();
+    ctx.strokeStyle=active?'rgba(110,180,60,.8)':'rgba(40,60,25,.35)'; ctx.lineWidth=1;
+    rrect(ctx,ax,ay,arW,arH,6); ctx.stroke();
+    ctx.fillStyle=active?'#c8f090':'#3a5530'; ctx.font='bold 18px Arial'; ctx.textAlign='center';
+    ctx.fillText(label,ax+arW/2,ay+arH/2+7); ctx.textAlign='left';
+  }
+  _arBtn(arX,B.listTop,'▲',canUp);
+  _arBtn(arX,B.listBot-arH,'▼',canDn);
+  // Slim thumb track between the two buttons
   if(ms>0){
-    var trH=B.listBot-B.listTop, thH=Math.max(24,trH*trH/(trH+ms));
-    var thY=B.listTop+(trH-thH)*(shopScroll/ms);
-    ctx.fillStyle='rgba(80,120,50,.1)'; rrect(ctx,B.x+B.w-6,B.listTop,4,trH,2); ctx.fill();
-    ctx.fillStyle='rgba(80,120,50,.7)'; rrect(ctx,B.x+B.w-6,thY,4,thH,2); ctx.fill();
-    if(shopScroll<ms-1){
-      ctx.fillStyle='rgba(100,160,60,'+(.35+Math.abs(Math.sin(now*3))*.45)+')';
-      ctx.font='bold 8px Arial'; ctx.textAlign='center';
-      ctx.fillText('MORE ▼',VW/2,B.listBot-3);
-    }
+    var trY=B.listTop+arH+3, trHt=B.listBot-arH-3-trY;
+    var thH=Math.max(14,trHt*trHt/(trHt+ms)), thY=trY+(trHt-thH)*(shopScroll/ms);
+    ctx.fillStyle='rgba(80,120,50,.1)'; rrect(ctx,arX+arW/2-2,trY,4,trHt,2); ctx.fill();
+    ctx.fillStyle='rgba(80,120,50,.68)'; rrect(ctx,arX+arW/2-2,thY,4,thH,2); ctx.fill();
   }
 
   // ── Return button ─────────────────────────────────────────
@@ -1938,6 +1945,12 @@ function shopPoint(cx,cy){
   if(state!=='shop') return;
   var C=shopClose(), B=shopBox();
   if(cx>=C.x&&cx<=C.x+C.w&&cy>=C.y&&cy<=C.y+C.h){ state='play'; shopCD=1.2; hud(); return; }
+  // Scroll arrow buttons
+  var arW=36,arH=36,arX=B.x+B.w-40;
+  if(cx>=arX&&cx<=arX+arW){
+    if(cy>=B.listTop&&cy<=B.listTop+arH){ shopScrollBy(-88); return; }
+    if(cy>=B.listBot-arH&&cy<=B.listBot){ shopScrollBy(88); return; }
+  }
   if(cy>=B.listTop&&cy<=B.listBot){
     var SL2=shopList();
     for(var i=0;i<SL2.length;i++){ var R=shopRect(i);
