@@ -24,7 +24,7 @@ export function GamePageClient({ game }: { game: Game }) {
       if (!response.ok) throw new Error('Access check failed')
       const access = await response.json()
       setUser(access.user); setAllowed(access.allowed); setIsAdmin(access.isAdmin); setGameId(access.gameId)
-      if (!access.allowed) setPlaying(false)
+      if (!access.user) setPlaying(false)
       return access
     } catch {
       setUser(null); setAllowed(false); setIsAdmin(false); setPlaying(false)
@@ -64,7 +64,7 @@ export function GamePageClient({ game }: { game: Game }) {
   const play = async (level = 1) => {
     const access = await loadAccess()
     if (!access?.user) { window.location.href = '/auth/login'; return }
-    if (access.allowed) {
+    if (access.allowed || level === 1) {
       setLaunch(previous => ({ level: Number.isInteger(level) && level >= 1 && level <= 6 ? level : 1, version: previous.version + 1 }))
       setPlaying(true)
     }
@@ -79,7 +79,7 @@ export function GamePageClient({ game }: { game: Game }) {
     <GameSidebar game={game} user={user} hasPurchased={allowed} completedSectors={completedSectors} playing={playing} onPlay={play} onBack={() => setPlaying(false)} onReset={reset} />
     <div style={{ flex: 1, minWidth: 0, height: '100dvh', overflow: 'hidden', position: 'relative' }}>
       {isAdmin && !playing && <Link href="/admin" className="absolute top-3 right-4 z-10 bg-[#172019] text-[#e2b13c] border border-[#596449] rounded px-4 py-2">Admin · Stage select</Link>}
-      {!ready ? <p className="p-8 text-[#e8e4d8]">Checking access…</p> : playing && allowed && user ? (
+      {!ready ? <p className="p-8 text-[#e8e4d8]">Checking access…</p> : playing && user && (allowed || launch.level === 1) ? (
         <iframe key={launch.version} ref={frame} src={`/get-droned/index.html?v=47&autostart=${launch.level}`} style={{ display: 'block', width: '100%', height: '100%', border: 'none' }} allowFullScreen title={game.title} allow="autoplay; fullscreen; pointer-lock" />
       ) : <GameLanding game={game} user={user} hasPurchased={allowed} onPlay={() => play(1)} />}
     </div>

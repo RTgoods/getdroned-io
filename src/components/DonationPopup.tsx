@@ -98,7 +98,7 @@ export function DonationPopup({ price, onBuy, onDismiss }: Props) {
             onMouseEnter={e => (e.currentTarget.style.filter = 'brightness(1.12)')}
             onMouseLeave={e => (e.currentTarget.style.filter = 'none')}
           >
-            Unlock All Sectors — {price}
+            Unlock all Sectors — {price}
           </button>
 
           <button

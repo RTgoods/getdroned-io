@@ -82,22 +82,22 @@ export function LoginForm() {
           <p className="label mb-3">
             {mode === 'login' ? 'OPERATOR LOGIN' : 'CREATE ACCOUNT'}
           </p>
-          <h1
+          {mode === 'signup' && <h1
             className="font-black tracking-[5px] uppercase"
             style={{ fontSize: 28, color: '#f2ead2', textShadow: '0 3px 0 #241f16' }}
           >
-            {mode === 'login' ? 'Welcome Back' : 'Enlist Now'}
-          </h1>
+            Enlist Now
+          </h1>}
         </div>
 
         {/* Card */}
         <div
           className="panel rounded-sm p-6"
-          style={{ boxShadow: '0 0 0 1px rgba(226,177,60,0.18), 0 12px 40px rgba(0,0,0,0.7)' }}
+          style={{ background: '#0b1f38', borderColor: '#234569', boxShadow: '0 0 0 1px rgba(70,125,185,0.18), 0 12px 40px rgba(0,0,0,0.7)' }}
         >
           {/* Ukraine flag stripe at top */}
           <div className="h-1 mb-6 -mx-6 -mt-6 rounded-t-sm" style={{
-            background: 'linear-gradient(90deg, #0057b7 50%, #ffd700 50%)',
+            background: '#0057b7',
           }} />
 
           {/* Google OAuth */}
@@ -141,7 +141,7 @@ export function LoginForm() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <p className="text-[9px] tracking-[2.5px] uppercase font-black mb-2" style={{ color: '#e2b13c' }}>
+              <p className="text-[9px] tracking-[2.5px] uppercase font-black mb-2" style={{ color: '#ffd700' }}>
                 Email
               </p>
               <input
@@ -157,7 +157,7 @@ export function LoginForm() {
             </div>
 
             <div>
-              <p className="text-[9px] tracking-[2.5px] uppercase font-black mb-2" style={{ color: '#e2b13c' }}>
+              <p className="text-[9px] tracking-[2.5px] uppercase font-black mb-2" style={{ color: '#ffd700' }}>
                 Password
               </p>
               <input

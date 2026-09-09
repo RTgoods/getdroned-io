@@ -6653,9 +6653,19 @@ function startSector(n){
   introT=0;
 }
 var clearing=false;
-function sectorClear(){
+async function sectorClear(){
   if(clearing) return; clearing=true;
   state='pause'; sfx('clear');
+  if(level===1){
+    try{
+      var accessResponse=await fetch('/api/access',{cache:'no-store'});
+      var nextAccess=accessResponse.ok?await accessResponse.json():null;
+      if(!nextAccess||!nextAccess.allowed){
+        banner('SECTOR 1 COMPLETE','UNLOCK SECTORS 2–6 TO CONTINUE',3);
+        setTimeout(function(){window.top.location.href='/';},3000);return;
+      }
+    }catch(e){clearing=false;banner('CONNECTION LOST','RECONNECT TO CONTINUE',3);setTimeout(function(){sectorClear();},3000);return;}
+  }
   // Notify parent window (Next.js) that this sector was completed
   try{ window.parent.postMessage({type:'gd:sectorComplete',sector:level},'*'); }catch(e){}
   banner('SECTOR CLEAR','RESUPPLY · SECTOR '+(level+1),2.2);

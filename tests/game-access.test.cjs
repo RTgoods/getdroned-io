@@ -53,7 +53,7 @@ async function requestAs(user, paid, path) {
 test('direct HTML and script URLs enforce authentication and purchase', async () => {
   for (const path of ['/get-droned/index.html?autostart=1', '/get-droned/assets/js/game.js?v=109']) {
     assert.equal((await requestAs(null, false, path)).status, 307)
-    assert.equal((await requestAs(user, false, path)).status, 403)
+    assert.equal((await requestAs(user, false, path)).status, 200)
     const response = await requestAs(user, true, path)
     assert.equal(response.status, 200)
     assert.equal(response.headers.get('cache-control'), 'private, no-store')
@@ -63,7 +63,7 @@ test('paid players can select levels; boss shortcuts and admin page remain admin
   assert.equal((await requestAs(user, true, '/admin')).status, 403)
   for (let level = 1; level <= 6; level++) {
     assert.equal((await requestAs(user, true, '/get-droned/index.html?autostart=' + level)).status, 200)
-    assert.equal((await requestAs(user, false, '/get-droned/index.html?autostart=' + level)).status, 403)
+    assert.equal((await requestAs(user, false, '/get-droned/index.html?autostart=' + level)).status, level === 1 ? 200 : 403)
   }
   assert.equal((await requestAs(user, true, '/get-droned/index.html?boss=6')).status, 403)
   const redirect = await requestAs(user, true, '/get-droned/index.html?autostart=99')

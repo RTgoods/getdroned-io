@@ -1,16 +1,17 @@
 'use client'
 
+import { EquipmentGuide } from './EquipmentGuide'
 import { useState } from 'react'
 import type { Game } from '@/types/database'
 import type { User } from '@supabase/supabase-js'
 
 const SECTORS = [
-  { num: 1, name: 'FRANKS AND HAMMERS', cover: '/get-droned/assets/images/covers/level-1.png?v=2' },
-  { num: 2, name: 'THE TRENCHES',   cover: '/get-droned/assets/images/covers/level-2.png?v=1' },
-  { num: 3, name: 'THE BLACK SEA',  cover: '/get-droned/assets/images/covers/level-3.png?v=1' },
-  { num: 4, name: 'THE OIL FIELDS', cover: '/get-droned/assets/images/covers/level-4.png?v=1' },
-  { num: 5, name: 'THE AIRFIELD',   cover: '/get-droned/assets/images/covers/level-5.png?v=2' },
-  { num: 6, name: 'RED SQUARE',     cover: '/get-droned/assets/images/covers/level-6.png?v=1' },
+  { num: 1, terrain: 'Compound assault', briefing: 'Fight through a battered compound, clear enemy positions and capture the flags. Launch drones from your base before confronting Franks and Hammers.', name: 'FRANKS AND HAMMERS', cover: '/get-droned/assets/images/covers/level-1.png?v=2' },
+  { num: 2, terrain: 'Trench warfare', briefing: 'Navigate a maze of trenches beneath burnt trees and shattered ground. Use narrow approaches, cover and drone support to reach the enemy strongholds.', name: 'THE TRENCHES',   cover: '/get-droned/assets/images/covers/level-2.png?v=1' },
+  { num: 3, terrain: 'Naval combat', briefing: 'Take the fight offshore. Pilot sea drones, board your gunboat and attack hostile ships while defending your coastal base.', name: 'THE BLACK SEA',  cover: '/get-droned/assets/images/covers/level-3.png?v=1' },
+  { num: 4, terrain: 'Industrial assault', briefing: 'Battle through an oil refinery complex packed with tanks, pipes and industrial cover. Watch for machine-gun towers that threaten both you and your drones.', name: 'THE OIL FIELDS', cover: '/get-droned/assets/images/covers/level-4.png?v=1' },
+  { num: 5, terrain: 'Winter operations', briefing: 'Push across a snow-covered airfield in winter gear. Work around aircraft, icy open ground and snow-laden trees as you close in on the boss.', name: 'THE AIRFIELD',   cover: '/get-droned/assets/images/covers/level-5.png?v=2' },
+  { num: 6, terrain: 'City showdown', briefing: 'Fight through city streets beneath Red Square-inspired landmarks. Break through the final defenses and face the mounted boss.', name: 'RED SQUARE',     cover: '/get-droned/assets/images/covers/level-6.png?v=1' },
 ]
 
 const SPECS = [
@@ -130,7 +131,7 @@ export function GameLanding({ game, user, hasPurchased, onPlay }: Props) {
                 onMouseEnter={e => (e.currentTarget.style.filter = 'brightness(1.15)')}
                 onMouseLeave={e => (e.currentTarget.style.filter = 'none')}
               >
-                ▶ DEPLOY NOW — ALL SECTORS UNLOCKED
+                ▶ PLAY GAME
               </button>
               <p className="mt-2 text-center text-[8px] font-black tracking-[2px] uppercase" style={{ color: '#9db35a' }}>
                 MISSION UNLOCKED · FULL ACCESS
@@ -141,7 +142,7 @@ export function GameLanding({ game, user, hasPurchased, onPlay }: Props) {
             <><div className="flex flex-col sm:flex-row gap-2" style={{ maxWidth: 480 }}>
 
               <div className="flex-1">
-                {user ? <button onClick={onPlay} className="w-full rounded px-4 font-bold" style={{ background: '#0057b7', color: '#fff', height: '100%', minHeight: 52 }}>PLAY SECTOR 1 FREE</button> : <a href="/auth/login" className="flex items-center justify-center rounded px-4 font-bold" style={{ background: '#0057b7', color: '#fff', height: '100%', minHeight: 52 }}>PLAY SECTOR 1 FREE — SIGN IN</a>}
+                {user ? <button onClick={onPlay} className="w-full rounded px-4 font-bold" style={{ background: '#0057b7', color: '#fff', height: '100%', minHeight: 52, fontSize: 11, fontWeight: 900, letterSpacing: '2px', textTransform: 'uppercase', textAlign: 'center', lineHeight: 1.4 }}>PLAY SECTOR 1 FREE</button> : <a href="/auth/login" className="flex items-center justify-center rounded px-4 font-bold" style={{ background: '#0057b7', color: '#fff', height: '100%', minHeight: 52, fontSize: 11, fontWeight: 900, letterSpacing: '2px', textTransform: 'uppercase', textAlign: 'center', lineHeight: 1.4 }}>PLAY SECTOR 1 FREE — SIGN IN</a>}
               </div>
               {/* ── UNLOCK: Full access — Ukraine yellow ── */}
               <button
@@ -165,7 +166,7 @@ export function GameLanding({ game, user, hasPurchased, onPlay }: Props) {
                 <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                   <span style={{ fontSize: 11, lineHeight: 1 }}>🇺🇦</span>
                   <span style={{ fontSize: 11, fontWeight: 900, letterSpacing: '2px', color: '#1a1000', textTransform: 'uppercase' }}>
-                    {buyLoading ? 'Redirecting…' : 'Unlock All Sectors'}
+                    {buyLoading ? 'Redirecting…' : 'Unlock all Sectors'}
                   </span>
                 </span>
                 <span style={{
@@ -198,37 +199,33 @@ export function GameLanding({ game, user, hasPurchased, onPlay }: Props) {
           </p>
         </div>
 
-        {/* ── SECTOR INTEL ─────────────────────────────────── */}
-        <div className="py-5 sm:py-7" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-          <div className="text-[8px] font-black tracking-[3px] uppercase mb-4" style={{ color: '#e2b13c' }}>
-            SECTOR INTEL
+        <section className="py-7 sm:py-10 border-b border-white/10" aria-labelledby="sector-intel-title">
+          <div className="flex items-center gap-3 mb-3">
+            <span className="h-px w-8 bg-[#0057b7]" />
+            <p className="text-[9px] font-black tracking-[3px] uppercase text-[#ffd700]">Sector Intel</p>
           </div>
-          {/* 2-col on mobile, 3-col on sm+ */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-            {SECTORS.map((s) => (
-              <div key={s.num} className="relative rounded-sm overflow-hidden" style={{ aspectRatio: '16/9' }}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={s.cover}
-                  alt={s.name}
-                  className="w-full h-full object-cover block"
-                  style={{ filter: 'saturate(0.85) contrast(1.05)' }}
-                />
-                <div className="absolute inset-0" style={{
-                  background: 'linear-gradient(to top, rgba(12,13,11,0.92) 0%, rgba(12,13,11,0.2) 60%, transparent 100%)',
-                }} />
-                <div className="absolute bottom-0 left-0 p-1.5 sm:p-2">
-                  <div className="text-[6px] font-black tracking-[2px] uppercase" style={{ color: '#c0562f' }}>
-                    SECTOR {s.num}
-                  </div>
-                  <div className="text-[7px] sm:text-[8px] font-black uppercase tracking-wide mt-0.5" style={{ color: '#f2ead2' }}>
-                    {s.name}
-                  </div>
+          <h2 id="sector-intel-title" className="text-2xl sm:text-3xl font-black text-[#f2ead2]">Six sectors. Six battlefields.</h2>
+          <p className="mt-2 mb-6 text-sm leading-relaxed text-[#a9b4b9] max-w-xl">From ruined compounds to open water and frozen runways, every sector calls for a different approach.</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+            {SECTORS.map(s => (
+              <article key={s.num} className="overflow-hidden rounded-lg border border-[#263746] bg-[#0d1720]">
+                <div className="relative aspect-video bg-[#101e2a]">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={s.cover} alt={s.name} loading="lazy" className="w-full h-full object-cover block" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#08131e]/90 via-transparent to-transparent" />
+                  <span className="absolute bottom-3 left-4 text-[10px] font-black tracking-[2px] text-[#ffd700]">SECTOR {String(s.num).padStart(2, '0')}</span>
                 </div>
-              </div>
+                <div className="p-4">
+                  <p className="text-[9px] font-bold uppercase tracking-widest text-[#79b9f1] mb-2">{s.terrain}</p>
+                  <h3 className="font-black text-base text-[#f2ead2]">{s.name}</h3>
+                  <p className="mt-2 text-xs leading-relaxed text-[#b0bdc6]">{s.briefing}</p>
+                </div>
+              </article>
             ))}
           </div>
-        </div>
+        </section>
+
+        <EquipmentGuide />
 
         {/* ── SPECS — hidden on mobile ─────────────────────── */}
         <div className="hidden sm:block pt-5 sm:pt-7">

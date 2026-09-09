@@ -44,7 +44,8 @@ export async function middleware(request: NextRequest) {
     if (adminPage && !isGameAdmin(user)) return privateResponse(new NextResponse('Admin access required', { status: 403 }))
     if (gameFile) {
       const access = await gameAccess(supabase, user)
-      if (!access.allowed) return privateResponse(new NextResponse('Purchase required. Return to the home page to buy access.', { status: 403 }))
+      const requestedLevel = request.nextUrl.searchParams.get('autostart') || '1'
+      if (!access.allowed && path.endsWith('index.html') && requestedLevel !== '1') return privateResponse(new NextResponse('Purchase required for Sectors 2–6. Return to the home page to unlock.', { status: 403 }))
       if (request.nextUrl.searchParams.has('boss') && !access.isAdmin) return privateResponse(new NextResponse('Admin access required', { status: 403 }))
       if (path.endsWith('index.html') && !access.isAdmin && ! /^[1-6]$/.test(request.nextUrl.searchParams.get('autostart') || '')) {
         const url = request.nextUrl.clone()

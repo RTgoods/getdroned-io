@@ -143,7 +143,7 @@ export function GameSidebar({ game, user, hasPurchased, completedSectors = [], p
             <span style={{ display: 'block', width: 18, height: 1.5, background: 'currentColor' }} />
           </button>
           {open && (
-            <Link href="/" style={{ fontWeight: 900, letterSpacing: '3px', fontSize: 11,
+            <Link href="/" aria-label="Get Droned — main page" onClick={() => { onBack?.(); if (mobile) setOpen(false) }} style={{ fontWeight: 900, letterSpacing: '3px', fontSize: 11,
               color: UA.textPrimary, textDecoration: 'none', whiteSpace: 'nowrap' }}>
               GET DRONED
               <span style={{ display: 'block', fontSize: 7, letterSpacing: '2.5px', color: UA.yellow, marginTop: 2, fontWeight: 700 }}>
@@ -203,7 +203,7 @@ export function GameSidebar({ game, user, hasPurchased, completedSectors = [], p
         {/* ── Level list (scrollable) ───────────────────────── */}
         <div style={{ overflowY: 'auto', flex: 1 }}>
           {SECTORS.map((s) => {
-            const unlocked = !!user && hasPurchased
+            const unlocked = !!user && (s.num === 1 || hasPurchased)
             const done = completedSectors.includes(s.num)
             return (
               <LevelRow
@@ -252,7 +252,7 @@ export function GameSidebar({ game, user, hasPurchased, completedSectors = [], p
                 background: `linear-gradient(180deg, ${UA.yellow} 0%, #c8a000 100%)`,
                 color: '#0a1000',
               }}>
-                🇺🇦 BUY ACCESS
+                Unlock all Sectors
               </a>
             </div>
           )}
@@ -389,7 +389,7 @@ function LevelRow({ sector, unlocked, done, open, expanded, onToggle, onPlay, pr
         onClick={open ? onToggle : (unlocked ? onPlay : undefined)}
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
-        title={!unlocked ? `Buy to unlock Sector ${sector.num}` : done ? `Sector ${sector.num} complete` : `Sector ${sector.num} — ${sector.name}`}
+        title={sector.num === 1 && !hasUser ? 'Play Sector 1 free — sign in to start' : !unlocked ? `Buy to unlock Sector ${sector.num}` : done ? `Sector ${sector.num} complete` : `Sector ${sector.num} — ${sector.name}`}
         style={{
           width: '100%', display: 'flex', alignItems: 'center',
           gap: open ? 10 : 0, padding: open ? '7px 12px' : '7px 0',
@@ -470,7 +470,9 @@ function LevelRow({ sector, unlocked, done, open, expanded, onToggle, onPlay, pr
             </div>
           ))}
           {/* Play / Unlock button */}
-          {unlocked ? (
+          {sector.num === 1 && !hasUser ? (
+            <a href="/auth/login" className="block rounded px-3 py-2 text-center text-xs font-bold" style={{ background: '#0057b7', color: '#fff', marginTop: 4, width: '100%', padding: '6px 0', fontSize: 8, fontWeight: 900, letterSpacing: '2px', textTransform: 'uppercase', lineHeight: 1.4 }}>SIGN IN · PLAY SECTOR 1 FREE</a>
+          ) : unlocked ? (
             <button
               onClick={onPlay}
               style={{
@@ -488,7 +490,7 @@ function LevelRow({ sector, unlocked, done, open, expanded, onToggle, onPlay, pr
               onMouseEnter={e => (e.currentTarget.style.filter = 'brightness(1.15)')}
               onMouseLeave={e => (e.currentTarget.style.filter = 'none')}
             >
-              {done ? '↺ REPLAY' : '▶ PLAY'}
+              {sector.num === 1 ? '▶ PLAY SECTOR 1 FREE' : done ? '↺ REPLAY' : '▶ PLAY'}
             </button>
           ) : (
             <a
@@ -507,7 +509,7 @@ function LevelRow({ sector, unlocked, done, open, expanded, onToggle, onPlay, pr
               onMouseEnter={e => (e.currentTarget.style.filter = 'brightness(1.1)')}
               onMouseLeave={e => (e.currentTarget.style.filter = 'none')}
             >
-              🇺🇦 UNLOCK ALL · {price}
+              Unlock all Sectors
             </a>
           )}
         </div>
