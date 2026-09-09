@@ -12,7 +12,7 @@ interface Props {
   hasPurchased: boolean
   completedSectors?: number[]
   playing?: boolean
-  onPlay?: () => void
+  onPlay?: (level: number) => void
   onBack?: () => void
   onReset?: () => void
 }
@@ -203,7 +203,7 @@ export function GameSidebar({ game, user, hasPurchased, completedSectors = [], p
         {/* ── Level list (scrollable) ───────────────────────── */}
         <div style={{ overflowY: 'auto', flex: 1 }}>
           {SECTORS.map((s) => {
-            const unlocked = s.num === 1 || hasPurchased
+            const unlocked = !!user && hasPurchased
             const done = completedSectors.includes(s.num)
             return (
               <LevelRow
@@ -214,7 +214,7 @@ export function GameSidebar({ game, user, hasPurchased, completedSectors = [], p
                 open={open}
                 expanded={expandedSector === s.num}
                 onToggle={() => setExpandedSector(prev => prev === s.num ? null : s.num)}
-                onPlay={() => { if (unlocked) { if (mobile) setOpen(false); onPlay?.() } }}
+                onPlay={() => { if (unlocked) { if (mobile) setOpen(false); onPlay?.(s.num) } }}
                 price={price}
                 hasUser={!!user}
               />
@@ -288,25 +288,6 @@ export function GameSidebar({ game, user, hasPurchased, completedSectors = [], p
           />
         )}
 
-        {/* ── Level / Boss select ──────────────────────────── */}
-        {game.play_url && (
-          <SideRow
-            open={open}
-            href={game.play_url}
-            target="_blank"
-            icon={<span style={{ fontSize: 12, color: UA.textMuted, flexShrink: 0 }}>☰</span>}
-            label={
-              <div>
-                <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: '2px', color: UA.textMuted, textTransform: 'uppercase' }}>STAGE SELECT</div>
-                <div style={{ fontSize: 8, color: UA.textDim, letterSpacing: '1px', marginTop: 1 }}>Levels · Bosses · Cards</div>
-              </div>
-            }
-            hover
-            border
-          />
-        )}
-
-        {/* ── Reset progress ────────────────────────────────── */}
         {user && hasPurchased && onReset && (
           <SideRow
             open={open}

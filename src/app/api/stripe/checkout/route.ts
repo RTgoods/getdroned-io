@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
   const { data: rawGame, error: gameError } = await supabase
     .from('games')
     .select('*')
-    .eq('id', gameId)
+    .eq(gameId === 'static-get-droned' ? 'slug' : 'id', gameId === 'static-get-droned' ? 'get-droned' : gameId)
     .eq('is_published', true)
     .single()
 

@@ -33,8 +33,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: `Webhook error: ${message}` }, { status: 400 })
   }
 
-  if (event.type === 'checkout.session.completed') {
+  if ((event.type === 'checkout.session.completed' || event.type === 'checkout.session.async_payment_succeeded')) {
     const session = event.data.object as Stripe.Checkout.Session
+    if (session.payment_status !== 'paid') return NextResponse.json({ received: true })
     const { gameId, userId } = (session.metadata ?? {}) as {
       gameId: string
       userId: string

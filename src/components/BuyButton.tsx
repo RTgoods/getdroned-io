@@ -17,9 +17,7 @@ export function BuyButton({ game, userId, hasPurchased }: Props) {
 
   const handleBuy = async () => {
     if (!userId) {
-      // Auth gate disabled — go straight to checkout when ready
-      // router.push(`/auth/login?redirect=/games/${game.slug}`)
-      router.push(`/${game.slug}`)
+      router.push(`/auth/login?redirect=/games/${game.slug}`)
       return
     }
     setLoading(true)

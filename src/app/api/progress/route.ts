@@ -1,3 +1,4 @@
+import { gameAccess } from '@/lib/game-access'
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createSupabase } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/server'
@@ -18,10 +19,12 @@ function adminClient() {
 export async function GET(req: NextRequest) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ completedSectors: [] })
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const access = await gameAccess(supabase, user)
+  if (!access.allowed) return NextResponse.json({ error: 'Purchase required' }, { status: 403 })
 
   const gameId = req.nextUrl.searchParams.get('gameId')
-  if (!gameId) return NextResponse.json({ error: 'gameId required' }, { status: 400 })
+  if (!gameId || gameId !== access.gameId) return NextResponse.json({ error: 'Invalid game' }, { status: 400 })
 
   const { data } = await adminClient()
     .from('progress')
@@ -38,9 +41,11 @@ export async function POST(req: NextRequest) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const access = await gameAccess(supabase, user)
+  if (!access.allowed) return NextResponse.json({ error: 'Purchase required' }, { status: 403 })
 
   const { gameId, sector } = await req.json() as { gameId: string; sector: number }
-  if (!gameId || !sector) return NextResponse.json({ error: 'gameId and sector required' }, { status: 400 })
+  if (gameId !== access.gameId || !Number.isInteger(sector) || sector < 1 || sector > 6) return NextResponse.json({ error: 'Invalid game or sector' }, { status: 400 })
 
   const db = adminClient()
 
@@ -69,20 +74,11 @@ export async function DELETE(req: NextRequest) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const access = await gameAccess(supabase, user)
+  if (!access.allowed) return NextResponse.json({ error: 'Purchase required' }, { status: 403 })
 
   const gameId = req.nextUrl.searchParams.get('gameId')
-  if (!gameId) return NextResponse.json({ error: 'gameId required' }, { status: 400 })
-
-  // Only allow paid players to reset
-  const { data: purchase } = await adminClient()
-    .from('purchases')
-    .select('id')
-    .eq('user_id', user.id)
-    .eq('game_id', gameId)
-    .eq('status', 'completed')
-    .maybeSingle()
-
-  if (!purchase) return NextResponse.json({ error: 'Purchase required to reset' }, { status: 403 })
+  if (!gameId || gameId !== access.gameId) return NextResponse.json({ error: 'Invalid game' }, { status: 400 })
 
   await adminClient()
     .from('progress')

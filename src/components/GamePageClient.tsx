@@ -1,173 +1,87 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { GameSidebar } from './GameSidebar'
 import { GameLanding } from './GameLanding'
-import { DonationPopup } from './DonationPopup'
 import type { Game } from '@/types/database'
 import type { User } from '@supabase/supabase-js'
 
-interface Props {
-  game: Game
-}
-
-export function GamePageClient({ game }: Props) {
+export function GamePageClient({ game }: { game: Game }) {
   const [playing, setPlaying] = useState(false)
+  const [launch, setLaunch] = useState({ level: 1, version: 0 })
   const [user, setUser] = useState<User | null>(null)
-  const [hasPurchased, setHasPurchased] = useState(false)
-  const [authReady, setAuthReady] = useState(false)
+  const [allowed, setAllowed] = useState(false)
+  const [isAdmin, setIsAdmin] = useState(false)
+  const [gameId, setGameId] = useState<string | null>(null)
+  const [ready, setReady] = useState(false)
   const [completedSectors, setCompletedSectors] = useState<number[]>([])
-  const [showDonation, setShowDonation] = useState(false)
-
-  const price = game.price_cents > 0 ? `$${(game.price_cents / 100).toFixed(2)}` : 'FREE'
-
-  // ── Auth + purchase state ─────────────────────────────────────────
-  useEffect(() => {
-    const supabase = createClient()
-    async function loadAuth() {
-      const { data: { user } } = await supabase.auth.getUser()
-      setUser(user)
-      if (user && game.price_cents > 0) {
-        const { data: p } = await supabase
-          .from('purchases').select('id')
-          .eq('user_id', user.id).eq('game_id', game.id).eq('status', 'completed')
-          .maybeSingle()
-        setHasPurchased(!!p)
-      }
-      setAuthReady(true)
-    }
-    loadAuth()
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
-      setUser(session?.user ?? null)
-      if (!session?.user) setHasPurchased(false)
-    })
-    return () => subscription.unsubscribe()
-  }, [game.id, game.price_cents])
-
-  // ── Progress: load from server (paid) or localStorage (free) ─────
-  useEffect(() => {
-    if (!authReady) return
-    if (user && hasPurchased) {
-      fetch(`/api/progress?gameId=${game.id}`)
-        .then(r => r.json())
-        .then(d => { if (Array.isArray(d.completedSectors)) setCompletedSectors(d.completedSectors) })
-        .catch(() => {})
-    } else {
-      try {
-        const saved = localStorage.getItem('gd:progress')
-        if (saved) setCompletedSectors(JSON.parse(saved))
-      } catch {}
-    }
-  }, [authReady, user, hasPurchased, game.id])
-
-  // ── Handle sector-complete messages from the game iframe ──────────
-  const handleSectorComplete = useCallback((sector: number) => {
-    setCompletedSectors(prev => {
-      if (prev.includes(sector)) return prev
-      const next = [...prev, sector].sort((a, b) => a - b)
-
-      if (user && hasPurchased) {
-        // Save to server for paid players
-        fetch('/api/progress', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ gameId: game.id, sector }),
-        }).catch(() => {})
-      } else {
-        // Save to localStorage for free players
-        try { localStorage.setItem('gd:progress', JSON.stringify(next)) } catch {}
-        // Show donation popup when free player clears sector 1
-        if (sector === 1 && !hasPurchased) {
-          setTimeout(() => setShowDonation(true), 1200)
-        }
-      }
-      return next
-    })
-  }, [user, hasPurchased, game.id])
+  const frame = useRef<HTMLIFrameElement>(null)
+  const loadAccess = useCallback(async () => {
+    try {
+      const response = await fetch('/api/access', { cache: 'no-store' })
+      if (!response.ok) throw new Error('Access check failed')
+      const access = await response.json()
+      setUser(access.user); setAllowed(access.allowed); setIsAdmin(access.isAdmin); setGameId(access.gameId)
+      if (!access.allowed) setPlaying(false)
+      return access
+    } catch {
+      setUser(null); setAllowed(false); setIsAdmin(false); setPlaying(false)
+      return null
+    } finally { setReady(true) }
+  }, [])
 
   useEffect(() => {
-    const handler = (e: MessageEvent) => {
-      if (e.data?.type === 'gd:sectorComplete' && typeof e.data.sector === 'number') {
-        handleSectorComplete(e.data.sector)
-      }
+    void loadAccess()
+    const db = createClient()
+    const { data: { subscription } } = db.auth.onAuthStateChange(() => { void loadAccess() })
+    const refresh = () => { if (document.visibilityState === 'visible') void loadAccess() }
+    document.addEventListener('visibilitychange', refresh)
+    const timer = setInterval(() => { void loadAccess() }, 60000)
+    return () => { subscription.unsubscribe(); document.removeEventListener('visibilitychange', refresh); clearInterval(timer) }
+  }, [loadAccess])
+
+  useEffect(() => {
+    setCompletedSectors([])
+    if (allowed && gameId) fetch(`/api/progress?gameId=${gameId}`).then(r => r.json()).then(d => {
+      if (Array.isArray(d.completedSectors)) setCompletedSectors(d.completedSectors)
+    }).catch(() => {})
+  }, [allowed, gameId, user?.id])
+
+  useEffect(() => {
+    const handler = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin || event.source !== frame.current?.contentWindow || !allowed || !gameId) return
+      const sector = event.data?.sector
+      if (event.data?.type !== 'gd:sectorComplete' || !Number.isInteger(sector) || sector < 1 || sector > 6) return
+      fetch('/api/progress', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ gameId, sector }) })
+        .then(r => r.json()).then(d => { if (Array.isArray(d.completedSectors)) setCompletedSectors(d.completedSectors) }).catch(() => {})
     }
     window.addEventListener('message', handler)
     return () => window.removeEventListener('message', handler)
-  }, [handleSectorComplete])
+  }, [allowed, gameId])
 
-  // ── Reset progress ────────────────────────────────────────────────
-  const resetProgress = useCallback(async () => {
-    if (user && hasPurchased) {
-      await fetch(`/api/progress?gameId=${game.id}`, { method: 'DELETE' }).catch(() => {})
-    } else {
-      try { localStorage.removeItem('gd:progress') } catch {}
+  const play = async (level = 1) => {
+    const access = await loadAccess()
+    if (!access?.user) { window.location.href = '/auth/login'; return }
+    if (access.allowed) {
+      setLaunch(previous => ({ level: Number.isInteger(level) && level >= 1 && level <= 6 ? level : 1, version: previous.version + 1 }))
+      setPlaying(true)
     }
-    setCompletedSectors([])
-  }, [user, hasPurchased, game.id])
+  }
+  const reset = async () => {
+    if (!allowed || !gameId) return
+    const response = await fetch(`/api/progress?gameId=${gameId}`, { method: 'DELETE' })
+    if (response.ok) setCompletedSectors([])
+  }
 
-  // ── Buy handler ───────────────────────────────────────────────────
-  const handleBuy = useCallback(async () => {
-    setShowDonation(false)
-    if (!user) { window.location.href = '/auth/login'; return }
-    const res = await fetch('/api/stripe/checkout', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ gameId: game.id }),
-    })
-    if (res.ok) {
-      const { url } = await res.json()
-      if (url) window.location.href = url
-    }
-  }, [user, game.id])
-
-  return (
-    <div style={{ display: 'flex', height: '100dvh', overflow: 'hidden', background: '#0c0d0b' }}>
-      <GameSidebar
-        game={game}
-        user={authReady ? user : null}
-        hasPurchased={hasPurchased}
-        completedSectors={completedSectors}
-        playing={playing}
-        onPlay={() => setPlaying(true)}
-        onBack={() => setPlaying(false)}
-        onReset={resetProgress}
-      />
-
-      <div style={{ flex: 1, minWidth: 0, height: '100dvh', overflow: 'hidden', position: 'relative' }}>
-        {playing ? (
-          game.play_url ? (
-            <iframe
-              src={`${game.play_url}?v=45&autostart=1`}
-              style={{ display: 'block', width: '100%', height: '100%', border: 'none', background: '#0c0d0b' }}
-              allowFullScreen
-              title={game.title}
-              allow="autoplay; fullscreen; pointer-lock"
-            />
-          ) : (
-            <div style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16 }}>
-              <p style={{ fontSize: 9, fontWeight: 900, letterSpacing: '3px', color: '#c0562f', textTransform: 'uppercase' }}>SIGNAL LOST</p>
-              <p style={{ fontSize: 11, letterSpacing: '1px', color: '#6e6a60' }}>Game online version coming soon.</p>
-            </div>
-          )
-        ) : (
-          <GameLanding
-            game={game}
-            user={authReady ? user : null}
-            hasPurchased={hasPurchased}
-            onPlay={() => setPlaying(true)}
-          />
-        )}
-      </div>
-
-      {/* Donation popup — shown when free player clears sector 1 */}
-      {showDonation && !hasPurchased && (
-        <DonationPopup
-          price={price}
-          onBuy={handleBuy}
-          onDismiss={() => setShowDonation(false)}
-        />
-      )}
+  return <div style={{ display: 'flex', height: '100dvh', overflow: 'hidden', background: '#0c0d0b' }}>
+    <GameSidebar game={game} user={user} hasPurchased={allowed} completedSectors={completedSectors} playing={playing} onPlay={play} onBack={() => setPlaying(false)} onReset={reset} />
+    <div style={{ flex: 1, minWidth: 0, height: '100dvh', overflow: 'hidden', position: 'relative' }}>
+      {isAdmin && !playing && <Link href="/admin" className="absolute top-3 right-4 z-10 bg-[#172019] text-[#e2b13c] border border-[#596449] rounded px-4 py-2">Admin · Stage select</Link>}
+      {!ready ? <p className="p-8 text-[#e8e4d8]">Checking access…</p> : playing && allowed && user ? (
+        <iframe key={launch.version} ref={frame} src={`/get-droned/index.html?v=47&autostart=${launch.level}`} style={{ display: 'block', width: '100%', height: '100%', border: 'none' }} allowFullScreen title={game.title} allow="autoplay; fullscreen; pointer-lock" />
+      ) : <GameLanding game={game} user={user} hasPurchased={allowed} onPlay={() => play(1)} />}
     </div>
-  )
+  </div>
 }

@@ -120,11 +120,11 @@ export function GameLanding({ game, user, hasPurchased, onPlay }: Props) {
               <button
                 onClick={onPlay}
                 style={{
-                  width: '100%', background: 'linear-gradient(180deg,#c0562f 0%,#7d3016 100%)',
-                  color: '#fff', border: 'none', borderRadius: 4,
+                  width: '100%', background: 'linear-gradient(180deg,#ffd700 0%,#e5b900 100%)',
+                  color: '#003580', border: 'none', borderRadius: 4,
                   padding: '18px 32px', fontWeight: 900, fontSize: 13,
                   letterSpacing: '3px', textTransform: 'uppercase',
-                  cursor: 'pointer', boxShadow: '0 4px 0 #4a1b0c, 0 8px 24px rgba(192,86,47,0.35)',
+                  cursor: 'pointer', boxShadow: '0 4px 0 #977800, 0 8px 24px rgba(255,215,0,0.3)',
                   transition: 'filter 150ms',
                 }}
                 onMouseEnter={e => (e.currentTarget.style.filter = 'brightness(1.15)')}
@@ -140,32 +140,7 @@ export function GameLanding({ game, user, hasPurchased, onPlay }: Props) {
             /* Not owned — two-button split */
             <><div className="flex flex-col sm:flex-row gap-2" style={{ maxWidth: 480 }}>
 
-              {/* ── FREE: Sector One — Ukraine blue ── */}
-              <button
-                onClick={onPlay}
-                className="flex-1"
-                style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  gap: 10, padding: '10px 14px',
-                  background: 'linear-gradient(180deg,#0068cc 0%,#004a99 100%)',
-                  border: '1px solid rgba(0,120,220,0.55)',
-                  borderRadius: 4, cursor: 'pointer',
-                  boxShadow: '0 2px 0 #002a5c, 0 4px 14px rgba(0,104,204,0.25)',
-                  transition: 'filter 150ms',
-                }}
-                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.filter = 'brightness(1.12)' }}
-                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.filter = 'none' }}
-              >
-                <span style={{ fontSize: 11, fontWeight: 900, letterSpacing: '2px', color: '#e8f4ff', textTransform: 'uppercase' }}>
-                  ▶ Play Sector One
-                </span>
-                <span style={{
-                  fontSize: 8, fontWeight: 900, letterSpacing: '1.5px',
-                  color: '#002a5c', background: '#ffd700',
-                  borderRadius: 2, padding: '2px 6px', textTransform: 'uppercase', flexShrink: 0,
-                }}>FREE</span>
-              </button>
-
+              {!user && <a href="/auth/login" className="btn-primary text-center">SIGN IN / CREATE ACCOUNT</a>}
               {/* ── UNLOCK: Full access — Ukraine yellow ── */}
               <button
                 onClick={handleBuy}

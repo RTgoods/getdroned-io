@@ -1133,6 +1133,15 @@ function drawProp(c,o){
     for(var pk8=1;pk8<o.w*2;pk8++){ c.beginPath();
       c.moveTo(tx8+pk8*(tw8/(o.w*2)),ty8+3); c.lineTo(tx8+pk8*(tw8/(o.w*2)),ty8+th8-8); c.stroke(); }
     c.fillStyle='#4a3720'; c.fillRect(tx8+2,ty8+th8-8,tw8-4,5);           // table edge
+    c.save();c.translate(tx8+tw8*.52,ty8+th8-9);c.rotate(-.07);
+    c.fillStyle='#30281c';c.fillRect(-12,-5,25,12);
+    c.fillStyle='#ded3ac';c.fillRect(-11,-6,22,11);
+    c.fillStyle='#7d8277';c.fillRect(-4,-7,8,3);
+    for(var entry=0;entry<3;entry++){
+      c.strokeStyle='#53614c';c.lineWidth=.65;c.strokeRect(-9,-3+entry*2.5,1.5,1.5);
+      c.fillStyle='#77735a';c.fillRect(-5,-3+entry*2.5,12-entry*2,.65);
+    }
+    gearLine(c,13,-5,12,4,'#d9ad46',1.8);c.restore();
     // stock laid out on top
     var slots=Math.max(3,o.w*2);
     for(var it8=0;it8<slots;it8++){
@@ -1773,7 +1782,16 @@ function buy(i){
 function drawShopIcon(c,id,x,y,s){
   var key=id.indexOf('t_')===0?id.slice(2):id;
   if(key==='u_armor')key='plate';if(key==='u_hp')key='med';
-  c.save();c.translate(x+s/2,y+s/2);toolIcon(c,key,s*.72);c.restore();
+  c.save();c.translate(x+s/2,y+s/2);
+  var tray=c.createLinearGradient(0,-s/2,0,s/2);tray.addColorStop(0,'#35413a');tray.addColorStop(1,'#141d19');
+  c.fillStyle=tray;rrect(c,-s/2,-s/2,s,s,4);c.fill();
+  c.strokeStyle='#6d7963';c.lineWidth=1;c.stroke();
+  c.fillStyle='rgba(0,0,0,.45)';c.beginPath();c.ellipse(1,s*.23,s*.35,s*.12,0,0,6.3);c.fill();
+  if(id==='u_hp'){
+    c.fillStyle='#718064';c.beginPath();c.moveTo(-12,-13);c.lineTo(-5,-16);c.quadraticCurveTo(0,-6,5,-16);c.lineTo(12,-13);c.lineTo(15,13);c.lineTo(-15,13);c.closePath();c.fill();outl(c,'#1a251c',1.5);
+    c.fillStyle='#a0ab86';c.fillRect(-10,-3,8,10);c.fillRect(2,-3,8,10);gearLine(c,0,-6,0,13,'#263629',2);
+  }else toolIcon(c,key,s*.86);
+  c.restore();
 }
 function drawShop(){
   var B=shopBox(), vRuleX=B.x+B.w-64;
@@ -1783,7 +1801,16 @@ function drawShop(){
   ctx.fillStyle='rgba(2,5,2,.9)'; ctx.fillRect(0,0,VW,VH);
 
   // ── Panel — dark olive steel ──────────────────────────────
-  ctx.fillStyle='#0b1608'; rrect(ctx,B.x,B.top,B.w,B.bot-B.top,8); ctx.fill();
+  var bench=ctx.createLinearGradient(B.x,0,B.x+B.w,0);bench.addColorStop(0,'#34281c');bench.addColorStop(.5,'#59452c');bench.addColorStop(1,'#30271c');
+  ctx.fillStyle=bench;rrect(ctx,B.x,B.top,B.w,B.bot-B.top,8);ctx.fill();
+  ctx.save();rrect(ctx,B.x,B.top,B.w,B.bot-B.top,8);ctx.clip();
+  for(var plank=B.top+38;plank<B.bot;plank+=46){
+    gearLine(ctx,B.x,plank,B.x+B.w,plank,'rgba(15,12,8,.6)',2);
+    for(var grain=0;grain<3;grain++)gearLine(ctx,B.x+12+grain*19,plank-9-grain*7,B.x+B.w-18-grain*11,plank-11-grain*7,'rgba(180,146,93,.1)',1);
+    for(var nail=0;nail<2;nail++){ctx.fillStyle='#969382';ctx.beginPath();ctx.arc(B.x+9+nail*(B.w-18),plank-6,1.6,0,6.3);ctx.fill();}
+  }
+  ctx.restore();
+  ctx.fillStyle='rgba(8,20,13,.93)';rrect(ctx,B.x+5,B.top+5,B.w-10,B.bot-B.top-10,5);ctx.fill();
   // Outer border
   ctx.strokeStyle='#3d5c2a'; ctx.lineWidth=2; rrect(ctx,B.x,B.top,B.w,B.bot-B.top,8); ctx.stroke();
   // Inner inset
@@ -1851,14 +1878,14 @@ function drawShop(){
     ctx.fillStyle=own?'#5a9a40':(can?'#c8a020':'#2a3a22');
     ctx.beginPath(); ctx.arc(vRuleX-8,R.y+R.h/2,3.5,0,6.3); ctx.fill();
     // Icon
-    drawShopIcon(ctx,it.id,R.x+3,R.y+7,28);
+    drawShopIcon(ctx,it.id,R.x+3,R.y+2,38);
     // Name
     ctx.textAlign='left';
-    ctx.fillStyle=own?'#7ac858':(can?'#c8e8a8':'#3a5030'); ctx.font='bold 10px Arial';
-    ctx.fillText(it.n,R.x+38,R.y+16);
+    ctx.fillStyle=own?'#7ac858':(can?'#e0e9ce':'#8e9b80'); ctx.font='bold 10px Arial';
+    ctx.fillText(it.n,R.x+48,R.y+16);
     // Description
-    ctx.fillStyle=own?'#4a8038':(can?'#6a8a5a':'#2a3a28'); ctx.font='9px Arial';
-    ctx.fillText(it.d,R.x+38,R.y+29);
+    ctx.fillStyle=own?'#4a8038':(can?'#a8b899':'#788570'); ctx.font='9px Arial';
+    ctx.fillText(it.d,R.x+48,R.y+29);
     // Price / status
     ctx.textAlign='right';
     if(own){
@@ -3577,18 +3604,18 @@ function spray(dt){
   var tgt=nearestTarget(), ang=player.face;
   var moving=Math.hypot(player.lvx||0,player.lvy||0)>8;
   if(manualAim()) ang=aimAngle();
-  if(!manualAim()&&!moving&&tgt&&Math.hypot(tgt.x-player.x,tgt.y-player.y)<150) ang=Math.atan2(tgt.y-player.y,tgt.x-player.x);
+  if(!manualAim()&&!moving&&tgt&&Math.hypot(tgt.x-player.x,tgt.y-player.y)<420) ang=Math.atan2(tgt.y-player.y,tgt.x-player.x);
   player.face=ang; player.ang=ang;
   for(var i=0;i<3&&flames.length<190;i++){
-    var a=ang+rr(-.26,.26), sp=rr(170,330);
+    var a=ang+rr(-.26,.26), sp=rr(620,760);
     flames.push({x:player.x+Math.cos(ang)*15,y:player.y+Math.sin(ang)*15,
-      vx:Math.cos(a)*sp,vy:Math.sin(a)*sp*.75,life:rr(.32,.6),max:.6,s:rr(4,9)});
+      vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:rr(.8,1),max:1,s:rr(4,9),jet:true,travel:0});
   }
   if(Math.random()<.25) sfx('enemy',.25);
   shake=Math.min(6,shake+.35);
   for(var e=enemies.length-1;e>=0;e--){
     var en=enemies[e], dx=en.x-player.x, dy=en.y-player.y, d=Math.hypot(dx,dy);
-    if(d>145||d<1) continue;
+    if(d>420||d<1) continue;
     var da=Math.abs(((Math.atan2(dy,dx)-ang+Math.PI*3)%(Math.PI*2))-Math.PI);
     if(da>.42) continue;
     if(!los(player.x,player.y,en.x,en.y)) continue;
@@ -3596,8 +3623,9 @@ function spray(dt){
     if(en.hp>0) igniteEnemy(en);
   }
   if(Math.random()<.05&&fires.length<15){
-    var fx5=player.x+Math.cos(ang)*rr(50,130), fy5=player.y+Math.sin(ang)*rr(50,130)*.8;
-    if(!onWall(fx5,fy5)) fires.push({x:fx5,y:fy5,r:rr(7,10),p:rr(0,6),life:rr(6,12),sp:0});
+    var fireDistance=rr(80,390);
+    var fx5=player.x+Math.cos(ang)*fireDistance, fy5=player.y+Math.sin(ang)*fireDistance;
+    if(!onWall(fx5,fy5)&&los(player.x,player.y,fx5,fy5)) fires.push({x:fx5,y:fy5,r:rr(7,10),p:rr(0,6),life:rr(6,12),sp:0});
   }
 }
 function igniteEnemy(en){
@@ -3966,11 +3994,11 @@ function update(dt,realDt){
     var nx3=Math.max(8,Math.min(WW-8,drone.x+drone.vx*dt));
     var ny3=Math.max(8,Math.min(WH-8,drone.y+drone.vy*dt));
     if(drone.kind==='usv'&&mapKind==='sea'){
-      if(isWater(nx3,drone.y)) drone.x=nx3;
+      if(seaRoom({len:28,wid:16},nx3,drone.y,drone.ang)) drone.x=nx3;
       else { drone.vx*=-.25; drone.vy+=(drone.vy>=0?1:-1)*120*dt; }
-      if(isWater(drone.x,ny3)) drone.y=ny3;
+      if(seaRoom({len:28,wid:16},drone.x,ny3,drone.ang)) drone.y=ny3;
       else { drone.vy*=-.25; drone.vx+=(drone.vx>=0?1:-1)*120*dt; }
-      if(Math.random()<.7&&wakes.length<160) wakes.push({x:drone.x,y:drone.y,a:Math.atan2(drone.vy,drone.vx),
+      if(Math.hypot(drone.vx,drone.vy)>20&&Math.random()<dt*8&&wakes.length<160) wakes.push({x:drone.x,y:drone.y,a:Math.atan2(drone.vy,drone.vx),
         life:1.6,max:1.6,w:9});
       for(var sm=seaMines.length-1;sm>=0&&piloting&&drone;sm--){
         if(!seaMines[sm].dead&&Math.hypot(drone.x-seaMines[sm].x,drone.y-seaMines[sm].y)<22){
@@ -4974,7 +5002,14 @@ function update(dt,realDt){
   updateCrew(dt);
   for(var fl2=flames.length-1;fl2>=0;fl2--){
     var FL3=flames[fl2];
-    FL3.x+=FL3.vx*dt; FL3.y+=FL3.vy*dt; FL3.vx*=.9; FL3.vy*=.9; FL3.vy-=22*dt;
+    var flameX=FL3.x+FL3.vx*dt,flameY=FL3.y+FL3.vy*dt;
+    if(FL3.jet){
+      FL3.travel+=Math.hypot(FL3.vx,FL3.vy)*dt;
+      if(FL3.travel>420||!los(FL3.x,FL3.y,flameX,flameY)){flames.splice(fl2,1);continue;}
+    }
+    FL3.x=flameX; FL3.y=flameY;
+    var flameDrag=FL3.jet?Math.exp(-1.1*dt):.9;
+    FL3.vx*=flameDrag; FL3.vy*=flameDrag; FL3.vy-=22*dt;
     FL3.s+=dt*16; FL3.life-=dt;
     if(FL3.life<=0) flames.splice(fl2,1);
   }
@@ -5048,8 +5083,8 @@ function update(dt,realDt){
       var gs=Math.hypot(G.vx,G.vy), gmax=165;
       if(gs>gmax){ G.vx=G.vx/gs*gmax; G.vy=G.vy/gs*gmax; }
       var gnx=G.x+G.vx*dt, gny=G.y+G.vy*dt;
-      if(isWater(gnx,G.y)&&gnx>40&&gnx<WW-40) G.x=gnx; else G.vx*=-.3;
-      if(isWater(G.x,gny)&&gny>40&&gny<WH-40) G.y=gny; else G.vy*=-.3;
+      if(seaRoom({len:58,wid:26},gnx,G.y,G.ang)) G.x=gnx; else G.vx*=-.3;
+      if(seaRoom({len:58,wid:26},G.x,gny,G.ang)) G.y=gny; else G.vy*=-.3;
       player.x=G.x; player.y=G.y;
       for(var gm0=seaMines.length-1;gm0>=0;gm0--){
         if(!seaMines[gm0].dead&&Math.hypot(G.x-seaMines[gm0].x,G.y-seaMines[gm0].y)<28){
@@ -5528,7 +5563,7 @@ function killTank(){
 /* is there enough water for a hull of this size, centred here and lying this way? */
 function seaRoom(S,x,y,ang){
   var hl=S.len*.55, hw=S.wid*.6, ca=Math.cos(ang), sa=Math.sin(ang);
-  for(var l=-1;l<=1.001;l+=.5) for(var w=-1;w<=1.001;w+=.5){
+  for(var l=-1;l<=1.001;l+=2/Math.ceil(hl*2/(TILE*.45))) for(var w=-1;w<=1.001;w+=2/Math.ceil(hw*2/(TILE*.45))){
     var px7=x+ca*hl*l-sa*hw*w, py7=y+sa*hl*l+ca*hw*w;
     if(px7<40||py7<40||px7>WW-40||py7>WH-40) return false;
     if(!isWater(px7,py7)) return false;
@@ -5600,6 +5635,7 @@ function showSeaBossClear(){
   setTimeout(function(){ sectorClear(); },5600);
 }
 function updateShips(dt){
+  for(var wi=wakes.length-1;wi>=0;wi--){ wakes[wi].life-=dt; if(wakes[wi].life<=0)wakes.splice(wi,1); }
   var alive=0;
   for(var i=ships.length-1;i>=0;i--){
     var S=ships[i];
@@ -5653,18 +5689,22 @@ function updateShips(dt){
       continue;
     }
     alive++;
+    var previousX=S.x,previousY=S.y;
     if(S.hurt>0) S.hurt-=dt;
     // Assault transports make a direct run to shore, beach, then unload six troops.
     if(S.lander){
       if(!S.landed){
         var ldx=S.landX-S.x,ldy=S.landY-S.y,ldd=Math.hypot(ldx,ldy)||1;
         var lwant=Math.atan2(ldy,ldx),lda=((lwant-S.ang+Math.PI*3)%(Math.PI*2))-Math.PI;
-        S.ang+=Math.max(-.72*dt,Math.min(.72*dt,lda));
+        var landingAngle=S.ang+Math.max(-.72*dt,Math.min(.72*dt,lda));
+        if(seaRoom(S,S.x,S.y,landingAngle))S.ang=landingAngle;
         var lst=Math.min(S.spd*dt,ldd);
-        S.x+=Math.cos(S.ang)*lst; S.y+=Math.sin(S.ang)*lst;
+        var landingX=S.x+Math.cos(S.ang)*lst,landingY=S.y+Math.sin(S.ang)*lst;
+        var shoreBlocked=!seaRoom(S,landingX,landingY,S.ang);
+        if(!shoreBlocked){ S.x=landingX; S.y=landingY; }
         S.wake+=dt;
         if(S.wake>.12&&wakes.length<160){ S.wake=0; wakes.push({x:S.x-Math.cos(S.ang)*S.len*.42,y:S.y-Math.sin(S.ang)*S.len*.42,a:S.ang,life:2.4,max:2.4,w:S.wid*.5}); }
-        if(ldd<28){ S.x=S.landX; S.y=S.landY; S.ang=lwant; S.landed=1; S.deployT=.8;
+        if(ldd<28||shoreBlocked){ S.landed=1; S.deployT=.8;
           banner('ENEMY LANDING','TROOPS COMING ASHORE',2.4); }
       } else if(S.deployed<6){
         S.deployT-=dt;
@@ -5714,7 +5754,7 @@ function updateShips(dt){
         var tx7=S.x+Math.cos(ta)*thr*dt*.6, ty7=S.y+Math.sin(ta)*thr*dt*.6;
         if(seaRoom(S,tx7,ty7,ta)){ S.x=tx7; S.y=ty7; S.ang=ta; turned=true; break; }
       }
-      if(!turned){ S.ang+=(S.turnAway||(S.turnAway=Math.random()<.5?1:-1))*1.4*dt; }
+      if(!turned){ var turnAngle=S.ang+(S.turnAway||(S.turnAway=Math.random()<.5?1:-1))*1.4*dt; if(seaRoom(S,S.x,S.y,turnAngle))S.ang=turnAngle; }
       if(S.aground>3){ S.wp=(S.wp+1)%S.lane.length; S.aground=0; }   // give up on that waypoint
     }
     // last resort: never let two hulls occupy the same water
@@ -5725,8 +5765,9 @@ function updateShips(dt){
       var minSep=(S.len+O4.len)*.5;
       if(dd6<minSep&&dd6>0.01){
         var push=(minSep-dd6)*.55;
-        S.x+=dx6/dd6*push; S.y+=dy6/dd6*push;
-        O4.x-=dx6/dd6*push; O4.y-=dy6/dd6*push;
+        var pushX=dx6/dd6*push,pushY=dy6/dd6*push;
+        if(seaRoom(S,S.x+pushX,S.y+pushY,S.ang)){S.x+=pushX;S.y+=pushY;}
+        if(seaRoom(O4,O4.x-pushX,O4.y-pushY,O4.ang)){O4.x-=pushX;O4.y-=pushY;}
         if(Math.random()<.06&&wakes.length<160)
           wakes.push({x:(S.x+O4.x)/2,y:(S.y+O4.y)/2,a:Math.atan2(dy6,dx6),life:1,max:1,w:10});
       }
@@ -5745,7 +5786,7 @@ function updateShips(dt){
       }
     } else S.strand=0;
     S.wake+=dt;
-    if(S.wake>.12&&wakes.length<160){ S.wake=0;
+    if(S.wake>.18&&Math.hypot(S.x-previousX,S.y-previousY)>.01&&wakes.length<160){ S.wake=0;
       wakes.push({x:S.x-Math.cos(S.ang)*S.len*.45,y:S.y-Math.sin(S.ang)*S.len*.45,
         a:S.ang,life:2.4,max:2.4,w:S.wid*.5}); }
     // close-in weapons against our drones
@@ -6790,18 +6831,41 @@ function paintTool(c,k){
   function line(x,y,xx,yy,col,w){gearLine(c,x,y,xx,yy,col,w);}
   function ring(x,y,r,col,w){c.strokeStyle=col;c.lineWidth=w||1;c.beginPath();c.arc(x,y,r,0,6.3);c.stroke();}
   if(k==='drone'||k==='droneS'||k==='droneL'){
-    var heavy=k==='droneL',scout=k==='droneS',tone=scout?'#8eada3':heavy?'#7b91a0':'#c3ab73';
-    var arm=scout?7.5:9;
-    [[-arm,-arm],[arm,-arm],[-arm,arm],[arm,arm]].forEach(function(p,i){
-      line(0,0,p[0],p[1],'#172a30',3);line(0,-.4,p[0],p[1]-.4,'#869b97',1);
-      ring(p[0],p[1],heavy?4.5:3.8,'#708984',1);
-      c.save();c.translate(p[0],p[1]);c.rotate(i*.9+.3);c.fillStyle='#bac6ba';c.beginPath();c.ellipse(0,0,3.7,.9,0,0,6.3);c.fill();c.restore();
-      ring(p[0],p[1],1,'#17292e',1.4);
+    var scout=k==='droneS',heavy=k==='droneL';
+    // Distinct silhouettes: guarded camera quad, exposed racing X, six-rotor heavy lift.
+    var motors=scout?[[-7,-7],[7,-7],[-7,7],[7,7]]:
+      heavy?[[-10,-9],[10,-9],[-12,0],[12,0],[-10,9],[10,9]]:
+      [[-10,-10],[10,-10],[-10,10],[10,10]];
+    motors.forEach(function(p,i){
+      line(0,0,p[0],p[1],'#142328',heavy?3.4:2.5);
+      line(0,-.5,p[0],p[1]-.5,scout?'#a9d9cf':heavy?'#8298aa':'#b48953',1);
+      if(scout){ring(p[0],p[1],5,'#a4d1c7',1.7);ring(p[0],p[1],3.8,'#233e40',.8);}
+      c.save();c.translate(p[0],p[1]);c.rotate(i*.8+.4);
+      c.fillStyle=heavy?'#d0d9d5':scout?'#d7eee0':'#eab65e';
+      c.beginPath();c.ellipse(0,0,scout?3.3:4.1,.95,0,0,6.3);c.fill();
+      if(!scout){c.rotate(2.1);c.beginPath();c.ellipse(0,0,4.1,.85,0,0,6.3);c.fill();}
+      c.restore();ring(p[0],p[1],1.1,'#14252b',1.2);
     });
-    box(-4,-6,8,12,tone,'#2b4246',2);box(-2.5,-4,5,6,'#384841','#172927',1);
-    line(-3,-1,3,-1,'#c5b784',1.5);gearLens(c,0,5,1.9,scout?'#b6efe6':'#74b7e4');
-    line(2,-6,4,-11,'#879e95',.9);c.fillStyle='#d98761';c.fillRect(-3,-5,1.5,1);
-    if(heavy){box(-3,-6,6,4,'#b29369','#685439');line(-3,-4,3,-4,'#d6c09a',.8);}
+    if(scout){
+      box(-4,-6,8,12,'#c6e0d6','#547b76',3);
+      box(-2.5,-4,5,5,'#52766e','#294744',1);
+      box(-3,5,6,4,'#263e46','#10232d',1);
+      gearLens(c,0,7,2.4,'#7de6f5');line(-2,-3,2,-3,'#f0f5dc',1);
+    }else if(heavy){
+      box(-6,-8,12,16,'#829aad','#344c61',2);
+      box(-4,-6,3,7,'#c0c8b1','#596550',.8);box(1,-6,3,7,'#c0c8b1','#596550',.8);
+      box(-4,1,8,11,'#b29259','#604d2f',1.5);
+      line(-4,4,4,4,'#efd087',1.5);line(-4,8,4,8,'#efd087',1.5);
+      line(-7,5,-7,13,'#b3bdc5',1.6);line(7,5,7,13,'#b3bdc5',1.6);
+      gearLens(c,0,-7,1.6,'#85c6f1');
+    }else{
+      box(-3,-7,6,14,'#424944','#192b29',1);
+      box(-2,-5,4,8,'#c48247','#70452d',.6);
+      line(-3,-2,3,-2,'#eee0ad',1.5);
+      gearPoly(c,[[-2,3],[2,3],[3,9],[0,13],[-3,9]],'#b7563f');
+      line(3,-5,6,-13,'#bdc3b6',1);ring(6,-13,1.4,'#efb653',1);
+      box(-3,-9,6,4,'#273638','#111d22',1);gearLens(c,0,-7,1.8,'#8bdbf3');
+    }
   }else if(k==='usv'){
     gearPoly(c,[[0,-14],[7,-3],[8,11],[-8,11],[-7,-3]],'#354f5e');
     gearPoly(c,[[0,-11],[4,-2],[5,9],[-5,9],[-4,-2]],'#80938f');
@@ -7413,6 +7477,23 @@ function drawMovingWater(c){
     c.beginPath();
     var wx2=x*TILE+TILE-drift-10,wy2=y*TILE+23+Math.cos(phase*1.2)*3;
     c.moveTo(wx2,wy2); c.quadraticCurveTo(wx2+6,wy2+2,wx2+13,wy2-1); c.stroke();
+  }
+  // Expanding curved stern ripples, clipped to water so foam never crosses a beach.
+  c.beginPath();
+  for(var cy=y0;cy<=y1;cy++)for(var cx=x0;cx<=x1;cx++)if(T(cx,cy)===WATER)c.rect(cx*TILE,cy*TILE,TILE,TILE);
+  c.clip();
+  for(var wi=0;wi<wakes.length;wi++){
+    var wake=wakes[wi],age=1-wake.life/wake.max;
+    if(wake.x<cam.x-160||wake.x>cam.x+VW+160||wake.y<cam.y-160||wake.y>cam.y+VH+160)continue;
+    c.save();c.translate(wake.x,wake.y);c.rotate(wake.a);
+    c.globalAlpha=Math.sin(Math.min(1,age*6)*Math.PI/2)*Math.pow(1-age,1.4);
+    var spread=wake.w*(1+age*1.8),trail=8+age*35;
+    for(var ripple=0;ripple<2;ripple++){
+      c.strokeStyle=ripple?'rgba(214,246,249,.52)':'rgba(136,210,228,.4)';c.lineWidth=ripple?1.3:3;
+      c.beginPath();c.moveTo(-trail-ripple*8,-spread);
+      c.quadraticCurveTo(10-ripple*8,0,-trail-ripple*8,spread);c.stroke();
+    }
+    c.restore();
   }
   c.restore();
 }
@@ -8317,7 +8398,11 @@ function draw(){
   }
   drawMovingWater(ctx);
   paintDamaged(ctx);
+  // Cap the entire decal layer so repeated blasts cannot black out trench paths.
+  ctx.save();
+  if(mapKind==='trench')ctx.globalAlpha=.32;
   ctx.drawImage(deco,0,0);
+  ctx.restore();
   drawImpactMarks(ctx);
   ctx.drawImage(bloodC,0,0);
 
@@ -10700,7 +10785,7 @@ bindTap(document.getElementById('go'),function(){
 (function(){
   var params=new URLSearchParams(window.location.search);
   var autolvl=parseInt(params.get('autostart')||'0',10);
-  if(autolvl>=1&&autolvl<=6){
+  if(!params.has('boss')&&autolvl>=1&&autolvl<=6){
     var sp2=document.getElementById('splash');
     if(sp2&&sp2.parentNode) sp2.parentNode.removeChild(sp2);
     var st=document.getElementById('start');
@@ -10715,7 +10800,7 @@ Array.prototype.forEach.call(document.querySelectorAll('.lvl'),function(b){
     document.getElementById('start').classList.add('hide'); ac(); showLevelIntro(level);
   });
 });
-bindTap(document.getElementById('bossTest'),function(){
+function testLevelBoss6(){
   document.getElementById('start').classList.add('hide');
   totalKills=0; timeAlive=0; belt=['drone','med']; money=0; bought={}; upgAP=60; upgHP=100; squadLost=0; ac();
   startSector(6);
@@ -10725,8 +10810,8 @@ bindTap(document.getElementById('bossTest'),function(){
   player.x=49*TILE; player.y=33*TILE; player.face=-.75;
   cam.x=player.x-VW/2; cam.y=player.y-VH/2;
   intro=[]; introT=999; spawnRedBoss(); hud();
-});
-bindTap(document.getElementById('bossOneTest'),function(){
+}
+function testLevelBoss1(){
   document.getElementById('start').classList.add('hide');
   totalKills=0; timeAlive=0; belt=['drone','med']; money=0; bought={}; upgAP=60; upgHP=100; squadLost=0; ac();
   startSector(1);
@@ -10737,8 +10822,8 @@ bindTap(document.getElementById('bossOneTest'),function(){
   var testBoss=enemies[enemies.length-1];
   player.face=Math.atan2(testBoss.y-player.y,testBoss.x-player.x);
   cam.x=player.x-VW/2; cam.y=player.y-VH/2; hud();
-});
-bindTap(document.getElementById('bossTwoTest'),function(){
+}
+function testLevelBoss2(){
   document.getElementById('start').classList.add('hide');
   totalKills=0; timeAlive=0; belt=['drone','med']; money=0; bought={}; upgAP=60; upgHP=100; squadLost=0; ac();
   startSector(2);
@@ -10746,8 +10831,8 @@ bindTap(document.getElementById('bossTwoTest'),function(){
   for(var bf2=0;bf2<flags.length;bf2++){ flags[bf2].state='done'; flags[bf2].p=2; flags[bf2].assault=0; }
   for(var bd2=0;bd2<depots.length;bd2++) depots[bd2].blown=1;
   intro=[]; introT=999; spawnLevelTwoBoss(); hud();
-});
-bindTap(document.getElementById('bossThreeTest'),function(){
+}
+function testLevelBoss3(){
   document.getElementById('start').classList.add('hide');
   totalKills=0; timeAlive=0; belt=['drone','med']; money=0; bought={}; upgAP=60; upgHP=100; squadLost=0; ac();
   startSector(3);
@@ -10755,8 +10840,8 @@ bindTap(document.getElementById('bossThreeTest'),function(){
   intro=[]; introT=999; spawnSeaBoss();
   player.x=homeSpawn.x*TILE; player.y=homeSpawn.y*TILE; player.face=-.7;
   cam.x=player.x-VW/2; cam.y=player.y-VH/2; hud();
-});
-bindTap(document.getElementById('bossFourTest'),function(){
+}
+function testLevelBoss4(){
   document.getElementById('start').classList.add('hide');
   totalKills=0; timeAlive=0; belt=['drone','med']; money=0; bought={}; upgAP=60; upgHP=100; squadLost=0; ac();
   startSector(4);
@@ -10766,8 +10851,8 @@ bindTap(document.getElementById('bossFourTest'),function(){
   var oilBoss=enemies[enemies.length-1],oilSpawn=freeSpot(38*TILE,29*TILE);
   player.x=oilSpawn.x; player.y=oilSpawn.y; player.face=Math.atan2(oilBoss.y-player.y,oilBoss.x-player.x);
   cam.x=player.x-VW/2; cam.y=player.y-VH/2; hud();
-});
-bindTap(document.getElementById('bossFiveTest'),function(){
+}
+function testLevelBoss5(){
   document.getElementById('start').classList.add('hide');
   totalKills=0; timeAlive=0; belt=['drone','med']; money=0; bought={}; upgAP=60; upgHP=100; squadLost=0; ac();
   startSector(5);
@@ -10777,7 +10862,14 @@ bindTap(document.getElementById('bossFiveTest'),function(){
   var airBoss=enemies[enemies.length-1],airSpawn=freeSpot(39*TILE,21*TILE);
   player.x=airSpawn.x; player.y=airSpawn.y; player.face=Math.atan2(airBoss.y-player.y,airBoss.x-player.x);
   cam.x=player.x-VW/2; cam.y=player.y-VH/2; hud();
-});
+}
+// Boss shortcuts are linked from the server-protected admin page.
+(function(){
+  var bossLevel=Number(new URLSearchParams(window.location.search).get('boss'));
+  if(!Number.isInteger(bossLevel)||bossLevel<1||bossLevel>6)return;
+  var splash=document.getElementById('splash');if(splash)splash.remove();
+  [null,testLevelBoss1,testLevelBoss2,testLevelBoss3,testLevelBoss4,testLevelBoss5,testLevelBoss6][bossLevel]();
+})();
 bindTap(document.getElementById('retry'),function(){
   document.getElementById('over').classList.add('hide'); totalKills=0; timeAlive=0; belt=[]; money=0; bought={}; upgAP=60; upgHP=100; squadLost=0; startSector(1);
 });
