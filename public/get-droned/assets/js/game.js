@@ -53,6 +53,7 @@ var rescueGroups=[], captives=[];
 var BASE={x0:55.5,y0:2.2,x1:67.8,y1:13.6}, wave=0, dronePad=null, droneCD=0, tank=null;
 var flag=null, baseFlags=[], crew=[], civs=[], civT=4, shopPad=null, shopCD=0, bought={}, upgAP=60, upgHP=100;
 var baseGuards=[];
+var startCoins=0; // set from ?coins= URL param; applied at every level reset
 var belt=[], drops=[], twitchers=[], money=0, sentries=[], strikes=[], smokes=[], drone=null, piloting=false, fx2=[];
 var fires=[], plume=[], embers=[], motes=[], flares=[], chunks=[], mist=[], splat=[], pools=[], arty={t:5,flash:0}, wind=14, now=0;
 var medStation=null;
@@ -10785,7 +10786,7 @@ function beginLevelFromIntro(level){
   levelIntroActive=0; clearTimeout(levelIntroTimer);
   var intro=document.getElementById(levelIntroIds[level]);
   if(intro){ intro.classList.remove('show'); intro.setAttribute('aria-hidden','true'); }
-  totalKills=0; timeAlive=0; belt=level===1?[]:['drone','med']; money=0; bought={}; upgAP=60; upgHP=100; squadLost=0;
+  totalKills=0; timeAlive=0; belt=level===1?[]:['drone','med']; money=startCoins; bought={}; upgAP=60; upgHP=100; squadLost=0;
   setTimeout(function(){ startSector(level); },390);
 }
 function showLevelIntro(level){
@@ -10800,8 +10801,11 @@ bindTap(document.getElementById('go'),function(){
   document.getElementById('start').classList.add('hide'); ac(); showLevelIntro(1);
 });
 // Auto-start: when loaded with ?autostart=N, skip splash + menu and go straight to level intro
+// ?coins=N seeds the player's starting cash (admin use only).
 (function(){
   var params=new URLSearchParams(window.location.search);
+  var sc=parseInt(params.get('coins')||'0',10);
+  if(sc>0&&sc<=99999) startCoins=sc;
   var autolvl=parseInt(params.get('autostart')||'0',10);
   if(!params.has('boss')&&autolvl>=1&&autolvl<=6){
     var sp2=document.getElementById('splash');
@@ -10820,7 +10824,7 @@ Array.prototype.forEach.call(document.querySelectorAll('.lvl'),function(b){
 });
 function testLevelBoss6(){
   document.getElementById('start').classList.add('hide');
-  totalKills=0; timeAlive=0; belt=['drone','med']; money=0; bought={}; upgAP=60; upgHP=100; squadLost=0; ac();
+  totalKills=0; timeAlive=0; belt=['drone','med']; money=startCoins; bought={}; upgAP=60; upgHP=100; squadLost=0; ac();
   startSector(6);
   enemies.length=0; sams.length=0; samShots.length=0;
   for(var tc=0;tc<motorcade.length;tc++){ motorcade[tc].dead=1; motorcade[tc].hp=0; motorcade[tc].gunHits=3; }
@@ -10831,7 +10835,7 @@ function testLevelBoss6(){
 }
 function testLevelBoss1(){
   document.getElementById('start').classList.add('hide');
-  totalKills=0; timeAlive=0; belt=['drone','med']; money=0; bought={}; upgAP=60; upgHP=100; squadLost=0; ac();
+  totalKills=0; timeAlive=0; belt=['drone','med']; money=startCoins; bought={}; upgAP=60; upgHP=100; squadLost=0; ac();
   startSector(1);
   enemies.length=0; queue.length=0; spawnQ=0; edrones.length=0; tank=null; tankSent=1;
   for(var bf1=0;bf1<flags.length;bf1++){ flags[bf1].state='done'; flags[bf1].p=2; flags[bf1].assault=0; }
@@ -10843,7 +10847,7 @@ function testLevelBoss1(){
 }
 function testLevelBoss2(){
   document.getElementById('start').classList.add('hide');
-  totalKills=0; timeAlive=0; belt=['drone','med']; money=0; bought={}; upgAP=60; upgHP=100; squadLost=0; ac();
+  totalKills=0; timeAlive=0; belt=['drone','med']; money=startCoins; bought={}; upgAP=60; upgHP=100; squadLost=0; ac();
   startSector(2);
   enemies.length=0; queue.length=0; spawnQ=0; edrones.length=0; tank=null; tankSent=1; aaGuns.length=0;
   for(var bf2=0;bf2<flags.length;bf2++){ flags[bf2].state='done'; flags[bf2].p=2; flags[bf2].assault=0; }
@@ -10852,7 +10856,7 @@ function testLevelBoss2(){
 }
 function testLevelBoss3(){
   document.getElementById('start').classList.add('hide');
-  totalKills=0; timeAlive=0; belt=['drone','med']; money=0; bought={}; upgAP=60; upgHP=100; squadLost=0; ac();
+  totalKills=0; timeAlive=0; belt=['drone','med']; money=startCoins; bought={}; upgAP=60; upgHP=100; squadLost=0; ac();
   startSector(3);
   ships.length=0; enemies.length=0; missiles.length=0; queue.length=0; spawnQ=0; edrones.length=0;
   intro=[]; introT=999; spawnSeaBoss();
@@ -10861,7 +10865,7 @@ function testLevelBoss3(){
 }
 function testLevelBoss4(){
   document.getElementById('start').classList.add('hide');
-  totalKills=0; timeAlive=0; belt=['drone','med']; money=0; bought={}; upgAP=60; upgHP=100; squadLost=0; ac();
+  totalKills=0; timeAlive=0; belt=['drone','med']; money=startCoins; bought={}; upgAP=60; upgHP=100; squadLost=0; ac();
   startSector(4);
   enemies.length=0; queue.length=0; spawnQ=0; sams.length=0; samShots.length=0; missiles.length=0;
   for(var rf4=0;rf4<refineries.length;rf4++){ refineries[rf4].dead=1; refineries[rf4].hp=0; }
@@ -10872,7 +10876,7 @@ function testLevelBoss4(){
 }
 function testLevelBoss5(){
   document.getElementById('start').classList.add('hide');
-  totalKills=0; timeAlive=0; belt=['drone','med']; money=0; bought={}; upgAP=60; upgHP=100; squadLost=0; ac();
+  totalKills=0; timeAlive=0; belt=['drone','med']; money=startCoins; bought={}; upgAP=60; upgHP=100; squadLost=0; ac();
   startSector(5);
   enemies.length=0; queue.length=0; spawnQ=0; sams.length=0; samShots.length=0; airAssaultWave=2; airAssaultT=999;
   for(var pa5=0;pa5<aircraft.length;pa5++){ aircraft[pa5].dead=1; aircraft[pa5].hp=0; }
@@ -10889,7 +10893,7 @@ function testLevelBoss5(){
   [null,testLevelBoss1,testLevelBoss2,testLevelBoss3,testLevelBoss4,testLevelBoss5,testLevelBoss6][bossLevel]();
 })();
 bindTap(document.getElementById('retry'),function(){
-  document.getElementById('over').classList.add('hide'); totalKills=0; timeAlive=0; belt=[]; money=0; bought={}; upgAP=60; upgHP=100; squadLost=0; startSector(1);
+  document.getElementById('over').classList.add('hide'); totalKills=0; timeAlive=0; belt=[]; money=startCoins; bought={}; upgAP=60; upgHP=100; squadLost=0; startSector(1);
 });
 bindTap(document.getElementById('mute'),function(){
   var m=document.getElementById('mute');
