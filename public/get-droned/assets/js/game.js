@@ -9337,16 +9337,26 @@ function draw(){
       ctx.beginPath(); ctx.arc(ED2.x,ED2.y-ealt,16,0,6.3); ctx.stroke(); ctx.globalAlpha=1;
     }
     ctx.save(); ctx.translate(ED2.x,ED2.y-ealt); ctx.rotate(Math.atan2(ED2.vy,ED2.vx)+Math.PI/2);
-    ctx.strokeStyle='#3b3229'; ctx.lineWidth=2.6;
-    ctx.beginPath(); ctx.moveTo(-8,-8); ctx.lineTo(8,8); ctx.moveTo(8,-8); ctx.lineTo(-8,8); ctx.stroke();
-    var rp2=[[-8,-8],[8,-8],[-8,8],[8,8]];
+    // Enemy drone — same structure as shop icon, enemy palette (red rotors, gold sensor)
+    var emp2=[[-8,-8],[8,-8],[-8,8],[8,8]];
     for(var rq2=0;rq2<4;rq2++){
-      ctx.strokeStyle='rgba(190,170,150,'+(.25+Math.sin(ED2.rot*3+rq2)*.18)+')'; ctx.lineWidth=1.5;
-      ctx.beginPath(); ctx.arc(rp2[rq2][0],rp2[rq2][1],5.6,0,6.3); ctx.stroke();
+      var rqx2=emp2[rq2][0],rqy2=emp2[rq2][1];
+      ctx.strokeStyle='#1a100a'; ctx.lineWidth=2.8;
+      ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(rqx2,rqy2); ctx.stroke();
+      ctx.strokeStyle='#7a4a28'; ctx.lineWidth=1.1;
+      ctx.beginPath(); ctx.moveTo(0,-.5); ctx.lineTo(rqx2,rqy2-.5); ctx.stroke();
+      ctx.save(); ctx.translate(rqx2,rqy2); ctx.rotate(ED2.rot*3+rq2*.8+.4);
+      ctx.fillStyle='#c8392b';
+      ctx.beginPath(); ctx.ellipse(0,0,3.6,.8,0,0,6.3); ctx.fill();
+      ctx.rotate(2.1);
+      ctx.beginPath(); ctx.ellipse(0,0,3.6,.75,0,0,6.3); ctx.fill();
+      ctx.restore();
+      ctx.fillStyle='#1a100a'; ctx.beginPath(); ctx.arc(rqx2,rqy2,1,0,6.3); ctx.fill();
     }
-    ctx.fillStyle='#57604a'; rrect(ctx,-5.5,-6.5,11,13,3); ctx.fill(); outl(ctx,'#15130e',1.8);
-    ctx.fillStyle='#c0392b'; rrect(ctx,-3.5,-10,7,4.5,2); ctx.fill(); outl(ctx,'#15130e',1.5);
-    ctx.fillStyle='#e2b13c'; ctx.beginPath(); ctx.arc(0,3.5,2.2,0,6.3); ctx.fill();
+    ctx.fillStyle='#57604a'; rrect(ctx,-2.5,-6,5,12,2); ctx.fill(); outl(ctx,'#15130e',1.8);
+    ctx.fillStyle='#7a2618'; rrect(ctx,-2,-9,4,3.5,1); ctx.fill();
+    ctx.strokeStyle='#e0a42c'; ctx.lineWidth=1.3; ctx.beginPath(); ctx.moveTo(-2.5,-2); ctx.lineTo(2.5,-2); ctx.stroke();
+    gearLens(ctx,0,2,1.6,'#e2b13c');
     ctx.restore();
     if(ED2.hurt>0){ ctx.globalAlpha=Math.min(.7,ED2.hurt*5); ctx.fillStyle='#fff';
       ctx.beginPath(); ctx.arc(ED2.x,ED2.y-ealt,13,0,6.3); ctx.fill(); ctx.globalAlpha=1; }
@@ -9546,19 +9556,35 @@ function draw(){
     ctx.fillStyle='rgba(0,0,0,.3)'; ctx.beginPath(); ctx.ellipse(drone.x,drone.y,10,5,0,0,6.3); ctx.fill();
     var dsc=drone.kind==='droneL'?1.35:(drone.kind==='droneS'?.78:1);
     ctx.save(); ctx.translate(drone.x,drone.y-alt); ctx.rotate(drone.ang+Math.PI/2); ctx.scale(dsc,dsc);
-    ctx.strokeStyle='#3b4249'; ctx.lineWidth=3;
-    ctx.beginPath(); ctx.moveTo(-9,-9); ctx.lineTo(9,9); ctx.moveTo(9,-9); ctx.lineTo(-9,9); ctx.stroke();
-    var rp=[[-9,-9],[9,-9],[-9,9],[9,9]];
-    for(var rq=0;rq<4;rq++){
-      ctx.strokeStyle='rgba(180,206,220,'+(.3+Math.sin(drone.rot*3+rq)*.18)+')'; ctx.lineWidth=1.6;
-      ctx.beginPath(); ctx.arc(rp[rq][0],rp[rq][1],6.2,0,6.3); ctx.stroke();
-      ctx.strokeStyle='rgba(220,235,245,.5)'; ctx.lineWidth=2;
-      ctx.beginPath(); ctx.moveTo(rp[rq][0]-5,rp[rq][1]); ctx.lineTo(rp[rq][0]+5,rp[rq][1]);
-      ctx.stroke();
+    // Arms + animated rotor blades — match Quartermaster shop icon
+    var rmp=[[-10,-10],[10,-10],[-10,10],[10,10]];
+    if(drone.kind==='droneL') rmp=[[-10,-9],[10,-9],[-12,0],[12,0],[-10,9],[10,9]];
+    for(var rq=0;rq<rmp.length;rq++){
+      var rqx=rmp[rq][0],rqy=rmp[rq][1];
+      ctx.strokeStyle='#142328'; ctx.lineWidth=3.4;
+      ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(rqx,rqy); ctx.stroke();
+      ctx.strokeStyle='#b48953'; ctx.lineWidth=1.3;
+      ctx.beginPath(); ctx.moveTo(0,-.5); ctx.lineTo(rqx,rqy-.5); ctx.stroke();
+      ctx.save(); ctx.translate(rqx,rqy); ctx.rotate(drone.rot*3+rq*.8+.4);
+      ctx.fillStyle='#eab65e';
+      ctx.beginPath(); ctx.ellipse(0,0,4.1,.9,0,0,6.3); ctx.fill();
+      ctx.rotate(2.1);
+      ctx.beginPath(); ctx.ellipse(0,0,4.1,.85,0,0,6.3); ctx.fill();
+      ctx.restore();
+      ctx.fillStyle='#14252b'; ctx.beginPath(); ctx.arc(rqx,rqy,1.2,0,6.3); ctx.fill();
     }
-    ctx.fillStyle='#586570'; rrect(ctx,-6,-7,12,14,3); ctx.fill(); outl(ctx,'#0d1418',2);
-    ctx.fillStyle='#d8402c'; rrect(ctx,-4,-11,8,5,2); ctx.fill(); outl(ctx,'#0d1418',1.6);
-    ctx.fillStyle='#8fd4f0'; ctx.beginPath(); ctx.arc(0,4,2.6,0,6.3); ctx.fill();
+    // Body — same dark olive/tan as shop icon
+    ctx.fillStyle='#424944'; rrect(ctx,-3,-7,6,14,2); ctx.fill(); outl(ctx,'#192b29',1.5);
+    ctx.fillStyle='#c48247'; rrect(ctx,-2,-5,4,8,1); ctx.fill();
+    ctx.strokeStyle='#eee0ad'; ctx.lineWidth=1.5; ctx.beginPath(); ctx.moveTo(-3,-2); ctx.lineTo(3,-2); ctx.stroke();
+    // Payload
+    gearPoly(ctx,[[-2,3],[2,3],[3,9],[0,13],[-3,9]],'#b7563f');
+    // Antenna
+    ctx.strokeStyle='#bdc3b6'; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(3,-5); ctx.lineTo(6,-13); ctx.stroke();
+    ctx.strokeStyle='#efb653'; ctx.lineWidth=1.4; ctx.beginPath(); ctx.arc(6,-13,1.4,0,6.3); ctx.stroke();
+    // Camera housing + lens
+    ctx.fillStyle='#273638'; rrect(ctx,-3,-9,6,4,1); ctx.fill(); outl(ctx,'#111d22',1);
+    gearLens(ctx,0,-7,1.8,'#8bdbf3');
     ctx.restore();
     ctx.strokeStyle='rgba(120,200,240,.35)'; ctx.lineWidth=1;
     ctx.beginPath(); ctx.moveTo(drone.x,drone.y); ctx.lineTo(drone.x,drone.y-alt); ctx.stroke();
