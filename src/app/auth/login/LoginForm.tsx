@@ -59,8 +59,8 @@ export function LoginForm() {
   const inputStyle = {
     width: '100%',
     padding: '12px 14px',
-    background: 'rgba(255,255,255,0.04)',
-    border: '1px solid rgba(226,177,60,0.2)',
+    background: 'rgba(0,87,183,0.07)',
+    border: '1px solid rgba(0,87,183,0.25)',
     borderRadius: '2px',
     color: '#e8e4d8',
     fontSize: '13px',
@@ -69,10 +69,16 @@ export function LoginForm() {
   }
 
   return (
-    <div className="min-h-[80vh] flex items-center justify-center px-4 py-16">
+    <div
+      className="min-h-[80vh] flex items-center justify-center px-4 py-16"
+      style={{ background: '#0c0d0b' }}
+    >
       <div className="w-full max-w-sm">
         {/* Header */}
         <div className="text-center mb-8">
+          <div className="text-[8px] font-black tracking-[3px] mb-3" style={{ color: '#ffd700' }}>
+            🇺🇦 Slava Ukraini
+          </div>
           <p className="label mb-3">
             {mode === 'login' ? 'OPERATOR LOGIN' : 'CREATE ACCOUNT'}
           </p>
@@ -87,12 +93,12 @@ export function LoginForm() {
         {/* Card */}
         <div
           className="panel rounded-sm p-6"
-          style={{ boxShadow: '0 0 0 1px rgba(226,177,60,0.15), 0 12px 40px rgba(0,0,0,0.6)' }}
+          style={{ boxShadow: '0 0 0 1px rgba(226,177,60,0.18), 0 12px 40px rgba(0,0,0,0.7)' }}
         >
-          <div
-            className="h-0.5 mb-6 -mx-6 -mt-6 rounded-t-sm"
-            style={{ background: 'linear-gradient(90deg, transparent, #e2b13c, #c0562f, #e2b13c, transparent)' }}
-          />
+          {/* Ukraine flag stripe at top */}
+          <div className="h-1 mb-6 -mx-6 -mt-6 rounded-t-sm" style={{
+            background: 'linear-gradient(90deg, #0057b7 50%, #ffd700 50%)',
+          }} />
 
           {/* Google OAuth */}
           <button
@@ -101,23 +107,22 @@ export function LoginForm() {
             disabled={loading}
             className="w-full flex items-center justify-center gap-3 rounded-sm"
             style={{
-              padding: '11px 16px',
-              background: 'rgba(255,255,255,0.06)',
-              border: '1px solid rgba(226,177,60,0.2)',
+              padding: '12px 16px',
+              background: 'rgba(0,87,183,0.12)',
+              border: '1px solid rgba(0,87,183,0.4)',
               color: '#e8e4d8',
-              fontSize: 12,
-              fontWeight: 700,
-              letterSpacing: '1.5px',
+              fontSize: 11,
+              fontWeight: 800,
+              letterSpacing: '2px',
               textTransform: 'uppercase',
               cursor: loading ? 'default' : 'pointer',
               opacity: loading ? 0.6 : 1,
-              transition: 'background 150ms',
+              transition: 'background 150ms, border-color 150ms',
             }}
-            onMouseEnter={e => { if (!loading) (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.10)' }}
-            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.06)' }}
+            onMouseEnter={e => { if (!loading) { (e.currentTarget as HTMLElement).style.background = 'rgba(0,87,183,0.22)'; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(0,87,183,0.7)' } }}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(0,87,183,0.12)'; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(0,87,183,0.4)' }}
           >
-            {/* Google "G" logo */}
-            <svg width="16" height="16" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+            <svg width="15" height="15" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
               <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
               <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
               <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
@@ -128,15 +133,15 @@ export function LoginForm() {
           </button>
 
           {/* Divider */}
-          <div className="flex items-center gap-3 my-4">
-            <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.06)' }} />
+          <div className="flex items-center gap-3 my-5">
+            <div className="flex-1 h-px" style={{ background: 'rgba(226,177,60,0.12)' }} />
             <span className="text-[8px] tracking-[2px] uppercase font-black" style={{ color: '#4a4740' }}>or</span>
-            <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.06)' }} />
+            <div className="flex-1 h-px" style={{ background: 'rgba(226,177,60,0.12)' }} />
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <p className="text-[9px] tracking-[2.5px] uppercase font-black mb-2" style={{ color: '#6e6a60' }}>
+              <p className="text-[9px] tracking-[2.5px] uppercase font-black mb-2" style={{ color: '#e2b13c' }}>
                 Email
               </p>
               <input
@@ -145,14 +150,14 @@ export function LoginForm() {
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 placeholder="you@example.com"
-                style={{ ...inputStyle, ...(email ? { borderColor: 'rgba(226,177,60,0.4)' } : {}) }}
-                onFocus={(e) => (e.currentTarget.style.borderColor = 'rgba(226,177,60,0.5)')}
-                onBlur={(e) => (e.currentTarget.style.borderColor = 'rgba(226,177,60,0.2)')}
+                style={{ ...inputStyle, ...(email ? { borderColor: 'rgba(0,87,183,0.55)' } : {}) }}
+                onFocus={(e) => (e.currentTarget.style.borderColor = 'rgba(0,87,183,0.7)')}
+                onBlur={(e) => (e.currentTarget.style.borderColor = email ? 'rgba(0,87,183,0.55)' : 'rgba(0,87,183,0.25)')}
               />
             </div>
 
             <div>
-              <p className="text-[9px] tracking-[2.5px] uppercase font-black mb-2" style={{ color: '#6e6a60' }}>
+              <p className="text-[9px] tracking-[2.5px] uppercase font-black mb-2" style={{ color: '#e2b13c' }}>
                 Password
               </p>
               <input
@@ -163,8 +168,8 @@ export function LoginForm() {
                 minLength={6}
                 placeholder="Min. 6 characters"
                 style={inputStyle}
-                onFocus={(e) => (e.currentTarget.style.borderColor = 'rgba(226,177,60,0.5)')}
-                onBlur={(e) => (e.currentTarget.style.borderColor = 'rgba(226,177,60,0.2)')}
+                onFocus={(e) => (e.currentTarget.style.borderColor = 'rgba(0,87,183,0.7)')}
+                onBlur={(e) => (e.currentTarget.style.borderColor = 'rgba(0,87,183,0.25)')}
               />
             </div>
 
@@ -188,26 +193,45 @@ export function LoginForm() {
             <button
               type="submit"
               disabled={loading}
-              className="btn-primary w-full mt-2"
-              style={{ width: '100%', opacity: loading ? 0.6 : 1, fontSize: 13 }}
+              className="w-full mt-2 rounded-sm font-black uppercase"
+              style={{
+                padding: '14px 32px',
+                background: loading ? 'rgba(0,87,183,0.5)' : 'linear-gradient(180deg,#0068d9 0%,#0057b7 100%)',
+                boxShadow: '0 4px 0 #003a7a, 0 6px 20px rgba(0,87,183,0.3)',
+                color: '#fff',
+                fontSize: 13,
+                letterSpacing: '2.5px',
+                border: 'none',
+                cursor: loading ? 'default' : 'pointer',
+                opacity: loading ? 0.6 : 1,
+                transition: 'filter 150ms',
+              }}
+              onMouseEnter={e => { if (!loading) (e.currentTarget as HTMLElement).style.filter = 'brightness(1.12)' }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.filter = 'none' }}
             >
               {loading ? 'LOADING…' : mode === 'login' ? 'SIGN IN' : 'CREATE ACCOUNT'}
             </button>
           </form>
 
-          <div className="mt-6 pt-4 border-t text-center" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
-            <p className="text-[9px] tracking-[1.5px] uppercase" style={{ color: '#4a4740' }}>
+          <div className="mt-6 pt-4 text-center" style={{ borderTop: '1px solid rgba(226,177,60,0.1)' }}>
+            <p className="text-[9px] tracking-[1.5px] uppercase" style={{ color: '#6e6a60' }}>
               {mode === 'login' ? 'No account? ' : 'Already enlisted? '}
               <button
                 onClick={() => { setMode(mode === 'login' ? 'signup' : 'login'); setError(''); setMessage('') }}
-                className="font-black hover:text-[#e2b13c] transition-colors"
-                style={{ color: '#a9a396' }}
+                className="font-black transition-colors"
+                style={{ color: '#ffd700' }}
+                onMouseEnter={e => (e.currentTarget.style.color = '#e2b13c')}
+                onMouseLeave={e => (e.currentTarget.style.color = '#ffd700')}
               >
                 {mode === 'login' ? 'SIGN UP' : 'SIGN IN'}
               </button>
             </p>
           </div>
         </div>
+
+        <p className="mt-4 text-center text-[8px] tracking-[1.5px] uppercase" style={{ color: '#4a4740' }}>
+          100% of proceeds go to Ukraine relief
+        </p>
       </div>
     </div>
   )
