@@ -18,7 +18,15 @@ function resize(){
   ctx.setTransform(DPR,0,0,DPR,0,0);
   ctx.imageSmoothingEnabled=true;
 }
-window.addEventListener('resize',resize); resize();
+// iOS reports stale innerWidth/Height during orientation change;
+// a 300ms follow-up catches the corrected value.
+var _resizeTimer;
+window.addEventListener('resize',function(){
+  resize();
+  clearTimeout(_resizeTimer);
+  _resizeTimer=setTimeout(resize,300);
+});
+resize();
 
 /* ---------- rng ---------- */
 var seed=1337;

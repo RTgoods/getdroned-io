@@ -158,4 +158,40 @@ h1 small{display:block;font-size:11px;letter-spacing:6px;color:#c0562f;margin-to
   #controlHint{display:none}
   #act,#nade{z-index:8}
   #nade.dim{opacity:.65}
+  /* Thicker bars and larger labels on touch screens */
+  .bar{height:15px}
+  #apBar{height:10px}
+  .lbl{font-size:12px;letter-spacing:2px}
+  #topL{width:50%}
+  /* Push the top HUD down slightly so it clears browser chrome */
+  #topL,#topR{top:calc(14px + env(safe-area-inset-top))}
+}
+
+/* ── Portrait rotation prompt ──────────────────────────────── */
+#rotatePrompt{
+  display:none;position:fixed;inset:0;z-index:250;
+  background:#07080a;flex-direction:column;
+  align-items:center;justify-content:center;
+  text-align:center;padding:32px;gap:0;
+  font-family:'Helvetica Neue',Arial,sans-serif;color:#e8e4d8
+}
+.rotateIcon{
+  width:64px;height:64px;margin-bottom:22px;
+  animation:rotateHint 2.4s ease-in-out infinite
+}
+@keyframes rotateHint{
+  0%,35%,100%{transform:rotate(0deg)}
+  58%,85%{transform:rotate(90deg)}
+}
+#rotatePrompt h2{
+  font-size:14px;font-weight:900;letter-spacing:4px;
+  color:#f2ead2;text-transform:uppercase;
+  text-shadow:0 2px 8px #000;margin:0 0 10px
+}
+#rotatePrompt p{
+  font-size:10px;letter-spacing:2px;color:#a9a396;margin:0
+}
+/* Show only on touch screens in portrait orientation */
+@media(pointer:coarse)and(orientation:portrait){
+  #rotatePrompt{display:flex}
 }

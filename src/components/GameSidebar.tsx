@@ -325,8 +325,8 @@ export function GameSidebar({ game, user, hasPurchased, completedSectors = [], p
         </div>
       </aside>
 
-      {/* Mobile hamburger */}
-      {mobile && !open && mounted && (
+      {/* Mobile hamburger — hidden while playing so it doesn't overlap the in-game HP/AP HUD */}
+      {mobile && !open && mounted && !playing && (
         <button
           onClick={toggle}
           aria-label="Open menu"
