@@ -140,7 +140,9 @@ export function GameLanding({ game, user, hasPurchased, onPlay }: Props) {
             /* Not owned — two-button split */
             <><div className="flex flex-col sm:flex-row gap-2" style={{ maxWidth: 480 }}>
 
-              {!user && <a href="/auth/login" className="btn-primary text-center">SIGN IN / CREATE ACCOUNT</a>}
+              <div className="flex-1">
+                {user ? <button onClick={onPlay} className="w-full rounded px-4 font-bold" style={{ background: '#0057b7', color: '#fff', height: '100%', minHeight: 52 }}>PLAY SECTOR 1 FREE</button> : <a href="/auth/login" className="flex items-center justify-center rounded px-4 font-bold" style={{ background: '#0057b7', color: '#fff', height: '100%', minHeight: 52 }}>PLAY SECTOR 1 FREE — SIGN IN</a>}
+              </div>
               {/* ── UNLOCK: Full access — Ukraine yellow ── */}
               <button
                 onClick={handleBuy}
@@ -148,7 +150,7 @@ export function GameLanding({ game, user, hasPurchased, onPlay }: Props) {
                 className="flex-1"
                 style={{
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  gap: 10, padding: '10px 14px',
+                  gap: 10, padding: '10px 14px', minHeight: 52,
                   background: 'linear-gradient(180deg,#f5c800 0%,#c89e00 100%)',
                   border: '1px solid rgba(245,200,0,0.45)',
                   borderRadius: 4,
