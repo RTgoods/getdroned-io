@@ -9,12 +9,12 @@ const tools = [
   ['usv', 'Sea Drone', 'Sector 3', 'Steer an explosive surface drone through the water to attack enemy ships.'],
   ['sentry', 'Sentry Gun', 'Defense', 'Deploy an automatic gun to cover your position while you move or fight.'],
   ['strike', 'Fire Mission', 'Area attack', 'Call in a series of delayed strikes around a target area.'],
-  ['stim', 'Combat Stim', 'Boost', 'Temporarily increases movement speed and rate of fire.'],
+  ['stim', 'Combat Stim', 'Boost', 'Temporarily increases movement speed and rate of fire, leaving a blue-and-yellow trail as you move.'],
   ['smoke', 'Smoke', 'Cover', 'Creates a cloud that blocks enemy sight, giving you room to reposition.'],
   ['incend', 'Incendiary', 'Area denial', 'An initial blast leaves burning patches that damage anyone standing in them.'],
   ['flamer', 'Flamethrower', 'Fire', 'Hold fire to project a long stream of flames and set enemies alight.'],
   ['emp', 'Drone Jammer', 'Anti-drone', 'Releases an electronic burst to take down nearby enemy drones.'],
-  ['med', 'Field Kit', 'Recovery', 'Restores health when you need to get back into the fight.'],
+  ['med', 'Field Kit', 'Recovery', 'Stored in your tool belt when purchased. Activate it when needed to restore 50 health.'],
   ['plate', 'Armour Plate', 'Protection', 'Replenishes armour to absorb more incoming damage.'],
 ]
 const weapons = [
@@ -24,7 +24,7 @@ const weapons = [
   ['shotgun', 'Breacher 12', 'Shotgun · 6 rounds', 'Eight pellets per shot deliver a powerful spread up close. Allow time between shots.'],
   ['dmr', 'Marksman', 'DMR · 10 rounds', 'High damage, tight accuracy and penetrating rounds, balanced by a slower firing pace.'],
   ['lmg', 'Bulldog LMG', 'Machine gun · 100 rounds', 'A large magazine and rapid automatic fire for sustained pressure, with a broad spread.'],
-  ['railgun', 'Railgun', 'Rail weapon · 3 shots', 'A high-damage energy beam that cuts through terrain and multiple targets in a straight line. Three shots, no reserve ammo.'],
+  ['railgun', 'Railgun', 'Rail weapon · 3 shots', 'A piercing beam that cuts through terrain and kills every enemy in its path. Three shots, no reserve ammo.'],
 ]
 
 export function EquipmentGuide() {
@@ -45,7 +45,7 @@ export function EquipmentGuide() {
           <span className="absolute top-3 left-3 text-[9px] tracking-widest text-[#728b9d]">{String(index + 1).padStart(2, '0')}</span>
           {/* The adjacent title identifies the illustration. */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={`/equipment/${id}.png${id === 'railgun' || id === 'drone' ? '?v=2' : ''}`} alt="" loading="lazy" width={400} height={240} className="w-full h-full object-contain px-6 py-2" />
+          <img src={`/equipment/${id}.png?v=4`} alt="" loading="lazy" width={400} height={240} className="w-full h-full object-contain px-6 py-2" />
           <span className="absolute bottom-3 right-3 w-5 h-0.5 bg-[#ffd700]" />
         </div>
         <div className="p-4"><p className="text-[9px] font-bold uppercase tracking-widest text-[#79b9f1] mb-2">{role}</p><h3 className="font-black text-base text-[#f2ead2]">{name}</h3><p className="mt-2 text-xs leading-relaxed text-[#b0bdc6]">{description}</p></div>
