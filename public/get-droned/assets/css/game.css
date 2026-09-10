@@ -192,6 +192,6 @@ h1 small{display:block;font-size:11px;letter-spacing:6px;color:#c0562f;margin-to
   font-size:10px;letter-spacing:2px;color:#a9a396;margin:0
 }
 /* Show only on touch screens in portrait orientation */
-@media(pointer:coarse)and(orientation:portrait){
-  #rotatePrompt{display:flex}
+@media (pointer: coarse) and (orientation: portrait){
+  #rotatePrompt{display:flex!important}
 }

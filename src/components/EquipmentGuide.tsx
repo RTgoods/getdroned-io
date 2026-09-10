@@ -24,6 +24,7 @@ const weapons = [
   ['shotgun', 'Breacher 12', 'Shotgun · 6 rounds', 'Eight pellets per shot deliver a powerful spread up close. Allow time between shots.'],
   ['dmr', 'Marksman', 'DMR · 10 rounds', 'High damage, tight accuracy and penetrating rounds, balanced by a slower firing pace.'],
   ['lmg', 'Bulldog LMG', 'Machine gun · 100 rounds', 'A large magazine and rapid automatic fire for sustained pressure, with a broad spread.'],
+  ['railgun', 'Railgun', 'Rail weapon · 3 shots', 'A high-damage energy beam that cuts through terrain and multiple targets in a straight line. Three shots, no reserve ammo.'],
 ]
 
 export function EquipmentGuide() {
@@ -32,19 +33,19 @@ export function EquipmentGuide() {
   return <section className="py-7 sm:py-10 border-b border-white/10" aria-labelledby="equipment-title">
     <div className="flex items-center gap-3 mb-3"><span className="h-px w-8 bg-[#0057b7]" /><p className="text-[9px] font-black tracking-[3px] uppercase text-[#ffd700]">Field guide</p></div>
     <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-5">
-      <div><h2 id="equipment-title" className="text-2xl sm:text-3xl font-black text-[#f2ead2]">Know your equipment.</h2><p className="text-sm text-[#a9b4b9] mt-2 max-w-md leading-relaxed">Choose the right tool for the job. Get to know your drones, support gear and six gun types before you deploy.</p></div>
+      <div><h2 id="equipment-title" className="text-2xl sm:text-3xl font-black text-[#f2ead2]">Know your equipment.</h2><p className="text-sm text-[#a9b4b9] mt-2 max-w-md leading-relaxed">Choose the right tool for the job. Get to know your drones, support gear and seven gun types before you deploy.</p></div>
       <div className="flex gap-2 shrink-0" aria-label="Equipment category">
         {(['tools', 'weapons'] as const).map(tab => <button key={tab} type="button" aria-pressed={view === tab} onClick={() => setView(tab)} className="rounded px-4 py-3 text-[10px] font-black uppercase tracking-widest border transition-colors" style={{ color: view === tab ? '#ffd700' : '#b2c2cc', background: view === tab ? '#0057b7' : '#101c26', borderColor: view === tab ? '#287ac9' : '#283b49' }}>{tab} · {tab === 'tools' ? tools.length : weapons.length}</button>)}
       </div>
     </div>
-    <div className="mt-5 mb-4 flex items-center justify-between gap-3 text-[10px] text-[#93a7b5] uppercase tracking-wider"><span>{view === 'tools' ? '13 tools · Six belt slots' : 'Six gun types · Different strengths'}</span><span className="text-[#ffd700]">Equipment briefing</span></div>
+    <div className="mt-5 mb-4 flex items-center justify-between gap-3 text-[10px] text-[#93a7b5] uppercase tracking-wider"><span>{view === 'tools' ? '13 tools · Six belt slots' : 'Seven gun types · Different strengths'}</span><span className="text-[#ffd700]">Equipment briefing</span></div>
     <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
       {entries.map(([id, name, role, description], index) => <article key={id} className="overflow-hidden rounded-lg border border-[#263746] bg-[#0d1720]">
         <div className="relative h-32 flex items-center justify-center border-b border-[#263746]" style={{ background: 'radial-gradient(ellipse at center, #20384b 0%, #101e2a 70%)' }}>
           <span className="absolute top-3 left-3 text-[9px] tracking-widest text-[#728b9d]">{String(index + 1).padStart(2, '0')}</span>
           {/* The adjacent title identifies the illustration. */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={`/equipment/${id}.png`} alt="" loading="lazy" width={400} height={240} className="w-full h-full object-contain px-6 py-2" />
+          <img src={`/equipment/${id}.png${id === 'railgun' || id === 'drone' ? '?v=2' : ''}`} alt="" loading="lazy" width={400} height={240} className="w-full h-full object-contain px-6 py-2" />
           <span className="absolute bottom-3 right-3 w-5 h-0.5 bg-[#ffd700]" />
         </div>
         <div className="p-4"><p className="text-[9px] font-bold uppercase tracking-widest text-[#79b9f1] mb-2">{role}</p><h3 className="font-black text-base text-[#f2ead2]">{name}</h3><p className="mt-2 text-xs leading-relaxed text-[#b0bdc6]">{description}</p></div>

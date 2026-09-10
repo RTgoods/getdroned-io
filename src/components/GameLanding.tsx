@@ -121,7 +121,7 @@ export function GameLanding({ game, user, hasPurchased, onPlay }: Props) {
               <button
                 onClick={onPlay}
                 style={{
-                  width: '33%', background: 'linear-gradient(180deg,#ffd700 0%,#e5b900 100%)',
+                  display: 'block', marginInline: 'auto', width: '33%', minWidth: 'min(220px, 100%)', background: 'linear-gradient(180deg,#ffd700 0%,#e5b900 100%)',
                   color: '#003580', border: 'none', borderRadius: 4,
                   padding: '18px 32px', fontWeight: 900, fontSize: 13,
                   letterSpacing: '3px', textTransform: 'uppercase',

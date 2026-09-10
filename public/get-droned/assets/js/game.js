@@ -1439,6 +1439,7 @@ function drawProp(c,o){
    WEAPONS + CARDS
    ========================================================================= */
 var WEAPONS={
+  railgun:{name:'RAILGUN',dmg:500,rof:1.15,mag:3,res:0,spread:0,spd:3000,auto:false,pel:1,kick:8,snd:'d',rail:true},
   pistol :{name:'M9 PISTOL',   dmg:26, rof:.30, mag:12, res:72,  spread:.05, spd:660, auto:false,pel:1,kick:2.4,snd:'p'},
   smg    :{name:'VECTOR-9',    dmg:15, rof:.075,mag:32, res:190, spread:.13, spd:640, auto:true, pel:1,kick:1.4,snd:'s'},
   rifle  :{name:'AK-74',       dmg:32, rof:.13, mag:30, res:180, spread:.07, spd:760, auto:true, pel:1,kick:2.2,snd:'r'},
@@ -1449,6 +1450,7 @@ var WEAPONS={
 var RAR=[{n:'COMMON',c:'#9aa08e'},{n:'RARE',c:'#5fa8d3'},{n:'EPIC',c:'#b07fd8'},{n:'LEGENDARY',c:'#e2b13c'}];
 
 var CARDS=[
+  {k:'w',id:'railgun',rar:3,wt:2},
   {k:'w',id:'smg',    rar:1,wt:14},
   {k:'w',id:'rifle',  rar:2,wt:12},
   {k:'w',id:'shotgun',rar:1,wt:12},
@@ -1732,7 +1734,7 @@ function startMusic(kind){
 
 var SHOP=[
   {id:'plate',  n:'PLATE',        p:120, d:'+40 armour'},
-  {id:'med',    n:'FIELD KIT',    p:90,  d:'+50 health'},
+  {id:'t_med',  n:'FIELD KIT',    p:90,  d:'+50 health · to belt'},
   {id:'frag',   n:'FRAGS x3',     p:150, d:'three grenades'},
   {id:'ammo',   n:'RESUPPLY',     p:110, d:'refill every gun'},
   {id:'t_droneS',n:'SCOUT DRONE',  p:160, d:'small blast'},
@@ -1745,7 +1747,8 @@ var SHOP=[
   {id:'t_flamer',n:'FLAMETHROWER', p:280, d:'15s of fire'},
   {id:'t_emp',  n:'DRONE JAMMER',  p:190, d:'burst kills drones'},
   {id:'u_armor',n:'HEAVY PLATE',  p:400, d:'armour cap 120', once:1},
-  {id:'u_hp',   n:'COMBAT VEST',  p:450, d:'health 140', once:1}
+  {id:'u_hp',   n:'COMBAT VEST',  p:450, d:'health 140', once:1},
+  {id:'w_railgun',n:'RAILGUN',p:600,d:'3 piercing shots'},
 ];
 function shopBox(){
   var w=Math.min(300,VW-28), x=(VW-w)/2;
@@ -1778,8 +1781,8 @@ function buy(i){
     if(belt.length>=6){ banner('BELT FULL','',1.1); return; }
     belt.push(it.id.slice(2));
   }
+  else if(it.id==='w_railgun') addGun('railgun');
   else if(it.id==='plate') player.ap=Math.min(upgAP,player.ap+40);
-  else if(it.id==='med')   player.hp=Math.min(player.mx,player.hp+50);
   else if(it.id==='frag')  player.nades+=3;
   else if(it.id==='ammo'){ for(var g=0;g<player.guns.length;g++){ var W3=WEAPONS[player.guns[g].id];
       player.guns[g].res=W3.res; player.guns[g].mag=W3.mag; }
@@ -1799,7 +1802,7 @@ function drawShopIcon(c,id,x,y,s){
   if(id==='u_hp'){
     c.fillStyle='#718064';c.beginPath();c.moveTo(-12,-13);c.lineTo(-5,-16);c.quadraticCurveTo(0,-6,5,-16);c.lineTo(12,-13);c.lineTo(15,13);c.lineTo(-15,13);c.closePath();c.fill();outl(c,'#1a251c',1.5);
     c.fillStyle='#a0ab86';c.fillRect(-10,-3,8,10);c.fillRect(2,-3,8,10);gearLine(c,0,-6,0,13,'#263629',2);
-  }else toolIcon(c,key,s*.86);
+  }else if(id==='w_railgun'){c.scale(.75,.75);drawGun(c,'railgun',-10,0);}else toolIcon(c,key,s*.86);
   c.restore();
 }
 function drawShop(){
@@ -3467,7 +3470,8 @@ function controlKey(e){
 }
 var reducedMotion=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 function manualAim(){ return mouseAim.active&&player&&!player.dead&&!piloting&&!aboard; }
-function aimAngle(){ return Math.atan2(mouseAim.y+cam.y-player.y,mouseAim.x+cam.x-player.x); }
+// Mouse aims at the visible firing plane, 18 pixels above world collision coordinates.
+function aimAngle(){ return Math.atan2(mouseAim.y+Math.round(cam.y)+18-player.y,mouseAim.x+Math.round(cam.x)-player.x); }
 window.addEventListener('pointermove',function(e){
   if(e.pointerType!=='mouse'||state!=='play') return;
   mouseAim.x=e.clientX; mouseAim.y=e.clientY;
@@ -3608,6 +3612,7 @@ function equipGun(i){
 function addGun(id){
   var W2=WEAPONS[id];
   for(var i=0;i<player.guns.length;i++) if(player.guns[i].id===id){
+    if(W2.rail){player.guns[i].mag=3;player.guns[i].res=0;if(i===player.gi){player.mag=3;player.res=0;syncGun();}hud();return '3 RAIL SHOTS';}
     if(i===player.gi) player.res+=W2.mag*2; else player.guns[i].res+=W2.mag*2;
     hud(); return '+'+(W2.mag*2)+' RDS';
   }
@@ -3654,6 +3659,42 @@ function igniteEnemy(en){
   if(!en.fire){ sfx('hurt',.35); }
   en.fire=Math.max(en.fire||0,rr(4.5,7));
 }
+function fireRailgun(ang){
+  var x=player.x,y=player.y,dx=Math.cos(ang),dy=Math.sin(ang),range=Math.hypot(WW,WH);
+  var end=range;
+  if(dx>0)end=Math.min(end,(WW-x)/dx);else if(dx<0)end=Math.min(end,-x/dx);
+  if(dy>0)end=Math.min(end,(WH-y)/dy);else if(dy<0)end=Math.min(end,-y/dy);
+  function crosses(px,py,r){var along=(px-x)*dx+(py-y)*dy;return along>=0&&along<=end&&Math.abs((px-x)*dy-(py-y)*dx)<=r;}
+  var hitTiles={};
+  for(var step=16;step<end;step+=TILE/3){
+    var tx=Math.floor((x+dx*step)/TILE),ty=Math.floor((y+dy*step)/TILE),key=ty*MW+tx;
+    if(!hitTiles[key]){hitTiles[key]=1;damageWall(tx,ty,2000);}
+  }
+  // Test the visible upright body, not just the small circle at its feet.
+  // Convert sprite height back into the beam's collision plane (rendered at y - 18).
+  function hitsEnemy(e){
+    var boss=e.compoundBoss||e.levelTwoBoss||e.oilBoss||e.airfieldBoss||e.redBoss;
+    var halfWidth=boss?34:Math.max(13,e.r||0),height=boss?68:42;
+    var near=16,far=end;
+    var axes=[[x,dx,e.x-halfWidth-3,e.x+halfWidth+3],[y,dy,e.y-height+18-3,e.y+18+3]];
+    for(var axis=0;axis<2;axis++){
+      var a=axes[axis];
+      if(Math.abs(a[1])<.000001){if(a[0]<a[2]||a[0]>a[3])return false;continue;}
+      var enter=(a[2]-a[0])/a[1],leave=(a[3]-a[0])/a[1];
+      near=Math.max(near,Math.min(enter,leave));far=Math.min(far,Math.max(enter,leave));
+      if(near>far)return false;
+    }
+    return true;
+  }
+  enemies.slice().forEach(function(e){if(e.hp>0&&hitsEnemy(e))hurtEnemy(e,Math.max(500,e.hp),ang);});
+  ships.slice().forEach(function(ship){if(!ship.sink&&crosses(ship.x,ship.y,ship.wid*.6))shipHit(ship,500,ang);});
+  motorcade.slice().forEach(function(car){if(!car.dead&&crosses(car.x,car.y,26))hitMotorcadeCar(car,500);});
+  refineries.slice().forEach(function(r){if(!r.dead&&crosses(r.cx,r.cy,Math.max(r.bw,r.bh)*.5))hitRefinery(r,500,r.cx,r.cy);});
+  aircraft.slice().forEach(function(a){if(!a.dead&&crosses(a.x,a.y,45))hitAircraft(a,500);});
+  [sams,aaGuns,edrones].forEach(function(list){for(var i=list.length-1;i>=0;i--){var target=list[i];if(crosses(target.x,target.y,18)){list.splice(i,1);explode(target.x,target.y,45,0,true);}}});
+  if(tank&&crosses(tank.x,tank.y,28)){tank.hp=0;killTank();}
+  fx.push({t:'rail',x:x+dx*16,y:y+dy*16,ex:x+dx*end,ey:y+dy*end,life:.4,max:.4});
+}
 function shoot(){
   var W=WEAPONS[player.wep];
   if(player.reload>0) return;
@@ -3670,7 +3711,8 @@ function shoot(){
     ang=Math.atan2(aimY-player.y,aimX-player.x); player.face=ang;
   }
   player.ang=ang;
-  var pel=W.pel||1;
+  if(W.rail)fireRailgun(ang);
+  var pel=W.rail?0:(W.pel||1);
   for(var i=0;i<pel;i++){
     var a=ang+rr(-W.spread,W.spread)*(pel>1?1:.7);
     bullets.push({x:player.x+Math.cos(ang)*16,y:player.y+Math.sin(ang)*16,
@@ -4134,7 +4176,7 @@ function update(dt,realDt){
           drops.splice(dp,1); hud(); continue;
         } else if(DP.ammo){
           var Wa=WEAPONS[player.wep], got2=Math.round(Wa.mag*rr(1.2,2.4));
-          player.res+=got2; syncGun(); sfx('reload',.5);
+          if(WEAPONS[player.wep].rail)player.mag=Math.min(3,player.mag+got2);else player.res+=got2; syncGun(); sfx('reload',.5);
           fx.push({t:'txt',x:DP.x,y:DP.y,life:.85,max:.85,s:'+'+got2+' RDS',c:'#c8a24a'});
           drops.splice(dp,1); hud(); continue;
         } else if(DP.gun){
@@ -4220,6 +4262,8 @@ function update(dt,realDt){
     var gaitTarget=v>0?Math.min(1,travelled/v)*m.m:0;
     player.amt+=(gaitTarget-(player.amt||0))*(1-Math.exp(-12*dt));
   } else { player.amt=Math.max(0,(player.amt||0)-dt*9); player.lvx=0; player.lvy=0; }
+
+  updateStimTrail(dt);
 
   if(manualAim()){ player.face=aimAngle(); player.ang=player.face; }
 
@@ -5413,6 +5457,7 @@ function showCard(cd){
     rows.push(['RATE',Math.round(60/W.rof)+' rpm '+(W.auto?'auto':'semi')]);
     rows.push(['MAGAZINE',W.mag+' rds']);
     rows.push(['SUPPLY',W.res+' rds']);
+    if(W.rail) rows.push(['PENETRATION','ALL TARGETS + TERRAIN']);
     if(W.pierce) rows.push(['PENETRATION',W.pierce+' targets']);
   } else if(cd.k==='t'){
     nm=cd.name;
@@ -5439,6 +5484,7 @@ function dressCard(cd){
     stats+=row('FIRE RATE',Math.round(60/W.rof)+' rpm'+(W.auto?' · auto':' · semi'));
     stats+=row('MAGAZINE',W.mag+' rds');
     stats+=row('SUPPLY',W.res+' rds');
+    if(W.rail) stats+=row('PENETRATION','ALL TARGETS + TERRAIN');
     if(W.pierce) stats+=row('PENETRATION',W.pierce+' targets');
   } else {
     name=cd.name; stats+=row('EFFECT',cd.desc);
@@ -5468,7 +5514,7 @@ function takeCard(){
   if(cd){ try{
     if(cd.k==='w'){ addGun(cd.id);
     } else if(cd.k==='a'){
-      var Wc=WEAPONS[player.wep]; player.res+=(cd.id==='ammo'?2:1)*Wc.mag; syncGun();
+      var Wc=WEAPONS[player.wep]; if(Wc.rail)player.mag=3;else player.res+=(cd.id==='ammo'?2:1)*Wc.mag; syncGun();
     } else if(cd.k==='h'){ player.hp=Math.min(player.mx,player.hp+45); }
     else if(cd.k==='p'){ player.ap=Math.min(upgAP,player.ap+(cd.id==='vest'?45:30)); }
     else if(cd.k==='t'){
@@ -6698,7 +6744,7 @@ async function sectorClear(){
     startSector(level+1);
     player.hp=Math.min(player.mx,keepHp+22); player.ap=keepAp;
     player.guns=gr; player.gi=gidx;
-    var cg=gr[gidx]; cg.res+=Math.floor(WEAPONS[cg.id].mag*1.5);
+    var cg=gr[gidx]; if(!WEAPONS[cg.id].rail)cg.res+=Math.floor(WEAPONS[cg.id].mag*1.5);
     player.wep=cg.id; player.mag=cg.mag; player.res=cg.res; player.nades=nd+1;
     hud();
   },2300);
@@ -6824,6 +6870,21 @@ function paintGun(c,id){
     box(3,-3,4,2,'#1b252b','#1b252b',.3);for(var p=0;p<4;p++)line(-3+p,-3,-3+p,-.4,'#a1aaa5',.5);
     line(2,2,7,2,'#768887',.8);line(7,2,6,5,'#768887',.8);line(6,5,2,5,'#768887',.8);
     box(-2,-4.6,2,1,'#929d8e','#47574e',.2);c.fillStyle='#b9e0bd';c.fillRect(11,-4,1,1);screws(-1,1,2);
+  }else if(id==='railgun'){
+    box(-11,-4,10,8,'#858585','#292929',1.5);box(-3,-5,17,10,'#dededb','#646464',1.5);
+    // Angular urban camouflage across stock and receiver.
+    gearPoly(c,[[-10,-3],[-5,-3],[-6,0],[-9,1]],'#ededeb');
+    gearPoly(c,[[-5,0],[-1,-2],[1,2],[-4,3]],'#222222');
+    gearPoly(c,[[-2,-4],[4,-4],[2,-1],[-1,0]],'#424242');
+    gearPoly(c,[[5,-4],[10,-4],[8,0],[4,1]],'#f5f5f1');
+    gearPoly(c,[[8,1],[13,-1],[13,4],[6,4]],'#303030');
+    gearPoly(c,[[0,4],[5,4],[3,11],[-1,10]],'#262626');
+    line(1,6,3,6,'#aaaaa6',.8);line(0,8,2,8,'#777777',.8);
+    box(10,-5,24,3,'#d6d6d3','#555555',.8);box(10,3,24,3,'#bdbdbb','#424242',.8);
+    line(10,0,35,0,'#f2f2ed',1.7);
+    for(var coil=0;coil<4;coil++){box(12+coil*5,-6,2,13,'#555555','#1d1d1d',.5);line(13+coil*5,-3,13+coil*5,3,'#dcdcd7',1);}
+    box(0,-3,6,4,'#222222','#111111',.6);line(1,-1,5,-1,'#f7f7ef',1.2);
+    box(-8,-2,5,3,'#bdbdb8','#666666',.5);
   }else if(id==='flamer'){
     box(-10,-6,7,13,'#708259','#35472f',2.5);box(-9,-7,5,2,'#a8b5a0','#4d5b50');
     line(-9,-2,-4,-2,'#cbb764',1.3);box(-3,-3,18,6,steel,black,1.5);
@@ -6858,7 +6919,27 @@ function paintGun(c,id){
     line(0,3,5,4,'#83908b',.7);line(5,4,4,6,'#83908b',.7);
   }
 }
+// Shared swept-arm FPV frame used in flight, supply desks, loot and equipment icons.
+function paintFPV(c,spin){
+  var motors=[[-11,-5],[11,-5],[-8,10],[8,10]];
+  motors.forEach(function(p,i){
+    gearLine(c,0,i<2?-2:5,p[0],p[1],'#15191d',3.8);
+    gearLine(c,0,i<2?-2:5,p[0],p[1],'#778082',1);
+    c.save();c.translate(p[0],p[1]);c.rotate((spin||0)+i*.9);
+    c.fillStyle=i<2?'#dfddd1':'#af6244';
+    for(var blade=0;blade<3;blade++){c.rotate(2.094);c.beginPath();c.ellipse(2,0,2.7,.85,0,0,6.3);c.fill();}
+    c.restore();c.fillStyle='#242b2e';c.beginPath();c.arc(p[0],p[1],1.4,0,6.3);c.fill();
+  });
+  gearPoly(c,[[-4,-8],[4,-8],[5,4],[3,11],[-3,11],[-5,4]],'#333b3d');
+  gearBox(c,-3,-3,6,11,'#c3b994','#6b674f',1.2);
+  gearLine(c,-4,0,4,0,'#1b2023',2);gearLine(c,-4,5,4,5,'#1b2023',2);
+  gearBox(c,-4,-10,8,6,'#949d9d','#303a40',1.5);gearLens(c,0,-8,2.6,'#a0ddd6');
+  gearLine(c,2,8,5,14,'#9caaa4',1);gearLine(c,2,14,8,14,'#242a2e',2);
+  gearPoly(c,[[-2,7],[2,7],[2,12],[0,14],[-2,12]],'#867b5d');
+  c.fillStyle='#ded9c5';c.fillRect(-2,-2,1,2);c.fillStyle='#b76a4c';c.fillRect(1,-2,1,2);
+}
 function paintTool(c,k){
+  if(k==='drone'){paintFPV(c,0);return;}
   function box(x,y,w,h,t,b,r){gearBox(c,x,y,w,h,t,b,r);}
   function line(x,y,xx,yy,col,w){gearLine(c,x,y,xx,yy,col,w);}
   function ring(x,y,r,col,w){c.strokeStyle=col;c.lineWidth=w||1;c.beginPath();c.arc(x,y,r,0,6.3);c.stroke();}
@@ -7492,6 +7573,34 @@ function bakeGibs(x,y,ang,col,band,kind){
 /* =========================================================================
    DRAW
    ========================================================================= */
+function updateStimTrail(dt){
+  var trail=player.stimTrail||(player.stimTrail=[]);
+  for(var i=trail.length-1;i>=0;i--){trail[i].life-=dt;if(trail[i].life<=0)trail.splice(i,1);}
+  if(player.dead||piloting||aboard){trail.length=0;return;}
+  var speed=Math.hypot(player.lvx||0,player.lvy||0);
+  player.stimTrailClock=(player.stimTrailClock||0)+dt;
+  if(player.stim>0&&speed>8&&player.stimTrailClock>=.025){
+    player.stimTrailClock=0;
+    var last=trail[trail.length-1];
+    if(last&&Math.hypot(player.x-last.x,player.y-last.y)>80)trail.length=0;
+    trail.push({x:player.x,y:player.y-15,nx:-player.lvy/speed,ny:player.lvx/speed,life:.55});
+    if(trail.length>28)trail.shift();
+  }
+}
+function drawStimTrail(c){
+  var trail=player.stimTrail;if(!trail||trail.length<2)return;
+  c.save();c.lineCap='round';c.lineJoin='round';
+  for(var side=0;side<2;side++){
+    var offset=side?3:-3;
+    for(var i=1;i<trail.length;i++){
+      var a=trail[i-1],b=trail[i];
+      c.globalAlpha=Math.pow(Math.max(0,a.life/.55),1.4)*.85;
+      c.strokeStyle=side?'#ffd700':'#0074e8';c.lineWidth=3.2;
+      c.beginPath();c.moveTo(a.x+a.nx*offset,a.y+a.ny*offset);c.lineTo(b.x+b.nx*offset,b.y+b.ny*offset);c.stroke();
+    }
+  }
+  c.restore();
+}
 function drawMovingWater(c){
   if(mapKind!=='sea') return;
   var x0=Math.max(0,Math.floor(cam.x/TILE)-1),x1=Math.min(MW-1,Math.ceil((cam.x+VW)/TILE)+1);
@@ -8438,6 +8547,8 @@ function draw(){
   drawImpactMarks(ctx);
   ctx.drawImage(bloodC,0,0);
 
+  drawStimTrail(ctx);
+
   // fresh blood still spreading
   for(var pl=0;pl<pools.length;pl++){ var PL=pools[pl];
     ctx.fillStyle='rgba(104,12,9,.62)';
@@ -8709,23 +8820,6 @@ function draw(){
     } else if(!isP&&U.finalBoss){
       drawMountedBoss(ctx,U);
     } else {
-      // ── stim aura: three expanding rings, yellow + cyan ───────────────
-      if(isP&&player.stim>0){
-        var stimFrac=Math.min(1,player.stim/12);
-        var stimPulse=(now*3.8)%1;
-        ctx.save();
-        for(var sw=0;sw<3;sw++){
-          var swPhase=(stimPulse+sw/3)%1;
-          var swR=13+swPhase*36;
-          var swA=(1-swPhase)*0.55*stimFrac;
-          var swCol=sw%2===0?'226,177,60':'79,208,138';
-          ctx.globalAlpha=swA;
-          ctx.strokeStyle='rgba('+swCol+',1)';
-          ctx.lineWidth=2.8-swPhase*1.8;
-          ctx.beginPath(); ctx.ellipse(U.x,U.y-15,swR*.68,swR,0,0,6.3); ctx.stroke();
-        }
-        ctx.globalAlpha=1; ctx.restore();
-      }
       drawUnit(ctx,U.x,U.y,isP?U.face:U.ang,isP?PK.col:U.d.col,isP?PK.band:U.d.band,
                U.walk||0,U.amt||0,isP?null:U.k,isP?((U.flamer>0)?'flamer':U.wep):gunFor(U.k),false,false,!isP,U.sid||0,isP?(U.recoil||0):0,null,isP);
     }
@@ -8749,13 +8843,18 @@ function draw(){
     }
   }
 
+  // Lingering rail discharge: silver halo and a white-hot center.
+  for(var rail=0;rail<fx.length;rail++){var beam=fx[rail];if(beam.t!=='rail')continue;
+    ctx.save();ctx.globalAlpha=beam.life/beam.max;ctx.lineCap='round';
+    [14,6,2].forEach(function(width,index){ctx.lineWidth=width;ctx.strokeStyle=['rgba(210,215,220,.22)','#bfc6ca','#ffffff'][index];ctx.beginPath();ctx.moveTo(beam.x,beam.y-18);ctx.lineTo(beam.ex,beam.ey-18);ctx.stroke();});ctx.restore();
+  }
   // bullets
   ctx.lineCap='round';
   for(var b=0;b<bullets.length;b++){ var bu=bullets[b], m=Math.hypot(bu.vx,bu.vy)||1;
     ctx.strokeStyle='rgba(255,226,150,.95)'; ctx.lineWidth=2.4;
-    ctx.beginPath(); ctx.moveTo(bu.x,bu.y-18); ctx.lineTo(bu.x-bu.vx/m*bu.trail,bu.y-18-bu.vy/m*bu.trail*.6); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(bu.x,bu.y-18); ctx.lineTo(bu.x-bu.vx/m*bu.trail,bu.y-18-bu.vy/m*bu.trail); ctx.stroke();
     ctx.strokeStyle='rgba(255,160,60,.35)'; ctx.lineWidth=5;
-    ctx.beginPath(); ctx.moveTo(bu.x,bu.y-18); ctx.lineTo(bu.x-bu.vx/m*bu.trail*.7,bu.y-18-bu.vy/m*bu.trail*.42); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(bu.x,bu.y-18); ctx.lineTo(bu.x-bu.vx/m*bu.trail*.7,bu.y-18-bu.vy/m*bu.trail*.7); ctx.stroke();
   }
   for(var b2=0;b2<eb.length;b2++){ var e2=eb[b2], m2=Math.hypot(e2.vx,e2.vy)||1;
     ctx.strokeStyle='rgba(255,110,90,.9)'; ctx.lineWidth=2.2;
@@ -9569,6 +9668,7 @@ function draw(){
     ctx.fillStyle='rgba(0,0,0,.3)'; ctx.beginPath(); ctx.ellipse(drone.x,drone.y,10,5,0,0,6.3); ctx.fill();
     var dsc=drone.kind==='droneL'?1.35:(drone.kind==='droneS'?.78:1);
     ctx.save(); ctx.translate(drone.x,drone.y-alt); ctx.rotate(drone.ang+Math.PI/2); ctx.scale(dsc,dsc);
+    if(drone.kind==='drone'){paintFPV(ctx,drone.rot*3);}else{
     // Arms + animated rotor blades — match Quartermaster shop icon
     var rmp=[[-10,-10],[10,-10],[-10,10],[10,10]];
     if(drone.kind==='droneL') rmp=[[-10,-9],[10,-9],[-12,0],[12,0],[-10,9],[10,9]];
@@ -9598,6 +9698,7 @@ function draw(){
     // Camera housing + lens
     ctx.fillStyle='#273638'; rrect(ctx,-3,-9,6,4,1); ctx.fill(); outl(ctx,'#111d22',1);
     gearLens(ctx,0,-7,1.8,'#8bdbf3');
+    }
     ctx.restore();
     ctx.strokeStyle='rgba(120,200,240,.35)'; ctx.lineWidth=1;
     ctx.beginPath(); ctx.moveTo(drone.x,drone.y); ctx.lineTo(drone.x,drone.y-alt); ctx.stroke();
