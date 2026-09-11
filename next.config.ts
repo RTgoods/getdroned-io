@@ -13,6 +13,14 @@ const nextConfig: NextConfig = {
   // Cache game assets long-term; HTML always revalidated so updates reach players
   async headers() {
     return [
+      // Anti-embed: prevent iframing on any domain except our own
+      {
+        source: '/:path*',
+        headers: [
+          { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
+          { key: 'Content-Security-Policy', value: "frame-ancestors 'self'" },
+        ],
+      },
       // HTML entry point — always revalidate (short TTL, ETag check)
       {
         source: '/get-droned',
