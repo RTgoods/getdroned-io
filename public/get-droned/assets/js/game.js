@@ -2404,7 +2404,7 @@ function droneBoom(x,y){
    ENTITIES
    ========================================================================= */
 
-/* ============================ LEVEL 2 — THE TRENCHES ============================ */
+/* ============================ LEVEL 2 — MEAT GRINDER ============================ */
 function dig(x0,y0,w,h){ fill(x0,y0,x0+w-1,y0+h-1,FLOOR); }
 function buildTrench(){
   baseHP=baseMX=400; baseFlash=0;
@@ -2574,7 +2574,7 @@ function buildTrench(){
   scatterTrenchTimber();
   placeFires(); buildStatic(); initWallHP();
 }
-/* ============================ LEVEL 3 — THE BLACK SEA ============================ */
+/* ============================ LEVEL 3 — BLACK SEA FLEET ============================ */
 function waterNear(x,y){
   for(var r=0;r<26;r++) for(var a=0;a<12;a++){
     var ax=x+Math.cos(a/12*6.283)*r*TILE*.6, ay=y+Math.sin(a/12*6.283)*r*TILE*.6;
@@ -2772,7 +2772,7 @@ function buildRedSquare(){
   initWallHP();
 }
 
-/* ======================= LEVEL 5 — THE AIRFIELD ======================= */
+/* ======================= LEVEL 5 — MILITARY AID ======================= */
 function buildAirfield(){
   seed=9900+level*19; setMapSize(82,58,false); grid.fill(EXT);
   airAssaultWave=0; airAssaultT=18; airfieldBossSpawned=0; airfieldBossDefeated=0; miniNukes.length=0;
@@ -4280,7 +4280,7 @@ function showCompoundBossClear(x,y){
 function showAirfieldBossClear(x,y){
   state='play'; firing=false; actBtn.classList.remove('on'); miniNukes.length=0;
   var victory=document.getElementById('airBossVictory');
-  banner('LEVEL 5 BOSS DOWN','AIRFIELD SECURED',1.5);
+  banner('LEVEL 5 BOSS DOWN','MILITARY AID SECURED',1.5);
   fx.push({t:'miniNuke',x:x,y:y,life:1.45,max:1.45,r:112});
   fx.push({t:'boom',x:x,y:y,life:.7,max:.7,r:130}); sfx('boom',.9); shake=Math.min(18,shake+12);
   setTimeout(function(){ state='pause'; victory.classList.add('show'); sfx('clear'); },1550);
@@ -4290,7 +4290,7 @@ function showAirfieldBossClear(x,y){
 function showLevelTwoBossClear(x,y){
   state='play'; firing=false; actBtn.classList.remove('on'); meatShots.length=0; meatBits.length=0;
   var victory=document.getElementById('levelTwoBossVictory');
-  banner('LEVEL 2 BOSS DEFEATED','THE TRENCHES ARE SECURE',1.5);
+  banner('LEVEL 2 BOSS DEFEATED','MEAT GRINDER CLEARED',1.5);
   fx.push({t:'boom',x:x,y:y,life:.85,max:.85,r:120}); fx.push({t:'ring',x:x,y:y,life:.7,max:.7});
   shake=Math.min(16,shake+10); sfx('boom',.8);
   setTimeout(function(){ state='pause'; victory.classList.add('show'); sfx('clear'); },1450);
@@ -4300,7 +4300,7 @@ function showLevelTwoBossClear(x,y){
 function showOilBossClear(x,y){
   state='play'; firing=false; actBtn.classList.remove('on'); fireBottles.length=0;
   var victory=document.getElementById('levelFourBossVictory');
-  banner('LEVEL 4 BOSS DEFEATED','THE OIL FIELDS ARE SECURE',1.5);
+  banner('LEVEL 4 BOSS DEFEATED','CRUDE INTENTIONS CLEARED',1.5);
   fx.push({t:'boom',x:x,y:y,life:.8,max:.8,r:120}); fx.push({t:'ring',x:x,y:y,life:.65,max:.65});
   shake=Math.min(16,shake+10); sfx('boom',.8);
   setTimeout(function(){ state='pause'; victory.classList.add('show'); sfx('clear'); },1450);
@@ -6363,7 +6363,7 @@ function spawnAirfieldBoss(){
   KB.airfieldBoss=1; KB.boss=1; KB.elite=0; KB.r=24; KB.bossScale=1.18;
   KB.hp=KB.mx=700; KB.nukeCd=.7; KB.walk=0; KB.cvx=0; KB.cvy=0;
   KB.d=Object.assign({},KB.d,{col:'#17191d',band:'#751f26',dmg:0,range:0,rof:9,pref:245,spd:64});
-  banner('LEVEL 5 BOSS','KIM JONG UN ENTERS THE AIRFIELD',2.8); hud();
+  banner('LEVEL 5 BOSS','KIM JONG UN ENTERS MILITARY AID',2.8); hud();
 }
 function spawnOilBoss(){
   if(oilBossSpawned) return;
@@ -6374,7 +6374,7 @@ function spawnOilBoss(){
   MB.oilBoss=1; MB.boss=1; MB.elite=0; MB.r=21; MB.bossScale=1.16;
   MB.hp=MB.mx=760; MB.fireBottleCd=.7; MB.walk=0; MB.cvx=0; MB.cvy=0;
   MB.d=Object.assign({},MB.d,{col:'#24282d',band:'#a8322a',dmg:0,range:0,rof:9,pref:240,spd:68});
-  banner('LEVEL 4 BOSS','DMITRY MEDVEDEV ENTERS THE OIL FIELDS',2.8); hud();
+  banner('LEVEL 4 BOSS','DMITRY MEDVEDEV ENTERS CRUDE INTENTIONS',2.8); hud();
 }
 function spawnCompoundBoss(){
   if(compoundBossSpawned) return;
@@ -7087,17 +7087,17 @@ function startSector(n){
   intro=(mapKind==='redSquare')?[{t:0,a:'SECTOR '+n,b:'RED SQUARE · MOSCOW'},
         {t:2.4,a:'RED SQUARE CATHEDRAL AND KREMLIN',b:'TWO PRIMARY OBJECTIVES'},
         {t:4.8,a:'MOTORCADE CHECKS THE STREETS',b:'SECURITY TEAMS DEPLOY AT STOPS'},
-        {t:7.2,a:'CLEAR BUILDINGS, CARS AND GUARDS',b:'ALL TARGETS MUST BE REMOVED'}]:(mapKind==='airfield')?[{t:0,a:'SECTOR '+n,b:'THE AIRFIELD'},
+        {t:7.2,a:'CLEAR BUILDINGS, CARS AND GUARDS',b:'ALL TARGETS MUST BE REMOVED'}]:(mapKind==='airfield')?[{t:0,a:'SECTOR '+n,b:'MILITARY AID'},
         {t:2.4,a:'THREE CARGO PLANES UNLOADING',b:'NORTH KOREAN WEAPONS AND TROOPS'},
         {t:4.8,a:'MOBILE GUARDS AROUND EVERY PLANE',b:'BREAK THE DEFENSIVE PATROLS'},
-        {t:7.2,a:'TWO ASSAULT WAVES WILL HIT BASE',b:'DEFEAT BOTH AND CLEAR THE AIRFIELD'}]:(mapKind==='oil')?[{t:0,a:'SECTOR '+n,b:'THE OIL FIELDS'},
+        {t:7.2,a:'TWO ASSAULT WAVES WILL HIT BASE',b:'DEFEAT BOTH AND CLEAR MILITARY AID'}]:(mapKind==='oil')?[{t:0,a:'SECTOR '+n,b:'CRUDE INTENTIONS'},
         {t:2.4,a:'SIX REFINERIES',b:'BURN THEM ALL'},
         {t:4.8,a:'FLY FROM THE PAD',b:'OVER THE TREES AND THE RIVERS'},
         {t:7.2,a:'SAM SITES ON EVERY PLANT',b:'BREAK WHEN THEY LAUNCH'},
-        {t:9.6,a:'THEY ARE SHELLING THE BASE',b:'WORK FAST'}]:(mapKind==='sea')?[{t:0,a:'SECTOR '+n,b:'THE BLACK SEA'},
+        {t:9.6,a:'THEY ARE SHELLING THE BASE',b:'WORK FAST'}]:(mapKind==='sea')?[{t:0,a:'SECTOR '+n,b:'BLACK SEA FLEET'},
         {t:2.4,a:'SEVEN SHIPS OFFSHORE',b:'SINK THEM ALL'},
         {t:4.8,a:'AIR AND SEA DRONES',b:'LAUNCH FROM THE SLIPWAY'},
-        {t:7.2,a:'TWO LANDING SHIPS INBOUND',b:'STOP THE TROOPS REACHING SHORE'}]:(mapKind==='trench')?[{t:0,a:'SECTOR '+n,b:'THE TRENCHES'},
+        {t:7.2,a:'TWO LANDING SHIPS INBOUND',b:'STOP THE TROOPS REACHING SHORE'}]:(mapKind==='trench')?[{t:0,a:'SECTOR '+n,b:'MEAT GRINDER'},
         {t:2.4,a:'TWO ENEMY BASES',b:'CLEAR AND CAPTURE BOTH'},
         {t:4.8,a:'PRISONERS IN EACH BASE',b:'FREE THEM AND GET THEM HOME'},
         {t:7.2,a:'TWO WEAPONS DEPOTS',b:'3 HEAVY DRONE HITS EACH · DETONATE INSIDE'},

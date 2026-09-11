@@ -43,10 +43,10 @@ const UA = {
 
 const SECTORS = [
   { num: 1, name: 'FRANKS AND HAMMERS', cover: '/get-droned/assets/images/covers/level-1.png?v=2' },
-  { num: 2, name: 'THE TRENCHES',   cover: '/get-droned/assets/images/covers/level-2.png?v=1' },
-  { num: 3, name: 'THE BLACK SEA',  cover: '/get-droned/assets/images/covers/level-3.png?v=1' },
-  { num: 4, name: 'THE OIL FIELDS', cover: '/get-droned/assets/images/covers/level-4.png?v=1' },
-  { num: 5, name: 'THE AIRFIELD',   cover: '/get-droned/assets/images/covers/level-5.png?v=2' },
+  { num: 2, name: 'MEAT GRINDER',      cover: '/get-droned/assets/images/covers/level-2.png?v=1' },
+  { num: 3, name: 'BLACK SEA FLEET',  cover: '/get-droned/assets/images/covers/level-3.png?v=1' },
+  { num: 4, name: 'CRUDE INTENTIONS', cover: '/get-droned/assets/images/covers/level-4.png?v=1' },
+  { num: 5, name: 'MILITARY AID',     cover: '/get-droned/assets/images/covers/level-5.png?v=2' },
   { num: 6, name: 'RED SQUARE',     cover: '/get-droned/assets/images/covers/level-6.png?v=1' },
 ]
 
