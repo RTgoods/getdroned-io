@@ -3938,8 +3938,11 @@ actBtn.addEventListener('mousedown',actDown); window.addEventListener('mouseup',
 bindTap(nadeBtn,throwNade);
 
 window.addEventListener('keydown',function(e){
-  if(state!=='play') return;
   var key=controlKey(e);
+  // Bot + recorder keys work outside state guard so they can be used any time
+  if(key==='b'&&!e.repeat){ bot.on=!bot.on; if(!bot.on){ mv.x=0;mv.y=0;mv.m=0;firing=false; } }
+  if(key==='v'&&!e.repeat){ REC.manActive?REC.stopManual():REC.startManual(); }
+  if(state!=='play') return;
   if(['w','a','s','d',' ','g','r','j','arrowup','arrowdown','arrowleft','arrowright'].indexOf(key)>=0) e.preventDefault();
   keys[key]=true;
   if(key===' '||key==='j'){ firing=true; e.preventDefault(); }
@@ -10373,6 +10376,7 @@ function draw(){
       ctx.beginPath(); ctx.arc(rr(-SQ.r*2,SQ.r*2),rr(-SQ.r*1.6,SQ.r*1.6),rr(1,3.4),0,6.3); ctx.fill(); }
     ctx.restore(); ctx.globalAlpha=1;
   }
+  REC.drawOverlay(ctx);
 }
 
 function paintDamaged(c){
@@ -11283,8 +11287,10 @@ function frame(t){
     else dt=raw*(1-.58*Math.min(1,droneCam.t/1.1));
   }
   if(state==='card'){ cardT+=dt; if(!pendingCard||!cardData) closeCard(); }
+  if(state==='play'&&bot.on&&player&&!player.dead&&!piloting) botStep(dt);
   if(state==='play') update(dt,raw);
   if(player) draw();
+  REC.tick(dt);
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(function(t){ last=t; requestAnimationFrame(frame); });
@@ -11487,6 +11493,241 @@ bindTap(document.getElementById('mute'),function(){
   muted=!muted; m.textContent=muted?'✕':'♪'; m.style.opacity=muted?.5:1;
   if(muted) stopMusic(); else if(state==='play') startMusic(mapKind);
 });
+
+/* =========================================================================
+   BOT PLAYER  (B to toggle)
+   Reads game state each frame and drives mv / firing so the game looks like
+   a skilled human: approach enemy, hold distance, dodge incoming bullets.
+   ========================================================================= */
+var bot = { on: false, dodgeX: 0, dodgeY: 0, dodgeT: 0 };
+
+function botStep(dt) {
+  var tgt = nearestTarget();
+
+  /* fire whenever there is a visible target */
+  firing = !!tgt;
+
+  /* --- bullet dodge --- */
+  bot.dodgeT = Math.max(0, bot.dodgeT - dt);
+  if (bot.dodgeT < 0.05) {
+    for (var bi = 0; bi < eb.length; bi++) {
+      var B = eb[bi];
+      var bx = B.x - player.x, by = B.y - player.y;
+      var bd = Math.hypot(bx, by);
+      if (bd > 220 || bd < 4) continue;
+      var bvl = Math.hypot(B.vx, B.vy) || 1;
+      /* dot > 0 means bullet is travelling toward player */
+      if ((B.vx * bx + B.vy * by) / (bvl * bd) > 0.6) {
+        /* choose perpendicular that isn't a wall */
+        var p1x =  B.vy / bvl, p1y = -B.vx / bvl;
+        var p2x = -p1x,        p2y = -p1y;
+        var t1ok = !blocksMove(T(Math.floor((player.x + p1x * 40) / TILE), Math.floor((player.y + p1y * 40) / TILE)));
+        bot.dodgeX = t1ok ? p1x : p2x;
+        bot.dodgeY = t1ok ? p1y : p2y;
+        bot.dodgeT = 0.32 + Math.random() * 0.14;
+        break;
+      }
+    }
+  }
+
+  /* --- approach / orbit nearest enemy --- */
+  var mx = 0, my = 0, mm = 0;
+  if (tgt) {
+    var ex = tgt.x - player.x, ey = tgt.y - player.y;
+    var ed = Math.hypot(ex, ey) || 1;
+    var approach = Math.max(-0.8, Math.min(1, (ed - 160) / 110));
+    mx = ex / ed * approach;
+    my = ey / ed * approach;
+    mm = Math.abs(approach);
+  } else {
+    /* no enemies visible — drift toward nearest unflagged objective */
+    var bfd = 1e9, bf = null;
+    for (var fi = 0; fi < flags.length; fi++) {
+      if (flags[fi].state === 'done') continue;
+      var fd = Math.hypot(flags[fi].x - player.x, flags[fi].y - player.y);
+      if (fd < bfd) { bfd = fd; bf = flags[fi]; }
+    }
+    if (bf && bfd > 40) {
+      var fdx = bf.x - player.x, fdy = bf.y - player.y, fdd = Math.hypot(fdx, fdy) || 1;
+      mx = fdx / fdd; my = fdy / fdd; mm = 0.7;
+    }
+  }
+
+  /* blend dodge into movement vector */
+  if (bot.dodgeT > 0) {
+    var ds = Math.min(1, bot.dodgeT / 0.28);
+    mx = mx * (1 - ds) + bot.dodgeX * ds;
+    my = my * (1 - ds) + bot.dodgeY * ds;
+    mm = Math.max(mm, ds * 0.9);
+  }
+
+  var ml = Math.hypot(mx, my);
+  if (ml > 0.001) { mx /= ml; my /= ml; } else { mm = 0; }
+  mv.x = mx; mv.y = my; mv.m = mm;
+  mouseAim.active = false;
+}
+
+/* =========================================================================
+   RECORDER  (V to manual record · auto-highlights always on during play)
+   Records a 9:16 vertical canvas centred on the player — ready for
+   TikTok / Reels / Shorts. Manual download is WebM; open in CapCut to
+   convert to MP4 if needed.
+   ========================================================================= */
+var REC = (function () {
+  /* ---- vertical 9:16 canvas ---- */
+  var vc = document.createElement('canvas');
+  vc.width = 540; vc.height = 960;
+  var vctx = vc.getContext('2d');
+
+  function blitVert() {
+    if (!player) return;
+    var srcW = VH * DPR * (9 / 16);
+    var srcH = VH * DPR;
+    var px   = (player.x - cam.x) * DPR;
+    var srcX = Math.max(0, Math.min(cv.width - srcW, px - srcW / 2));
+    vctx.fillStyle = '#0c0d0b';
+    vctx.fillRect(0, 0, 540, 960);
+    vctx.drawImage(cv, srcX, 0, srcW, srcH, 0, 0, 540, 960);
+  }
+
+  function bestMime() {
+    var types = ['video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm'];
+    for (var i = 0; i < types.length; i++) if (MediaRecorder.isTypeSupported(types[i])) return types[i];
+    return '';
+  }
+
+  /* ---- manual record ---- */
+  var manMR = null, manChunks = [], _manActive = false;
+
+  function startManual() {
+    if (_manActive || typeof MediaRecorder === 'undefined') return;
+    _manActive = true; manChunks = [];
+    var stream = vc.captureStream(60);
+    try { manMR = new MediaRecorder(stream, { mimeType: bestMime(), videoBitsPerSecond: 6000000 }); }
+    catch (e) { manMR = new MediaRecorder(stream); }
+    manMR.ondataavailable = function (e) { if (e.data && e.data.size > 0) manChunks.push(e.data); };
+    manMR.onstop = function () { saveBlob(new Blob(manChunks, { type: bestMime() || 'video/webm' }), 'get-droned-run.webm'); };
+    manMR.start(500);
+    notice('⏺ RECORDING  ·  V to stop');
+  }
+
+  function stopManual() {
+    if (!_manActive || !manMR) return;
+    _manActive = false; manMR.stop(); manMR = null;
+    notice('⬇ DOWNLOADING VIDEO…');
+  }
+
+  /* ---- highlight ring-buffer (always on during play) ---- */
+  var hlMR = null, hlChunks = [], hlTimes = [];
+  var HL_MAX = 22000; /* ms to keep */
+
+  function startHL() {
+    if (hlMR || typeof MediaRecorder === 'undefined') return;
+    hlChunks = []; hlTimes = [];
+    var stream = vc.captureStream(60);
+    try { hlMR = new MediaRecorder(stream, { mimeType: bestMime(), videoBitsPerSecond: 4000000 }); }
+    catch (e) { hlMR = new MediaRecorder(stream); }
+    hlMR.ondataavailable = function (e) {
+      if (!e.data || e.data.size < 100) return;
+      var now2 = Date.now(); hlChunks.push(e.data); hlTimes.push(now2);
+      while (hlTimes.length > 1 && now2 - hlTimes[0] > HL_MAX) { hlChunks.shift(); hlTimes.shift(); }
+    };
+    hlMR.start(1000);
+  }
+
+  function stopHL() {
+    if (!hlMR) return;
+    try { hlMR.stop(); } catch (e) {}
+    hlMR = null; hlChunks = []; hlTimes = [];
+  }
+
+  var _saving = false;
+  function saveHighlight(label) {
+    if (_saving || hlChunks.length < 4) return;
+    _saving = true;
+    saveBlob(new Blob(hlChunks.slice(), { type: bestMime() || 'video/webm' }), 'highlight-' + label + '.webm');
+    notice('🎬 HIGHLIGHT SAVED: ' + label.toUpperCase());
+    setTimeout(function () { _saving = false; }, 8000);
+  }
+
+  function saveBlob(blob, name) {
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url; a.download = name; a.style.display = 'none';
+    document.body.appendChild(a); a.click();
+    setTimeout(function () { document.body.removeChild(a); URL.revokeObjectURL(url); }, 3000);
+  }
+
+  /* ---- notice overlay ---- */
+  var _notice = '', _noticeTTL = 0;
+  function notice(msg) { _notice = msg; _noticeTTL = 3.5; }
+
+  /* ---- highlight triggers ---- */
+  var _prevKills = 0, _streakN = 0, _streakT = 0;
+  var _lowHPT = 0, _lowHPTriggered = false;
+
+  function tick(dt) {
+    blitVert();
+    /* manage highlight buffer lifecycle */
+    if (state === 'play' && !hlMR) startHL();
+    if (state !== 'play' && hlMR) stopHL();
+    _noticeTTL = Math.max(0, _noticeTTL - dt);
+    if (state !== 'play' || !player || player.dead) return;
+
+    /* kill-streak highlight — 3+ kills in 5 s */
+    var k = totalKills;
+    if (k > _prevKills) { _streakN += k - _prevKills; _streakT = 0; _prevKills = k; }
+    _streakT += dt;
+    if (_streakT > 5) { _streakN = 0; _streakT = 0; }
+    if (_streakN >= 3) { saveHighlight('multikill-x' + _streakN); _streakN = 0; }
+
+    /* close-call highlight — survive at ≤14 HP for 5 s */
+    if (player.hp > 0 && player.hp <= 14) {
+      _lowHPT += dt;
+      if (_lowHPT > 5 && !_lowHPTriggered) { _lowHPTriggered = true; saveHighlight('close-call'); }
+    } else if (player.hp > 30) { _lowHPT = 0; _lowHPTriggered = false; }
+  }
+
+  function drawOverlay(c) {
+    /* REC dot */
+    if (_manActive) {
+      c.save();
+      c.fillStyle = '#e83030';
+      c.beginPath(); c.arc(VW - 18, 18, 6, 0, Math.PI * 2); c.fill();
+      c.font = '900 9px Helvetica Neue,Arial'; c.fillStyle = '#fff';
+      c.textAlign = 'right'; c.fillText('REC', VW - 27, 22); c.textAlign = 'start';
+      c.restore();
+    }
+    /* BOT label */
+    if (bot.on) {
+      c.save(); c.font = '900 9px Helvetica Neue,Arial';
+      c.fillStyle = 'rgba(157,179,90,0.92)';
+      c.textAlign = 'right'; c.fillText('BOT', VW - 27, 37); c.textAlign = 'start';
+      c.restore();
+    }
+    /* toast notice */
+    if (_noticeTTL > 0) {
+      var alpha = Math.min(1, _noticeTTL);
+      c.save(); c.globalAlpha = alpha;
+      c.font = '900 11px Helvetica Neue,Arial';
+      var tw = c.measureText(_notice).width;
+      c.fillStyle = 'rgba(0,0,0,0.72)';
+      rrect(c, VW / 2 - tw / 2 - 12, VH - 56, tw + 24, 28, 4); c.fill();
+      c.fillStyle = '#f2ead2'; c.textAlign = 'center';
+      c.fillText(_notice, VW / 2, VH - 37);
+      c.textAlign = 'start'; c.restore();
+    }
+  }
+
+  return {
+    tick: tick,
+    drawOverlay: drawOverlay,
+    startManual: startManual,
+    stopManual: stopManual,
+    saveHighlight: saveHighlight,
+    get manActive() { return _manActive; },
+  };
+})();
 
 // Reveal only after the requested menu, level intro, or boss has been selected.
 if(player) draw();
