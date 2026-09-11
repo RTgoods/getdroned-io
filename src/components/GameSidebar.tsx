@@ -10,6 +10,7 @@ interface Props {
   game: Game
   user: User | null
   hasPurchased: boolean
+  isAdmin?: boolean
   completedSectors?: number[]
   playing?: boolean
   onPlay?: (level: number) => void
@@ -49,7 +50,7 @@ const SECTORS = [
   { num: 6, name: 'RED SQUARE',     cover: '/get-droned/assets/images/covers/level-6.png?v=1' },
 ]
 
-export function GameSidebar({ game, user, hasPurchased, completedSectors = [], playing = false, onPlay, onBack, onReset }: Props) {
+export function GameSidebar({ game, user, hasPurchased, isAdmin = false, completedSectors = [], playing = false, onPlay, onBack, onReset }: Props) {
   const [open, setOpen] = useState(false)
   const [mobile, setMobile] = useState(false)
   const [mounted, setMounted] = useState(false)
@@ -294,6 +295,18 @@ export function GameSidebar({ game, user, hasPurchased, completedSectors = [], p
             onClick={() => { if (confirm('Reset all sector progress and start from Sector 1?')) onReset() }}
             icon={<span style={{ fontSize: 11, color: UA.textDim, flexShrink: 0 }}>↺</span>}
             label={<span style={{ fontSize: 9, fontWeight: 900, letterSpacing: '2px', color: UA.textDim, textTransform: 'uppercase' }}>RESET PROGRESS</span>}
+            hover
+            border
+          />
+        )}
+
+        {/* ── Admin ────────────────────────────────────────── */}
+        {isAdmin && (
+          <SideRow
+            open={open}
+            href="/admin"
+            icon={<span style={{ fontSize: 11, color: UA.textDim, flexShrink: 0 }}>⚙</span>}
+            label={<span style={{ fontSize: 9, fontWeight: 900, letterSpacing: '2px', color: UA.textDim, textTransform: 'uppercase' }}>ADMIN · STAGE SELECT</span>}
             hover
             border
           />

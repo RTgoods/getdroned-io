@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { GameSidebar } from './GameSidebar'
 import { GameLanding } from './GameLanding'
@@ -76,9 +75,8 @@ export function GamePageClient({ game }: { game: Game }) {
   }
 
   return <div style={{ display: 'flex', height: '100dvh', overflow: 'hidden', background: '#0c0d0b' }}>
-    <GameSidebar game={game} user={user} hasPurchased={allowed} completedSectors={completedSectors} playing={playing} onPlay={play} onBack={() => setPlaying(false)} onReset={reset} />
+    <GameSidebar game={game} user={user} hasPurchased={allowed} isAdmin={isAdmin} completedSectors={completedSectors} playing={playing} onPlay={play} onBack={() => setPlaying(false)} onReset={reset} />
     <div style={{ flex: 1, minWidth: 0, height: '100dvh', overflow: 'hidden', position: 'relative' }}>
-      {isAdmin && !playing && <Link href="/admin" className="absolute top-3 right-4 z-10 bg-[#172019] text-[#e2b13c] border border-[#596449] rounded px-4 py-2">Admin · Stage select</Link>}
       {!ready ? <p className="p-8 text-[#e8e4d8]">Checking access…</p> : playing && user && (allowed || launch.level === 1) ? (
         <iframe key={launch.version} ref={frame} src={`/get-droned/index.html?v=47&autostart=${launch.level}${isAdmin ? '&coins=5000' : ''}`} style={{ display: 'block', width: '100%', height: '100%', border: 'none' }} allowFullScreen title={game.title} allow="autoplay; fullscreen; pointer-lock" />
       ) : <GameLanding game={game} user={user} hasPurchased={allowed} onPlay={() => play(1)} />}
