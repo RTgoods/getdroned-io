@@ -72,7 +72,6 @@
   <div id="joyZone"><div id="joyBase" style="display:none"><div id="joyKnob"></div></div></div>
   <button id="nade" class="dim">FRAG<br>×0</button>
   <button id="act">FIRE</button>
-  <div id="controlHint"><span class="desktopHint">WASD MOVE · MOUSE AIM · LEFT CLICK / SPACE FIRE · RIGHT CLICK / G FRAG · R RELOAD</span><span class="touchHint">LEFT STICK MOVE · HOLD FIRE · TAP FRAG</span></div>
   <button id="mute">♪</button>
 
   <div id="banner"><b></b><small></small></div>
@@ -116,19 +115,6 @@
 
 </div>
 
-<!-- Portrait rotation prompt — shown by CSS when pointer:coarse + orientation:portrait -->
-<div id="rotatePrompt" style="display:none" aria-label="Please rotate your device to landscape mode">
-  <svg class="rotateIcon" viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-    <!-- phone outline -->
-    <rect x="11" y="4" width="26" height="42" rx="4" stroke="#e2b13c" stroke-width="2"/>
-    <circle cx="24" cy="41" r="2.5" fill="#e2b13c"/>
-    <!-- rotation arrow -->
-    <path d="M42 16 A17 17 0 0 1 53 34" stroke="#a9a396" stroke-width="2" fill="none" stroke-linecap="round"/>
-    <polyline points="55,30 53,34 49,33" stroke="#a9a396" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-  </svg>
-  <h2>ROTATE DEVICE</h2>
-  <p>Best played in landscape</p>
-</div>
 
 <!-- Back button — outside #wrap so overflow:hidden can't clip it -->
 <a id="backBtn" href="/"
@@ -163,6 +149,6 @@
   })();
 </script>
 
-<script src="assets/js/game.js?v=154"></script>
+<script src="assets/js/game.js?v=161"></script>
 </body>
 </html>

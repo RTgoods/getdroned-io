@@ -2321,6 +2321,14 @@ function rebuildDroneBay(craft){
 }
 function droneBoom(x,y){
   var dk=(drone&&drone.kind)||'drone', bl=(TOOLS[dk]&&TOOLS[dk].blast)||[100,145];
+  if(level===2&&dk==='droneL') for(var depotHit=0;depotHit<depots.length;depotHit++){
+    var targetDepot=depots[depotHit];
+    if(!targetDepot.blown&&x>targetDepot.x0*TILE&&x<(targetDepot.x1+1)*TILE&&y>targetDepot.y0*TILE&&y<(targetDepot.y1+1)*TILE){
+      targetDepot.heavyHits=Math.min(3,(targetDepot.heavyHits||0)+1);
+      if(targetDepot.heavyHits===3)blowDepot(targetDepot);
+      else banner('DEPOT HIT',targetDepot.heavyHits+' / 3 HEAVY DRONE HITS',2);
+    }
+  }
   var onTank = tank&&Math.hypot(tank.x-x,tank.y-y)<bl[0]*.55;
   if(onTank){
     tank.hp-=(dk==='droneL'?3:1); tank.hurt=.3; shake=Math.min(22,shake+10);
@@ -2399,6 +2407,7 @@ function droneBoom(x,y){
 /* ============================ LEVEL 2 — THE TRENCHES ============================ */
 function dig(x0,y0,w,h){ fill(x0,y0,x0+w-1,y0+h-1,FLOOR); }
 function buildTrench(){
+  baseHP=baseMX=400; baseFlash=0;
   seed=5150+level*31;
   setMapSize(50,38,false);
   grid.fill(WALL); props.length=0; holes.length=0; roads.length=0;
@@ -3062,6 +3071,7 @@ function spawnEnemy(kind,x,y,dug,home,boss){
 /* ---------- collision ---------- */
 function solidAt(x,y){ return blocksMove(T(Math.floor(x/TILE),Math.floor(y/TILE))); }
 function moveEnt(e,dx,dy){
+  var entryX=e.x,entryY=e.y;
   var i,k,off=[3,-3,6,-6,10,-10];
   if(dx!==0){
     if(!hitBox(e.x+dx,e.y,e.r)) e.x+=dx;
@@ -3074,6 +3084,7 @@ function moveEnt(e,dx,dy){
       if(!hitBox(e.x+k,e.y,e.r)&&!hitBox(e.x+k,e.y+dy,e.r)){ e.x+=k*.3; e.y+=dy*.8; break; } }
   }
   e.x=Math.max(e.r,Math.min(WW-e.r,e.x)); e.y=Math.max(e.r,Math.min(WH-e.r,e.y));
+  if(level===2&&e.d&&!e.baseAssault&&inBase(e.x,e.y)){e.x=entryX;e.y=entryY;}
 }
 function hitBox(x,y,r){
   var x0=Math.floor((x-r)/TILE), x1=Math.floor((x+r)/TILE), y0=Math.floor((y-r)/TILE), y1=Math.floor((y+r)/TILE);
@@ -3645,6 +3656,49 @@ function drawBaseGuard(c,G){
   c.restore();
   c.restore();
 }
+var ASSAULT_KIT={col:'#69584d',band:'#ed7739',rig:'#302f2c',pal:['#796958','#453f38','#a29277','#555047'],mask:true,gog:true};
+function updateBaseAssault(E,dt){
+  if(E.stag>0){E.amt=0;return;}
+  E.playerShotCD=Math.max(0,(E.playerShotCD||0)-dt);
+  if(!player.dead&&!piloting&&Math.hypot(player.x-E.x,player.y-E.y)<300&&los(E.x,E.y,player.x,player.y)&&!smokeBlocked(E.x,E.y,player.x,player.y)){
+    E.amt=0;E.ang=Math.atan2(player.y-E.y,player.x-E.x);
+    if(E.playerShotCD<=0){enemyShot(E,E.d,.06);E.playerShotCD=.85;}
+    return;
+  }
+  var targetX=7.5*TILE,targetY=32.5*TILE;
+  var inside=inBase(E.x,E.y)&&E.y>28*TILE&&E.x<19*TILE;
+  if(!inside){
+    E.routeCD=(E.routeCD||0)-dt;
+    if(!E.assaultPath||E.routeCD<=0){
+      E.assaultPath=findPath(Math.floor(E.x/TILE),Math.floor(E.y/TILE),7,32);
+      E.assaultStep=0;E.routeCD=4;
+    }
+    var point=E.assaultPath&&E.assaultPath[E.assaultStep];
+    if(point&&Math.hypot(point.x-E.x,point.y-E.y)<3)point=E.assaultPath[++E.assaultStep];
+    if(point){
+      var dx=point.x-E.x,dy=point.y-E.y,d=Math.hypot(dx,dy),step=Math.min(d,38*dt),ox=E.x,oy=E.y;
+      moveEnt(E,dx/d*step,dy/d*step);var moved=Math.hypot(E.x-ox,E.y-oy);
+      E.ang=Math.atan2(dy,dx);E.walk+=moved*.14;E.amt=Math.min(1,moved/Math.max(step,.001));
+      if(moved<step*.1)E.routeCD=Math.min(E.routeCD,.3);
+    }else E.amt=0;
+    return;
+  }
+  E.amt=0;E.baseShotCD-=dt;
+  if(E.baseShotCD>0||baseHP<=0)return;
+  E.baseShotCD=.8;
+  // Fire short visible bursts into nearby base equipment.
+  var targets=props.filter(function(p){return (p.kind==='console'||p.kind==='shoptable')&&inBase((p.x+.5)*TILE,(p.y+.5)*TILE);});
+  targets.sort(function(a,b){return Math.hypot(a.x*TILE-E.x,a.y*TILE-E.y)-Math.hypot(b.x*TILE-E.x,b.y*TILE-E.y);});
+  if(targets.length){targetX=(targets[0].x+targets[0].w*.5)*TILE;targetY=(targets[0].y+.5)*TILE;}
+  E.ang=Math.atan2(targetY-E.y,targetX-E.x);
+  fx.push({t:'baseTracer',x:E.x,y:E.y-18,tx:targetX,ty:targetY-5,life:.13,max:.13});
+  fx.push({t:'flash',x:E.x,y:E.y,a:E.ang,life:.07,max:.07,s:1});
+  fx.push({t:'spark',x:targetX,y:targetY-5,life:.2,max:.2});sfx('ric',.3);
+  var first=baseHP===baseMX;baseHP=Math.max(0,baseHP-4);baseFlash=.3;
+  if(first)banner('ENEMY INSIDE HOME BASE','ELIMINATE THE ASSAULT TROOPERS',2.5);
+  if(baseHP<=0){banner('BASE DESTROYED','MISSION FAILED',2.5);gameOver(false,'base');}
+  hud();
+}
 function updateNurse(dt){
   var N=medStation;if(!N)return;
   if(!N.rounds){
@@ -4088,8 +4142,8 @@ function fragExplosion(x,y,r,damage){
     }
   });
 }
-function explode(x,y,r,dmg,fromPlayer){
-  fx.push({t:'boom',x:x,y:y,life:.5,max:.5,r:r});
+function explode(x,y,r,dmg,fromPlayer,depotBlast){
+  if(!depotBlast) fx.push({t:'boom',x:x,y:y,life:.5,max:.5,r:r});
   blastWalls(x,y,r,dmg);
   for(var dq7=0;dq7<depots.length;dq7++){
     var DQ7=depots[dq7];
@@ -4101,7 +4155,7 @@ function explode(x,y,r,dmg,fromPlayer){
   dustPuff(x,y,ri(6,10),1.6);
   for(var i=0;i<16;i++) smoke.push({x:x,y:y,vx:rr(-70,70),vy:rr(-70,70),life:rr(.6,1.5),max:1.5,s:rr(8,22)});
   shake=Math.min(20,shake+13); sfx('boom');
-  scorch(dc,x,y,r*.72);
+  if(!depotBlast)scorch(dc,x,y,r*.72);
   if(fires.length<14) fires.push({x:x,y:y,r:rr(7,11),p:rr(0,6),life:rr(7,13),sp:0});
   if(fromPlayer!==false) for(var e2=enemies.length-1;e2>=0;e2--){
     var en=enemies[e2], d=Math.hypot(en.x-x,en.y-y);
@@ -4341,9 +4395,9 @@ function reviveOrEnd(){
   sfx('card'); banner(C.kit.n+' TAKING OVER',(crew.length+1)+' OF 5 LEFT',2.4);
   hud();
 }
-function hurtPlayer(dmg){
+function hurtPlayer(dmg,baseAssault){
   if(player.dead) return;
-  if(inBase(player.x,player.y)){                       // safe behind the wire
+  if(inBase(player.x,player.y)&&!(level===2&&baseAssault)){ // assault bullets can breach base safety
     fx.push({t:'ring',x:player.x,y:player.y-16,life:.25,max:.25});
     return;
   }
@@ -4788,6 +4842,7 @@ function update(dt,realDt){
       }
     }
     if(en.stag>0) en.stag-=dt;
+    if(level===2&&en.baseAssault){updateBaseAssault(en,dt);if(state!=='play')return;continue;}
     if(en.levelTwoBoss){
       var mgTarget=(piloting&&drone)?drone:player,mgx=mgTarget.x-en.x,mgy=mgTarget.y-en.y,mgd=Math.hypot(mgx,mgy)||1;
       en.ang=Math.atan2(mgy,mgx);
@@ -5303,7 +5358,7 @@ function update(dt,realDt){
         continue;
       }
       if(Math.hypot(player.x-e2b.x,player.y-e2b.y)<player.r+(e2b.shell?14:3)){
-        if(e2b.shell) explode(e2b.x,e2b.y,96,58,false); else hurtPlayer(e2b.dmg);
+        if(e2b.shell) explode(e2b.x,e2b.y,96,58,false); else hurtPlayer(e2b.dmg,e2b.baseAssault);
         done=true; break; }
       if(e2b.shell&&e2b.life<.05){ explode(e2b.x,e2b.y,96,58,false); done=true; break; }
     }
@@ -5732,7 +5787,7 @@ function enemyShot(en,d,spreadOverride,dmgMul){
   for(var i=0;i<pel;i++){
     var a=en.ang+rr(-spr,spr);
     eb.push({x:en.x+Math.cos(en.ang)*15,y:en.y+Math.sin(en.ang)*15,
-      vx:Math.cos(a)*d.spd2, vy:Math.sin(a)*d.spd2, dmg:d.dmg*(dmgMul||1), life:1.5});
+      vx:Math.cos(a)*d.spd2, vy:Math.sin(a)*d.spd2, dmg:d.dmg*(dmgMul||1), life:1.5, baseAssault:!!en.baseAssault});
   }
   fx.push({t:'flash',x:en.x,y:en.y,a:en.ang,life:.05,max:.05,s:.8});
   sfx('enemy',.55);
@@ -6729,9 +6784,10 @@ function updateEDrones(dt){
       if(D.warn>0) D.warn-=dt;
       if(pd>640||player.dead||inBase(player.x,player.y)){ D.state='idle'; continue; }
       var a=Math.atan2(player.y-D.y,player.x-D.x);
-      D.vx+=Math.cos(a)*640*dt; D.vy+=Math.sin(a)*640*dt;
+      var enemyDroneSpeed=level===2?1.3:1;
+      D.vx+=Math.cos(a)*640*enemyDroneSpeed*dt; D.vy+=Math.sin(a)*640*enemyDroneSpeed*dt;
       D.vx*=.93; D.vy*=.93;
-      var sp=Math.hypot(D.vx,D.vy), mx=210;
+      var sp=Math.hypot(D.vx,D.vy), mx=210*enemyDroneSpeed;
       if(sp>mx){ D.vx=D.vx/sp*mx; D.vy=D.vy/sp*mx; }
       D.x+=D.vx*dt; D.y+=D.vy*dt;
       if(Math.random()<.3) plume.push({x:D.x+rr(-5,5),y:D.y+rr(-5,5),vx:rr(-8,8),vy:rr(-4,10),
@@ -6842,18 +6898,17 @@ function drawTank(c,T2){
 }
 function depotJustBlown(){ return false; }
 function blowDepot(D){
-  if(D.blown) return;
+  if(D.blown||(level===2&&(D.heavyHits||0)<3)) return;
   D.blown=1;
   var R=430;
   banner('AMMO DEPOT CHAIN REACTION','GET CLEAR',2.6);
   // The central ammunition pile triggers a wide, layered chain reaction.
-  explode(D.cx,D.cy,R,85,true);
+  explode(D.cx,D.cy,R,85,true,true);
   for(var bx7=0;bx7<6;bx7++){
     var ba7=bx7/6*6.283+rr(-.18,.18),bd7=rr(28,105);
-    explode(D.cx+Math.cos(ba7)*bd7,D.cy+Math.sin(ba7)*bd7*.65,R*rr(.42,.68),55,true);
+    explode(D.cx+Math.cos(ba7)*bd7,D.cy+Math.sin(ba7)*bd7*.65,R*rr(.42,.68),55,true,true);
   }
-  fx.push({t:'boom',x:D.cx,y:D.cy,life:1,max:1,r:R*1.25});
-  fx.push({t:'ring',x:D.cx,y:D.cy,life:.8,max:.8,c:'#ffb33c'});
+  fx.push({t:'depotCloud',x:D.cx,y:D.cy,life:5,max:5});
   blastWalls(D.cx,D.cy,R*.85,900);
   // nothing within the radius survives
   for(var e=enemies.length-1;e>=0;e--){
@@ -6910,6 +6965,7 @@ function makeWave(w,n){
 function trenchWave(w,n){
   var total=(w===0?22:28)+n*2, cmd=(w===0?.2:.4), list=[];
   for(var i=0;i<total;i++) list.push(Math.random()<cmd?'cmd':fieldKind(n));
+  if(n===2){var assaultCount=w===0?2:3;for(var ai=0;ai<assaultCount;ai++)list[Math.floor((ai+1)*total/(assaultCount+1))]='baseAssault';}
   return list;
 }
 function sectorPlan(n){
@@ -6928,10 +6984,12 @@ var queue=[];
 function doSpawn(){
   if(!queue.length){ spawnQ=0; return; }
   var k=queue.shift(); spawnQ=queue.length;
+  var asAssault=k==='baseAssault';if(asAssault)k='rifleman';
   var asCmd=(k==='cmd'); if(asCmd) k='heavy';
   var tries=0,s;
   do{ s=pick(SPAWNS); tries++; } while((!validSpawn(s)||Math.hypot(s[0]*TILE-player.x,s[1]*TILE-player.y)<TILE*9)&&tries<30);
   spawnEnemy(k,s[0]*TILE+TILE/2,s[1]*TILE+TILE/2,false,null,asCmd);
+  if(asAssault){var attacker=enemies[enemies.length-1];attacker.baseAssault=true;attacker.hp=attacker.mx=120;attacker.baseShotCD=1;banner('BASE ASSAULT TROOPER','INTERCEPT BEFORE HE REACHES HOME',2);}
   hud();
 }
 function startSector(n){
@@ -7042,7 +7100,7 @@ function startSector(n){
         {t:7.2,a:'TWO LANDING SHIPS INBOUND',b:'STOP THE TROOPS REACHING SHORE'}]:(mapKind==='trench')?[{t:0,a:'SECTOR '+n,b:'THE TRENCHES'},
         {t:2.4,a:'TWO ENEMY BASES',b:'CLEAR AND CAPTURE BOTH'},
         {t:4.8,a:'PRISONERS IN EACH BASE',b:'FREE THEM AND GET THEM HOME'},
-        {t:7.2,a:'TWO WEAPONS DEPOTS',b:'BREACH AND DESTROY BOTH'},
+        {t:7.2,a:'TWO WEAPONS DEPOTS',b:'3 HEAVY DRONE HITS EACH · DETONATE INSIDE'},
         {t:9.6,a:'LAUNCH TRUCK DEPLOYING',b:'PROTECTED FOR 12 SECONDS'}]:[{t:0,a:'SECTOR '+n,b:'FRANKS AND HAMMERS'},
          {t:2.4,a:'BREACH 3 COMPOUND PERIMETERS',b:'TAKE EACH FORTIFIED POSITION'},
          {t:4.8,a:'NEUTRALIZE ENEMY FORCES',b:'CLEAR ALL HOSTILES'},
@@ -8890,6 +8948,59 @@ function drawDroneCameraPanel(c,x,y,w,h){
   c.restore();c.strokeStyle='rgba(132,183,173,.45)';c.lineWidth=1;rrect(c,x,y,w,h,3);c.stroke();
 }
 
+function seaBaseDamageStage(){
+  if(level!==3||mapKind!=='sea'||baseMX<=0)return 0;
+  var health=baseHP/baseMX;
+  return health<=.25?3:health<=.5?2:health<=.75?1:0;
+}
+function drawSeaBaseDamage(c){
+  var stage=seaBaseDamageStage();if(!stage)return;
+  c.save();
+  // Fixed damage sites accumulate as integrity drops; no random flicker per frame.
+  var sites=[[8,57],[24,59],[6,65],[18,69],[15,58],[24,67],
+             [12,58],[8,64],[21,64],[17,62],[27,66],[23,58]];
+  for(var site=0;site<stage*4;site++){
+    var x=(sites[site][0]+.5)*TILE,y=(sites[site][1]+.5)*TILE;
+    if(x<cam.x-140||x>cam.x+VW+140||y<cam.y-70||y>cam.y+VH+180)continue;
+    var seed=site*79+37;
+    // Jagged scorch patch, chipped masonry and branching fractures.
+    c.fillStyle='rgba(31,27,23,'+(.19+stage*.07)+')';c.beginPath();
+    for(var edge=0;edge<11;edge++){
+      var angle=edge/11*6.283,radius=18+hs(seed+edge*17)*22;
+      var px=x+Math.cos(angle)*radius,py=y+Math.sin(angle)*radius*.6;
+      if(!edge)c.moveTo(px,py);else c.lineTo(px,py);
+    }
+    c.closePath();c.fill();
+    for(var crack=0;crack<3;crack++){
+      var ax=x+(crack-1)*8,ay=y-12;
+      gearLine(c,ax,ay,ax-5,ay+9,'#272a25',1.6);
+      gearLine(c,ax-5,ay+9,ax+2,ay+18,'#272a25',1.3);
+      gearLine(c,ax-5,ay+9,ax-12,ay+11,'#777363',.8);
+    }
+    for(var rubble=0;rubble<4+stage*3;rubble++){
+      var rx=x+(hs(seed+rubble*31)-.5)*65,ry=y+8+hs(seed+rubble*43)*23;
+      var size=3+hs(seed+rubble*59)*5;
+      gearPoly(c,[[rx-size,ry],[rx-2,ry-size],[rx+size,ry-2],[rx+size*.5,ry+3]],rubble%2?'#77776a':'#54584f');
+      gearLine(c,rx-size,ry,rx-2,ry-size,'#a29b86',.8);
+    }
+    if(stage>=2&&site%2===0){
+      // Thin drifting smoke thickens at critical health; wisps dissipate upward.
+      for(var wisp=0;wisp<stage+1;wisp++){
+        var age=(now*.19+wisp/(stage+1)+hs(seed))%1;
+        var smokeX=x+Math.sin(now*.65+site+age*4)*9+age*13;
+        var smokeY=y-10-age*(stage===3?95:62);
+        c.strokeStyle='rgba(77,75,68,'+((1-age)*.23)+')';c.lineWidth=4+age*12;c.lineCap='round';
+        c.beginPath();c.moveTo(smokeX,smokeY);c.quadraticCurveTo(smokeX-9,smokeY-9,smokeX+3,smokeY-21);c.stroke();
+      }
+    }
+    if(stage===3&&site%3===0){
+      var flame=4+Math.sin(now*9+site)*2;
+      gearPoly(c,[[x-6,y],[x-3,y-10-flame],[x,y-5],[x+3,y-15-flame],[x+6,y]],'#cc722b');
+      gearPoly(c,[[x-3,y],[x,y-9-flame*.4],[x+3,y]],'#e7be65');
+    }
+  }
+  c.restore();
+}
 function draw(){
   cv.classList.toggle('aiming',!!manualAim()&&state==='play');
   ctx.setTransform(DPR,0,0,DPR,0,0);
@@ -8901,6 +9012,7 @@ function draw(){
 
   ctx.drawImage(stat,0,0);
   drawConsoleScreens(ctx);
+  drawSeaBaseDamage(ctx);
   for(var patient=0;patient<props.length;patient++){
     var bed=props[patient];if(bed.kind!=='medbed')continue;
     if(bed.x*TILE<cam.x-120||bed.x*TILE>cam.x+VW+50||bed.y*TILE<cam.y-100||bed.y*TILE>cam.y+VH+50)continue;
@@ -9186,6 +9298,8 @@ function draw(){
       drawLevelTwoBoss(ctx,U);
     } else if(!isP&&U.compoundBoss){
       drawCompoundBoss(ctx,U);
+    } else if(!isP&&U.baseAssault){
+      drawUnit(ctx,U.x,U.y,U.ang,ASSAULT_KIT.col,ASSAULT_KIT.band,U.walk||0,U.amt||0,'rifleman','rifle',false,false,false,U.sid,0,null,false,ASSAULT_KIT);
     } else if(!isP&&U.finalBoss){
       drawMountedBoss(ctx,U);
     } else {
@@ -9244,7 +9358,9 @@ function draw(){
 
   // fx
   for(var f=0;f<fx.length;f++){ var F=fx[f], k=F.life/F.max;
-    if(F.t==='flash'){
+    if(F.t==='baseTracer'){
+      gearLine(ctx,F.x,F.y,F.tx,F.ty,'rgba(255,192,76,'+k+')',1.5);
+    } else if(F.t==='flash'){
       var fg=Math.atan2(Math.sin(F.a)*.5,Math.cos(F.a));
       ctx.save(); ctx.translate(F.x+Math.cos(fg)*23,F.y-20+Math.sin(fg)*13); ctx.rotate(fg);
       ctx.globalAlpha=k; ctx.fillStyle='#ffe08a';
@@ -9260,6 +9376,25 @@ function draw(){
     } else if(F.t==='ring'){
       ctx.globalAlpha=k*.7; ctx.strokeStyle='#e8dcc0'; ctx.lineWidth=2;
       ctx.beginPath(); ctx.arc(F.x,F.y,(1-k)*26,0,6.3); ctx.stroke(); ctx.globalAlpha=1;
+    } else if(F.t==='depotCloud'){
+      var age=1-k,rise=Math.min(1,age*2.5);
+      ctx.save();ctx.globalAlpha=Math.min(1,k*2.8);
+      // Uneven rising lobes form a towering fireball and mushroom cloud.
+      for(var lobe=0;lobe<42;lobe++){
+        var crown=lobe>13,spread=crown?110:26;
+        var cx=F.x+(hs(lobe*31+7)-.5)*spread*(.4+rise*1.6);
+        var cy=F.y-(crown?110+hs(lobe*19)*50:hs(lobe*17)*125)*rise;
+        var radius=(crown?22:14)+hs(lobe*11+5)*25;
+        ctx.fillStyle=age<.24?(lobe%3?'#ffab38':'#fff0b0'):(lobe%3?'#655e51':'#92816a');
+        ctx.beginPath();
+        for(var edge=0;edge<12;edge++){
+          var angle=edge/12*6.283,rrr=radius*(.72+hs(lobe*97+edge*13)*.38)*(.4+rise);
+          var vx=cx+Math.cos(angle)*rrr,vy=cy+Math.sin(angle)*rrr*.7;
+          if(edge===0)ctx.moveTo(vx,vy);else ctx.lineTo(vx,vy);
+        }
+        ctx.closePath();ctx.fill();
+      }
+      ctx.restore();
     } else if(F.t==='miniNuke'){
       var np=1-k,nRise=Math.min(1,np*1.8),nFade=Math.min(1,k*1.7);
       ctx.save(); ctx.globalAlpha=nFade;
@@ -9509,8 +9644,10 @@ function draw(){
     var DW=depots[dw];
     if(DW.cx<cam.x-200||DW.cx>cam.x+VW+200||DW.cy<cam.y-200||DW.cy>cam.y+VH+200) continue;
     if(DW.blown){
-      ctx.fillStyle='rgba(14,10,8,.45)';
-      ctx.beginPath(); ctx.ellipse(DW.cx,DW.cy,120,84,0,0,6.3); ctx.fill();
+      for(var ruin=0;ruin<24;ruin++){
+        var rx=DW.cx+(hs(ruin*31+DW.i)-.5)*220,ry=DW.cy+(hs(ruin*47+19)-.5)*145;
+        gearPoly(ctx,[[rx-7,ry],[rx-3,ry-5],[rx+9,ry-2],[rx+4,ry+4]],ruin%2?'#655b48':'#393a30');
+      }
       continue;
     }
     // Dense visible stockpiles make the target read as a working ammunition dump.
@@ -9534,7 +9671,7 @@ function draw(){
     ctx.fillStyle='#1a1208'; ctx.fillRect(-1.6,-5,3.2,8); ctx.fillRect(-1.6,4.5,3.2,2.4);
     ctx.restore();
     ctx.fillStyle='rgba(226,118,44,.9)'; ctx.font='bold 9px Arial'; ctx.textAlign='center';
-    ctx.fillText('WEAPONS DEPOT',DW.cx,DW.y0*TILE-22);
+    ctx.fillText(level===2?'DEPOT · '+(3-(DW.heavyHits||0))+' HEAVY HITS LEFT':'WEAPONS DEPOT',DW.cx,DW.y0*TILE-22);
     ctx.font='bold 7px Arial'; ctx.fillStyle='rgba(226,118,44,.6)';
     var guns9=0;
     for(var gq9=0;gq9<aaGuns.length;gq9++) if(aaGuns[gq9].depot===DW.i) guns9++;
@@ -10026,32 +10163,6 @@ function draw(){
     ctx.fillRect(MQ.x,MQ.y,MQ.s,MQ.s);
   }
 
-  // hold bar above player (unified)
-  if(mapKind==='sea'||mapKind==='oil'||mapKind==='redSquare'){
-    var bw=Math.min(240,VW-120), bx4=VW/2-bw/2, by4=12, bh4=20;
-    var frac=Math.max(0,baseHP/baseMX);
-    var col4=frac>.5?'#4fd08a':(frac>.25?'#e2b13c':'#d84a34');
-    var jolt=baseFlash>0?rr(-2,2):0;
-    ctx.save(); ctx.translate(jolt,jolt*.5);
-    ctx.fillStyle='rgba(6,10,12,.75)'; rrect(ctx,bx4-3,by4-3,bw+6,bh4+6,5); ctx.fill();
-    ctx.strokeStyle=baseFlash>0?'#ff6a4a':'rgba(200,214,222,.35)'; ctx.lineWidth=2;
-    rrect(ctx,bx4-3,by4-3,bw+6,bh4+6,5); ctx.stroke();
-    ctx.fillStyle='rgba(255,255,255,.06)'; rrect(ctx,bx4,by4,bw,bh4,3); ctx.fill();
-    ctx.fillStyle=col4; rrect(ctx,bx4,by4,bw*frac,bh4,3); ctx.fill();
-    ctx.fillStyle='rgba(255,255,255,.18)'; rrect(ctx,bx4,by4,bw*frac,bh4*.4,3); ctx.fill();
-    ctx.strokeStyle='rgba(6,10,12,.55)'; ctx.lineWidth=1.4;                 // segment ticks
-    for(var tk4=1;tk4<10;tk4++){
-      ctx.beginPath(); ctx.moveTo(bx4+bw*tk4/10,by4); ctx.lineTo(bx4+bw*tk4/10,by4+bh4); ctx.stroke();
-    }
-    if(baseFlash>0){ ctx.fillStyle='rgba(255,90,60,'+(baseFlash*.5)+')'; rrect(ctx,bx4,by4,bw,bh4,3); ctx.fill(); }
-    ctx.fillStyle='#f2ead2'; ctx.font='bold 10px Arial'; ctx.textAlign='center';
-    ctx.fillText('BASE INTEGRITY   '+Math.round(frac*100)+'%',VW/2,by4+14);
-    if(frac<.3){
-      ctx.fillStyle='rgba(216,74,52,'+(.5+Math.abs(Math.sin(now*5))*.5)+')'; ctx.font='bold 9px Arial';
-      ctx.fillText('BASE CRITICAL',VW/2,by4+bh4+13);
-    }
-    ctx.textAlign='start'; ctx.restore();
-  }
   // the squad, one pip per man
   var alive5=(player&&player.dead?0:1)+crew.length;
   var px5=VW/2-(5*13)/2;
@@ -10099,6 +10210,33 @@ function draw(){
 
   drawCombatLighting(ctx);
   ctx.restore();
+
+  // Base integrity HUD shared by defended sectors.
+  if(mapKind==='trench'||mapKind==='sea'||mapKind==='oil'||mapKind==='redSquare'){
+    var bw=Math.min(240,VW-220), bx4=VW/2-bw/2, by4=VH-42, bh4=20;
+    var frac=Math.max(0,baseHP/baseMX);
+    var col4=frac>.5?(mapKind==='trench'?'#0057b7':'#4fd08a'):(frac>.25?'#e2b13c':'#d84a34');
+    var jolt=baseFlash>0?rr(-2,2):0;
+    ctx.save(); ctx.translate(jolt,jolt*.5);
+    ctx.fillStyle='rgba(6,10,12,.75)'; rrect(ctx,bx4-3,by4-3,bw+6,bh4+6,5); ctx.fill();
+    ctx.strokeStyle=baseFlash>0?'#ff6a4a':'rgba(200,214,222,.35)'; ctx.lineWidth=2;
+    rrect(ctx,bx4-3,by4-3,bw+6,bh4+6,5); ctx.stroke();
+    ctx.fillStyle='rgba(255,255,255,.06)'; rrect(ctx,bx4,by4,bw,bh4,3); ctx.fill();
+    ctx.fillStyle=col4; rrect(ctx,bx4,by4,bw*frac,bh4,3); ctx.fill();
+    ctx.fillStyle='rgba(255,255,255,.18)'; rrect(ctx,bx4,by4,bw*frac,bh4*.4,3); ctx.fill();
+    ctx.strokeStyle='rgba(6,10,12,.55)'; ctx.lineWidth=1.4;                 // segment ticks
+    for(var tk4=1;tk4<10;tk4++){
+      ctx.beginPath(); ctx.moveTo(bx4+bw*tk4/10,by4); ctx.lineTo(bx4+bw*tk4/10,by4+bh4); ctx.stroke();
+    }
+    if(baseFlash>0){ ctx.fillStyle='rgba(255,90,60,'+(baseFlash*.5)+')'; rrect(ctx,bx4,by4,bw,bh4,3); ctx.fill(); }
+    ctx.fillStyle='#f2ead2'; ctx.font='bold 10px Arial'; ctx.textAlign='center';
+    ctx.fillText('BASE INTEGRITY   '+Math.round(frac*100)+'%',VW/2,by4+14);
+    if(frac<.3){
+      ctx.fillStyle='rgba(216,74,52,'+(.5+Math.abs(Math.sin(now*5))*.5)+')'; ctx.font='bold 9px Arial';
+      ctx.fillText('BASE CRITICAL',VW/2,by4+bh4+13);
+    }
+    ctx.textAlign='start'; ctx.restore();
+  }
 
   captureDroneCamera();
 
@@ -10289,6 +10427,8 @@ function drawObjectives(){
     var safe=0;  for(var rg=0;rg<rescueGroups.length;rg++) if(rescueGroups[rg].state==='done') safe++;
     objs.push({t:'CAPTURE ENEMY HQ ('+taken+'/'+flags.length+')',   done:taken>=flags.length&&flags.length>0});
     objs.push({t:'RESCUE ALLIED SOLDIERS ('+safe+'/'+rescueGroups.length+')', done:safe>=rescueGroups.length&&rescueGroups.length>0});
+    var depotsDestroyed=depots.filter(function(d){return d.blown;}).length;
+    objs.push({t:'DESTROY DEPOTS ('+depotsDestroyed+'/'+depots.length+') · 3 HEAVY DRONES EACH',done:depotsDestroyed===depots.length});
     objs.push({t:'ELIMINATE GENERAL GRAKOV',                         done:!!levelTwoBossDefeated});
   } else if(mapKind==='airfield'){
     var planesUp=0; for(var aq=0;aq<aircraft.length;aq++) if(!aircraft[aq].dead) planesUp++;
