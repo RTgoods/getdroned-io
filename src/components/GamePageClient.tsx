@@ -18,6 +18,7 @@ export function GamePageClient({ game }: { game: Game }) {
   const [ready, setReady] = useState(false)
   const [completedSectors, setCompletedSectors] = useState<number[]>([])
   const [sectorStats, setSectorStats] = useState<Record<string, SectorStat>>({})
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
   const frame = useRef<HTMLIFrameElement>(null)
 
   const loadAccess = useCallback(async () => {
@@ -26,7 +27,12 @@ export function GamePageClient({ game }: { game: Game }) {
       if (!response.ok) throw new Error('Access check failed')
       const access = await response.json()
       setUser(access.user); setAllowed(access.allowed); setIsAdmin(access.isAdmin); setGameId(access.gameId)
-      if (!access.user) setPlaying(false)
+      if (!access.user) { setPlaying(false); setAvatarUrl(null) }
+      else {
+        fetch('/api/profile').then(r => r.ok ? r.json() : null).then(p => {
+          if (p?.avatar_url) setAvatarUrl(p.avatar_url)
+        }).catch(() => {})
+      }
       return access
     } catch {
       setUser(null); setAllowed(false); setIsAdmin(false); setPlaying(false)
@@ -136,6 +142,7 @@ export function GamePageClient({ game }: { game: Game }) {
       onPlay={play}
       onBack={() => setPlaying(false)}
       onReset={reset}
+      avatarUrl={avatarUrl}
     />
     <div style={{ flex: 1, minWidth: 0, height: '100dvh', overflow: 'hidden', position: 'relative' }}>
       {!ready ? <p className="p-8 text-[#e8e4d8]">Checking access…</p> : playing && user && (allowed || launch.level === 1) ? (
