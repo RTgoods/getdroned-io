@@ -26,7 +26,7 @@ export function Header() {
   }
 
   // Game pages use their own sidebar — no header there
-  if (pathname === '/' || /^\/(get-droned)$/.test(pathname)) return null
+  if (pathname === '/' || /^\/(get-droned|profile)$/.test(pathname)) return null
 
   return (
     <header

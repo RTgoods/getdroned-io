@@ -42,7 +42,7 @@ export function AdminRecToggle({ enabled }: { enabled: boolean }) {
           fontSize: 9, fontWeight: 900, letterSpacing: '2.5px', textTransform: 'uppercase',
           opacity: loading ? 0.6 : 1, transition: 'all 150ms',
           boxShadow: on ? '0 2px 0 #4a0a04' : 'none',
-          border: on ? '1px solid rgba(200,60,30,0.4)' : '1px solid rgba(0,104,204,0.2)',
+          outline: on ? '1px solid rgba(200,60,30,0.4)' : '1px solid rgba(0,104,204,0.2)',
         } as React.CSSProperties}
       >
         <span style={{
