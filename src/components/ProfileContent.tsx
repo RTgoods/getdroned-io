@@ -53,6 +53,7 @@ export function ProfileContent({ game, user, hasPurchased, isAdmin, completedSec
   const [avatarUrl, setAvatarUrl] = useState<string | null>(initialAvatarUrl)
   const [saving, setSaving] = useState(false)
   const [saveMsg, setSaveMsg] = useState<string | null>(null)
+  const [avatarOpen, setAvatarOpen] = useState(false)
 
   const handleSave = useCallback(async (kitId: string) => {
     setSaving(true)
@@ -155,22 +156,43 @@ export function ProfileContent({ game, user, hasPurchased, isAdmin, completedSec
             ))}
           </div>
 
-          {/* Avatar selector */}
-          <div style={{ marginBottom: 28, padding: '20px 20px 18px', background: UA.surface, border: `1px solid ${UA.border}`, borderRadius: 4 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+          {/* Avatar selector — collapsible */}
+          <div style={{ marginBottom: 28, background: UA.surface, border: `1px solid ${UA.border}`, borderRadius: 4, overflow: 'hidden' }}>
+            {/* Header / toggle */}
+            <button
+              onClick={() => setAvatarOpen(o => !o)}
+              style={{
+                width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                padding: '14px 20px', background: 'none', border: 'none', cursor: 'pointer',
+              }}
+            >
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span style={{ display: 'inline-block', width: 10, height: 2, background: UA.yellow, borderRadius: 1 }} />
                 <span style={{ fontSize: 8, fontWeight: 900, letterSpacing: '3px', color: UA.yellow, textTransform: 'uppercase' }}>CHOOSE PILOT</span>
               </div>
-              {saveMsg && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                {saveMsg && (
+                  <span style={{
+                    fontSize: 7, fontWeight: 900, letterSpacing: '2px',
+                    color: saveMsg === 'SAVED' ? UA.green : '#e04b3c',
+                    textTransform: 'uppercase',
+                  }}>{saveMsg}</span>
+                )}
                 <span style={{
-                  fontSize: 7, fontWeight: 900, letterSpacing: '2px',
-                  color: saveMsg === 'SAVED' ? UA.green : '#e04b3c',
-                  textTransform: 'uppercase',
-                }}>{saveMsg}</span>
-              )}
-            </div>
-            <AvatarSelector current={avatarUrl} onSave={handleSave} saving={saving} />
+                  fontSize: 10, color: UA.muted,
+                  transform: avatarOpen ? 'rotate(180deg)' : 'none',
+                  transition: 'transform 0.2s',
+                  display: 'inline-block',
+                }}>▾</span>
+              </div>
+            </button>
+
+            {/* Body */}
+            {avatarOpen && (
+              <div style={{ padding: '0 20px 18px' }}>
+                <AvatarSelector current={avatarUrl} onSave={handleSave} saving={saving} />
+              </div>
+            )}
           </div>
 
           {/* Sector breakdown */}
