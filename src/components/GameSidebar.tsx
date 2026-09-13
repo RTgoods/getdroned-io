@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import { AvatarBadge } from './AvatarSelector'
 import type { Game } from '@/types/database'
 import type { User } from '@supabase/supabase-js'
 import type { SectorStat } from '@/app/api/progress/route'
@@ -18,6 +19,7 @@ interface Props {
   onPlay?: (level: number) => void
   onBack?: () => void
   onReset?: () => void
+  avatarUrl?: string | null
 }
 
 const W_OPEN = 232
@@ -52,7 +54,7 @@ const SECTORS = [
   { num: 6, name: 'RED SQUARE',     cover: '/get-droned/assets/images/covers/level-6.png?v=1' },
 ]
 
-export function GameSidebar({ game, user, hasPurchased, isAdmin = false, completedSectors = [], sectorStats = {}, playing = false, onPlay, onBack, onReset }: Props) {
+export function GameSidebar({ game, user, hasPurchased, isAdmin = false, completedSectors = [], sectorStats = {}, playing = false, onPlay, onBack, onReset, avatarUrl = null }: Props) {
   const [open, setOpen] = useState(false)
   const [mobile, setMobile] = useState(false)
   const [mounted, setMounted] = useState(false)
@@ -162,12 +164,16 @@ export function GameSidebar({ game, user, hasPurchased, isAdmin = false, complet
           icon={
             <div style={{
               width: 26, height: 26, borderRadius: '50%',
-              background: `linear-gradient(135deg, ${UA.blue} 0%, #003d80 100%)`,
-              border: `1px solid ${UA.blueMid}`,
+              background: avatarUrl ? 'transparent' : `linear-gradient(135deg, ${UA.blue} 0%, #003d80 100%)`,
+              border: `1px solid ${avatarUrl ? 'rgba(255,215,0,0.5)' : UA.blueMid}`,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontSize: 10, fontWeight: 900, color: '#fff', flexShrink: 0,
+              overflow: 'hidden',
             }}>
-              {initials}
+              {avatarUrl
+                ? <AvatarBadge kitId={avatarUrl} size={26} />
+                : initials
+              }
             </div>
           }
           label={

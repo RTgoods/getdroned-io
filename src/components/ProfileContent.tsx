@@ -90,6 +90,7 @@ export function ProfileContent({ game, user, hasPurchased, isAdmin, completedSec
         isAdmin={isAdmin}
         completedSectors={completedSectors}
         sectorStats={sectorStats}
+        avatarUrl={avatarUrl}
       />
 
       {/* Main content */}
@@ -159,7 +160,7 @@ export function ProfileContent({ game, user, hasPurchased, isAdmin, completedSec
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span style={{ display: 'inline-block', width: 10, height: 2, background: UA.yellow, borderRadius: 1 }} />
-                <span style={{ fontSize: 8, fontWeight: 900, letterSpacing: '3px', color: UA.yellow, textTransform: 'uppercase' }}>PILOT AVATAR</span>
+                <span style={{ fontSize: 8, fontWeight: 900, letterSpacing: '3px', color: UA.yellow, textTransform: 'uppercase' }}>CHOOSE PILOT</span>
               </div>
               {saveMsg && (
                 <span style={{

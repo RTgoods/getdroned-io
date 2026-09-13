@@ -19,7 +19,6 @@ interface Kit {
   shades?: boolean // sunglasses
   bareHead?: boolean
   hair?: string
-  snow?: boolean   // snowy overlay palette
 }
 
 const BASE_KITS: Kit[] = [
@@ -35,17 +34,7 @@ const BASE_KITS: Kit[] = [
     pal:['#44484e','#2e3136','#53585f','#1f2226'], mask:true, gog:true },
 ]
 
-const SNOW_KITS: Kit[] = BASE_KITS.map(k => ({
-  ...k,
-  id: k.id + '-snow',
-  label: k.label + ' SNOW',
-  col: '#e2e8e4',
-  pal: ['#edf1eb','#c2cfce','#94a5aa','#dce4df'],
-  mask: true, scarf: true, gog: true,
-  snow: true,
-}))
-
-export const ALL_KITS: Kit[] = [...BASE_KITS, ...SNOW_KITS]
+export const ALL_KITS: Kit[] = BASE_KITS
 
 /* ─── Portrait renderer ──────────────────────────────────────────────────── */
 
@@ -104,10 +93,10 @@ function drawPortrait(canvas: HTMLCanvasElement, kit: Kit, seed = 31) {
   c.fillStyle = '#0f1828'
   c.fillRect(0, 0, SIZE, SIZE)
 
-  // ── draw in "portrait" space centred at (SIZE/2, SIZE*0.78) ──────────────
-  // Scale everything up from game units (~40 tall for head+torso) to SIZE
-  const SC = SIZE / 42  // game coords → pixels
-  c.translate(SIZE * 0.5, SIZE * 0.78)
+  // ── draw in portrait space: face centre (y≈-30) maps to canvas centre ───
+  // SC chosen so ~30 game units fill the circle radius
+  const SC = SIZE / 38
+  c.translate(SIZE * 0.5, SIZE / 2 + 30 * SC)
   c.scale(SC, SC)
 
   // ── Shoulders / torso (partial) ──────────────────────────────────────────
@@ -253,40 +242,17 @@ export function AvatarSelector({ current, onSave, saving }: Props) {
   const selected = saving && pending ? pending : (current ?? null)
 
   return (
-    <div>
-      {/* Base kits */}
-      <div style={{ fontSize: 7, fontWeight: 900, letterSpacing: '2px', color: UA.muted, textTransform: 'uppercase', marginBottom: 10 }}>
-        BASE ATTIRE
-      </div>
-      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 16 }}>
-        {BASE_KITS.map((kit, i) => (
-          <AvatarThumb
-            key={kit.id}
-            kit={kit}
-            idx={i}
-            selected={selected === kit.id}
-            canvasRefs={canvasRefs}
-            onSelect={handleSelect}
-          />
-        ))}
-      </div>
-
-      {/* Snow kits */}
-      <div style={{ fontSize: 7, fontWeight: 900, letterSpacing: '2px', color: UA.muted, textTransform: 'uppercase', marginBottom: 10 }}>
-        SNOW ATTIRE
-      </div>
-      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-        {SNOW_KITS.map((kit, i) => (
-          <AvatarThumb
-            key={kit.id}
-            kit={kit}
-            idx={BASE_KITS.length + i}
-            selected={selected === kit.id}
-            canvasRefs={canvasRefs}
-            onSelect={handleSelect}
-          />
-        ))}
-      </div>
+    <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+      {ALL_KITS.map((kit, i) => (
+        <AvatarThumb
+          key={kit.id}
+          kit={kit}
+          idx={i}
+          selected={selected === kit.id}
+          canvasRefs={canvasRefs}
+          onSelect={handleSelect}
+        />
+      ))}
     </div>
   )
 }
