@@ -96,7 +96,7 @@ function drawPortrait(canvas: HTMLCanvasElement, kit: Kit, seed = 31) {
   // ── draw in portrait space: face centre (y≈-30) maps to canvas centre ───
   // SC chosen so ~30 game units fill the circle radius
   const SC = SIZE / 38
-  c.translate(SIZE * 0.62, SIZE / 2 + 30 * SC)
+  c.translate(SIZE * 0.56, SIZE / 2 + 30 * SC)
   c.scale(SC, SC)
 
   // ── Shoulders / torso (partial) ──────────────────────────────────────────
