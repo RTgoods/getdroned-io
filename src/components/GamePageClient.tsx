@@ -6,17 +6,20 @@ import { GameSidebar } from './GameSidebar'
 import { GameLanding } from './GameLanding'
 import type { Game } from '@/types/database'
 import type { User } from '@supabase/supabase-js'
+import type { SectorStat } from '@/app/api/progress/route'
 
 export function GamePageClient({ game }: { game: Game }) {
   const [playing, setPlaying] = useState(false)
-  const [launch, setLaunch] = useState({ level: 1, version: 0 })
+  const [launch, setLaunch] = useState({ level: 1, version: 0, coins: 0, belt: [] as string[] })
   const [user, setUser] = useState<User | null>(null)
   const [allowed, setAllowed] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
   const [gameId, setGameId] = useState<string | null>(null)
   const [ready, setReady] = useState(false)
   const [completedSectors, setCompletedSectors] = useState<number[]>([])
+  const [sectorStats, setSectorStats] = useState<Record<string, SectorStat>>({})
   const frame = useRef<HTMLIFrameElement>(null)
+
   const loadAccess = useCallback(async () => {
     try {
       const response = await fetch('/api/access', { cache: 'no-store' })
@@ -41,44 +44,110 @@ export function GamePageClient({ game }: { game: Game }) {
     return () => { subscription.unsubscribe(); document.removeEventListener('visibilitychange', refresh); clearInterval(timer) }
   }, [loadAccess])
 
+  // Load progress (completed sectors + stats + carry state) when access is granted
   useEffect(() => {
     setCompletedSectors([])
-    if (allowed && gameId) fetch(`/api/progress?gameId=${gameId}`).then(r => r.json()).then(d => {
-      if (Array.isArray(d.completedSectors)) setCompletedSectors(d.completedSectors)
-    }).catch(() => {})
+    setSectorStats({})
+    if (allowed && gameId) {
+      fetch(`/api/progress?gameId=${gameId}`)
+        .then(r => r.json())
+        .then(d => {
+          if (Array.isArray(d.completedSectors)) setCompletedSectors(d.completedSectors)
+          if (d.sectorStats && typeof d.sectorStats === 'object') setSectorStats(d.sectorStats)
+        })
+        .catch(() => {})
+    }
   }, [allowed, gameId, user?.id])
 
+  // Listen for sector-complete messages from the game iframe
   useEffect(() => {
-    const handler = (event: MessageEvent) => {
+    const handler = async (event: MessageEvent) => {
       if (event.origin !== window.location.origin || event.source !== frame.current?.contentWindow || !allowed || !gameId) return
-      const sector = event.data?.sector
-      if (event.data?.type !== 'gd:sectorComplete' || !Number.isInteger(sector) || sector < 1 || sector > 6) return
-      fetch('/api/progress', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ gameId, sector }) })
-        .then(r => r.json()).then(d => { if (Array.isArray(d.completedSectors)) setCompletedSectors(d.completedSectors) }).catch(() => {})
+      const { type, sector, kills, squadLost, moneyEnd, timeAlive, belt } = event.data ?? {}
+      if (type !== 'gd:sectorComplete' || !Number.isInteger(sector) || sector < 1 || sector > 6) return
+
+      // Save to DB and get carry state back
+      try {
+        const res = await fetch('/api/progress', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ gameId, sector, kills, squadLost, moneyEnd, timeAlive, belt }),
+        })
+        const d = await res.json()
+        if (Array.isArray(d.completedSectors)) setCompletedSectors(d.completedSectors)
+        if (d.sectorStats && typeof d.sectorStats === 'object') setSectorStats(d.sectorStats)
+      } catch { /* ignore — game continues in-engine */ }
     }
     window.addEventListener('message', handler)
     return () => window.removeEventListener('message', handler)
   }, [allowed, gameId])
 
-  const play = async (level = 1) => {
+  const play = useCallback(async (level = 1) => {
     const access = await loadAccess()
     if (!access?.user) { window.location.href = '/auth/login'; return }
-    if (access.allowed || level === 1) {
-      setLaunch(previous => ({ level: Number.isInteger(level) && level >= 1 && level <= 6 ? level : 1, version: previous.version + 1 }))
-      setPlaying(true)
-    }
-  }
+
+    // Sector 1 is always free; sectors 2–6 require purchase + previous sector complete (unless admin)
+    const prevDone = completedSectors.includes(level - 1)
+    const canPlay = level === 1 || access.isAdmin || (access.allowed && (level === 2 || prevDone))
+    if (!canPlay) return
+
+    // Derive carry state from the sector just before the one being launched
+    const prevStat = level > 1 ? sectorStats[String(level - 1)] : null
+    const carryCoins = prevStat?.moneyEnd ?? 0
+    const carryBelt = prevStat?.belt ?? []
+
+    setLaunch(previous => ({
+      level: Number.isInteger(level) && level >= 1 && level <= 6 ? level : 1,
+      version: previous.version + 1,
+      coins: carryCoins,
+      belt: carryBelt,
+    }))
+    setPlaying(true)
+  }, [completedSectors, sectorStats, loadAccess])
+
   const reset = async () => {
     if (!allowed || !gameId) return
     const response = await fetch(`/api/progress?gameId=${gameId}`, { method: 'DELETE' })
-    if (response.ok) setCompletedSectors([])
+    if (response.ok) {
+      setCompletedSectors([])
+      setSectorStats({})
+    }
   }
 
+  // Build the iframe src with carry-over params
+  const iframeSrc = (() => {
+    const params = new URLSearchParams({ v: '47', autostart: String(launch.level) })
+    if (isAdmin) params.set('coins', '5000')
+    else if (launch.coins > 0) params.set('coins', String(launch.coins))
+    if (launch.belt.length > 0 && !isAdmin) params.set('belt', launch.belt.join(','))
+    if (isAdmin && game.rec_enabled) params.set('rec', '1')
+    return `/get-droned/index.html?${params.toString()}`
+  })()
+
   return <div style={{ display: 'flex', height: '100dvh', overflow: 'hidden', background: '#0c0d0b' }}>
-    <GameSidebar game={game} user={user} hasPurchased={allowed} isAdmin={isAdmin} completedSectors={completedSectors} playing={playing} onPlay={play} onBack={() => setPlaying(false)} onReset={reset} />
+    <GameSidebar
+      game={game}
+      user={user}
+      hasPurchased={allowed}
+      isAdmin={isAdmin}
+      completedSectors={completedSectors}
+      sectorStats={sectorStats}
+      playing={playing}
+      onPlay={play}
+      onBack={() => setPlaying(false)}
+      onReset={reset}
+    />
     <div style={{ flex: 1, minWidth: 0, height: '100dvh', overflow: 'hidden', position: 'relative' }}>
       {!ready ? <p className="p-8 text-[#e8e4d8]">Checking access…</p> : playing && user && (allowed || launch.level === 1) ? (
-        <iframe key={launch.version} ref={frame} src={`/get-droned/index.html?v=47&autostart=${launch.level}${isAdmin ? '&coins=5000' : ''}`} style={{ display: 'block', width: '100%', height: '100%', border: 'none' }} allowFullScreen title={game.title} allow="autoplay; fullscreen; pointer-lock" />
+        <iframe
+          key={launch.version}
+          ref={frame}
+          src={iframeSrc}
+          style={{ display: 'block', width: '100%', height: '100%', border: 'none' }}
+          allowFullScreen
+          title={game.title}
+          allow="autoplay; fullscreen; pointer-lock"
+        />
       ) : <GameLanding game={game} user={user} hasPurchased={allowed} onPlay={() => play(1)} />}
     </div>
   </div>

@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import type { Game } from '@/types/database'
 import type { User } from '@supabase/supabase-js'
+import type { SectorStat } from '@/app/api/progress/route'
 
 interface Props {
   game: Game
@@ -12,6 +13,7 @@ interface Props {
   hasPurchased: boolean
   isAdmin?: boolean
   completedSectors?: number[]
+  sectorStats?: Record<string, SectorStat>
   playing?: boolean
   onPlay?: (level: number) => void
   onBack?: () => void
@@ -50,7 +52,7 @@ const SECTORS = [
   { num: 6, name: 'RED SQUARE',     cover: '/get-droned/assets/images/covers/level-6.png?v=1' },
 ]
 
-export function GameSidebar({ game, user, hasPurchased, isAdmin = false, completedSectors = [], playing = false, onPlay, onBack, onReset }: Props) {
+export function GameSidebar({ game, user, hasPurchased, isAdmin = false, completedSectors = [], sectorStats = {}, playing = false, onPlay, onBack, onReset }: Props) {
   const [open, setOpen] = useState(false)
   const [mobile, setMobile] = useState(false)
   const [mounted, setMounted] = useState(false)
@@ -204,20 +206,26 @@ export function GameSidebar({ game, user, hasPurchased, isAdmin = false, complet
         {/* ── Level list (scrollable) ───────────────────────── */}
         <div style={{ overflowY: 'auto', flex: 1 }}>
           {SECTORS.map((s) => {
-            const unlocked = !!user && (s.num === 1 || hasPurchased)
+            const prevDone = s.num === 1 || completedSectors.includes(s.num - 1)
+            // Sector 1: free for signed-in users. Sectors 2–6: need purchase + prev sector done (admins bypass)
+            const unlocked = !!user && (s.num === 1 || isAdmin || (hasPurchased && prevDone))
             const done = completedSectors.includes(s.num)
+            const stat = sectorStats[String(s.num)]
             return (
               <LevelRow
                 key={s.num}
                 sector={s}
                 unlocked={unlocked}
                 done={done}
+                stat={stat}
                 open={open}
                 expanded={expandedSector === s.num}
                 onToggle={() => setExpandedSector(prev => prev === s.num ? null : s.num)}
                 onPlay={() => { if (unlocked) { if (mobile) setOpen(false); onPlay?.(s.num) } }}
                 price={price}
                 hasUser={!!user}
+                hasPurchased={hasPurchased}
+                prevDone={prevDone}
               />
             )
           })}
@@ -300,6 +308,18 @@ export function GameSidebar({ game, user, hasPurchased, isAdmin = false, complet
           />
         )}
 
+        {/* ── Pilot stats ──────────────────────────────────── */}
+        {user && hasPurchased && (
+          <SideRow
+            open={open}
+            href="/profile"
+            icon={<span style={{ fontSize: 11, color: UA.textMuted, flexShrink: 0 }}>◈</span>}
+            label={<span style={{ fontSize: 9, fontWeight: 900, letterSpacing: '2px', color: UA.textMuted, textTransform: 'uppercase' }}>PILOT STATS</span>}
+            hover
+            border
+          />
+        )}
+
         {/* ── Admin ────────────────────────────────────────── */}
         {isAdmin && (
           <SideRow
@@ -377,15 +397,20 @@ interface LevelRowProps {
   sector: { num: number; name: string; cover: string }
   unlocked: boolean
   done: boolean
+  stat?: SectorStat
   open: boolean
   expanded: boolean
   onToggle: () => void
   onPlay: () => void
   price: string
   hasUser: boolean
+  hasPurchased: boolean
+  prevDone: boolean
 }
 
-function LevelRow({ sector, unlocked, done, open, expanded, onToggle, onPlay, price, hasUser }: LevelRowProps) {
+function fmtTime(s: number) { const m = Math.floor(s / 60); return m > 0 ? `${m}m ${s % 60}s` : `${s}s` }
+
+function LevelRow({ sector, unlocked, done, stat, open, expanded, onToggle, onPlay, price, hasUser, hasPurchased, prevDone }: LevelRowProps) {
   const [hovered, setHovered] = useState(false)
   const objectives = OBJECTIVES[sector.num] ?? []
 
@@ -482,9 +507,32 @@ function LevelRow({ sector, unlocked, done, open, expanded, onToggle, onPlay, pr
               </span>
             </div>
           ))}
-          {/* Play / Unlock button */}
+
+          {/* Sector stats — shown after completion */}
+          {done && stat && (
+            <div style={{
+              marginBottom: 8, padding: '6px 8px',
+              background: 'rgba(255,215,0,0.05)',
+              border: '1px solid rgba(255,215,0,0.12)',
+              borderRadius: 3,
+            }}>
+              {[
+                ['KILLS', String(stat.kills)],
+                ['TIME', fmtTime(stat.timeAlive)],
+                ['CASH OUT', `$${stat.moneyEnd}`],
+                ['SQUAD LOST', `${stat.squadLost}/5`],
+              ].map(([label, val]) => (
+                <div key={label} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
+                  <span style={{ fontSize: 7, letterSpacing: '1.5px', color: UA.textMuted, textTransform: 'uppercase' }}>{label}</span>
+                  <span style={{ fontSize: 7, fontWeight: 900, color: UA.yellow }}>{val}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Play / Unlock / locked-by-progression button */}
           {sector.num === 1 && !hasUser ? (
-            <a href="/auth/login" className="block rounded px-3 py-2 text-center text-xs font-bold" style={{ background: '#0057b7', color: '#fff', marginTop: 4, width: '100%', padding: '6px 0', fontSize: 8, fontWeight: 900, letterSpacing: '2px', textTransform: 'uppercase', lineHeight: 1.4 }}>SIGN IN · PLAY SECTOR 1 FREE</a>
+            <a href="/auth/login" style={{ display: 'block', width: '100%', padding: '6px 0', background: '#0057b7', color: '#fff', marginTop: 4, fontSize: 8, fontWeight: 900, letterSpacing: '2px', textTransform: 'uppercase', lineHeight: 1.4, textAlign: 'center', textDecoration: 'none', borderRadius: 3, boxSizing: 'border-box' as const }}>SIGN IN · PLAY SECTOR 1 FREE</a>
           ) : unlocked ? (
             <button
               onClick={onPlay}
@@ -505,7 +553,7 @@ function LevelRow({ sector, unlocked, done, open, expanded, onToggle, onPlay, pr
             >
               {sector.num === 1 ? '▶ PLAY SECTOR 1 FREE' : done ? '↺ REPLAY' : '▶ PLAY'}
             </button>
-          ) : (
+          ) : !hasPurchased ? (
             <a
               href={hasUser ? '#unlock' : '/auth/login'}
               onClick={hasUser ? (e) => { e.preventDefault(); document.getElementById('sidebar-unlock-btn')?.click() } : undefined}
@@ -524,7 +572,17 @@ function LevelRow({ sector, unlocked, done, open, expanded, onToggle, onPlay, pr
             >
               Unlock all Sectors
             </a>
-          )}
+          ) : !prevDone ? (
+            /* Purchased but previous sector not yet complete */
+            <div style={{
+              marginTop: 4, padding: '5px 8px', borderRadius: 3, textAlign: 'center',
+              background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)',
+            }}>
+              <span style={{ fontSize: 7, fontWeight: 900, letterSpacing: '1.5px', color: UA.textDim, textTransform: 'uppercase' }}>
+                COMPLETE SECTOR {sector.num - 1} TO UNLOCK
+              </span>
+            </div>
+          ) : null}
         </div>
       )}
     </div>

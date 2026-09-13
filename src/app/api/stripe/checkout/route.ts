@@ -55,31 +55,38 @@ export async function POST(request: NextRequest) {
     process.env.NEXT_PUBLIC_SITE_URL ||
     (request.headers.get('origin') ?? 'http://localhost:3000')
 
-  const session = await stripe.checkout.sessions.create({
-    mode: 'payment',
-    customer_email: user.email,
-    line_items: [
-      {
-        price_data: {
-          currency: 'usd',
-          product_data: {
-            name: game.title,
-            description: game.tagline ?? undefined,
-            images: game.thumbnail_url ? [game.thumbnail_url] : [],
+  let session
+  try {
+    session = await stripe.checkout.sessions.create({
+      mode: 'payment',
+      customer_email: user.email,
+      line_items: [
+        {
+          price_data: {
+            currency: 'usd',
+            product_data: {
+              name: game.title,
+              description: game.tagline ?? undefined,
+              images: game.thumbnail_url ? [game.thumbnail_url] : [],
+            },
+            unit_amount: game.price_cents,
           },
-          unit_amount: game.price_cents,
+          quantity: 1,
         },
-        quantity: 1,
+      ],
+      metadata: {
+        gameId: game.id,
+        userId: user.id,
+        gameSlug: game.slug,
       },
-    ],
-    metadata: {
-      gameId: game.id,
-      userId: user.id,
-      gameSlug: game.slug,
-    },
-    success_url: `${baseUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${baseUrl}/games/${game.slug}`,
-  })
+      success_url: `${baseUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}&slug=${game.slug}`,
+      cancel_url: `${baseUrl}/games/${game.slug}`,
+    })
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Stripe error'
+    console.error('Stripe checkout session error:', message)
+    return NextResponse.json({ error: message }, { status: 500 })
+  }
 
   return NextResponse.json({ url: session.url })
 }

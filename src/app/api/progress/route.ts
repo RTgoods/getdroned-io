@@ -15,7 +15,16 @@ function adminClient() {
   )
 }
 
-// GET /api/progress?gameId=xxx — return completed sectors for the current user
+export interface SectorStat {
+  kills: number
+  squadLost: number
+  moneyEnd: number
+  timeAlive: number
+  belt: string[]
+  completedAt: string
+}
+
+// GET /api/progress?gameId=xxx — return completed sectors + stats for the current user
 export async function GET(req: NextRequest) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -28,15 +37,24 @@ export async function GET(req: NextRequest) {
 
   const { data } = await adminClient()
     .from('progress')
-    .select('completed_sectors')
+    .select('completed_sectors, sector_stats')
     .eq('user_id', user.id)
     .eq('game_id', gameId)
     .maybeSingle()
 
-  return NextResponse.json({ completedSectors: data?.completed_sectors ?? [] })
+  const completedSectors: number[] = data?.completed_sectors ?? []
+  const sectorStats: Record<string, SectorStat> = data?.sector_stats ?? {}
+
+  // Derive carry state from the most recently completed sector
+  const lastSector = completedSectors.length > 0 ? Math.max(...completedSectors) : 0
+  const lastStats = lastSector > 0 ? sectorStats[String(lastSector)] : null
+  const carryMoney = lastStats?.moneyEnd ?? 0
+  const carryBelt = lastStats?.belt ?? []
+
+  return NextResponse.json({ completedSectors, sectorStats, carryMoney, carryBelt })
 }
 
-// POST /api/progress — upsert a completed sector
+// POST /api/progress — upsert a completed sector + save its stats
 export async function POST(req: NextRequest) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -44,15 +62,27 @@ export async function POST(req: NextRequest) {
   const access = await gameAccess(supabase, user)
   if (!access.allowed) return NextResponse.json({ error: 'Purchase required' }, { status: 403 })
 
-  const { gameId, sector } = await req.json() as { gameId: string; sector: number }
-  if (gameId !== access.gameId || !Number.isInteger(sector) || sector < 1 || sector > 6) return NextResponse.json({ error: 'Invalid game or sector' }, { status: 400 })
+  const body = await req.json() as {
+    gameId: string
+    sector: number
+    kills?: number
+    squadLost?: number
+    moneyEnd?: number
+    timeAlive?: number
+    belt?: string[]
+  }
+  const { gameId, sector, kills = 0, squadLost = 0, moneyEnd = 0, timeAlive = 0, belt = [] } = body
+
+  if (gameId !== access.gameId || !Number.isInteger(sector) || sector < 1 || sector > 6) {
+    return NextResponse.json({ error: 'Invalid game or sector' }, { status: 400 })
+  }
 
   const db = adminClient()
 
   // Fetch existing
   const { data: existing } = await db
     .from('progress')
-    .select('completed_sectors')
+    .select('completed_sectors, sector_stats')
     .eq('user_id', user.id)
     .eq('game_id', gameId)
     .maybeSingle()
@@ -60,16 +90,45 @@ export async function POST(req: NextRequest) {
   const current: number[] = existing?.completed_sectors ?? []
   const updated = current.includes(sector) ? current : [...current, sector].sort((a, b) => a - b)
 
+  const existingStats: Record<string, SectorStat> = existing?.sector_stats ?? {}
+  const newStat: SectorStat = {
+    kills,
+    squadLost,
+    moneyEnd,
+    timeAlive,
+    belt,
+    completedAt: new Date().toISOString(),
+  }
+  // Keep best kill count if replayed
+  const prev = existingStats[String(sector)]
+  const updatedStats = {
+    ...existingStats,
+    [String(sector)]: prev && prev.kills > kills ? prev : newStat,
+  }
+
   const { error } = await db.from('progress').upsert(
-    { user_id: user.id, game_id: gameId, completed_sectors: updated, updated_at: new Date().toISOString() },
+    {
+      user_id: user.id,
+      game_id: gameId,
+      completed_sectors: updated,
+      sector_stats: updatedStats,
+      updated_at: new Date().toISOString(),
+    },
     { onConflict: 'user_id,game_id' }
   )
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ completedSectors: updated })
+
+  // Return carry state for the sector just completed
+  return NextResponse.json({
+    completedSectors: updated,
+    sectorStats: updatedStats,
+    carryMoney: moneyEnd,
+    carryBelt: belt,
+  })
 }
 
-// DELETE /api/progress — reset all progress (paid users only)
+// DELETE /api/progress — reset all progress
 export async function DELETE(req: NextRequest) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -86,5 +145,5 @@ export async function DELETE(req: NextRequest) {
     .eq('user_id', user.id)
     .eq('game_id', gameId)
 
-  return NextResponse.json({ completedSectors: [] })
+  return NextResponse.json({ completedSectors: [], sectorStats: {}, carryMoney: 0, carryBelt: [] })
 }

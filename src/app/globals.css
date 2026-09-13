@@ -13,7 +13,7 @@
 
   ::-webkit-scrollbar { width: 4px; }
   ::-webkit-scrollbar-track { background: #0c0d0b; }
-  ::-webkit-scrollbar-thumb { background: #c0562f; border-radius: 2px; }
+  ::-webkit-scrollbar-thumb { background: #1a4a80; border-radius: 2px; }
 }
 
 @layer utilities {

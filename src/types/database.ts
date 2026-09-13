@@ -16,6 +16,7 @@ export type Game = {
   genre: string | null
   is_published: boolean
   is_featured: boolean
+  rec_enabled: boolean
   release_date: string | null
   created_at: string
   updated_at: string

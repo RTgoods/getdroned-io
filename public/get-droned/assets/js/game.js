@@ -3939,9 +3939,11 @@ bindTap(nadeBtn,throwNade);
 
 window.addEventListener('keydown',function(e){
   var key=controlKey(e);
-  // Bot + recorder keys work outside state guard so they can be used any time
-  if(key==='b'&&!e.repeat){ bot.on=!bot.on; if(!bot.on){ mv.x=0;mv.y=0;mv.m=0;firing=false; } }
-  if(key==='v'&&!e.repeat){ REC.manActive?REC.stopManual():REC.startManual(); }
+  // Bot + recorder keys — admin only (requires ?rec=1 in URL)
+  if(window._recEnabled){
+    if(key==='b'&&!e.repeat){ bot.on=!bot.on; if(!bot.on){ mv.x=0;mv.y=0;mv.m=0;firing=false; } }
+    if(key==='v'&&!e.repeat){ REC.manActive?REC.stopManual():REC.startManual(); }
+  }
   if(state!=='play') return;
   if(['w','a','s','d',' ','g','r','j','arrowup','arrowdown','arrowleft','arrowright'].indexOf(key)>=0) e.preventDefault();
   keys[key]=true;
@@ -3987,6 +3989,36 @@ function equipGun(i){
   var g=player.guns[i];
   player.wep=g.id; player.mag=g.mag; player.res=g.res; player.reload=0; player.cd=.2;
   sfx('reload'); banner(WEAPONS[g.id].name,'',.8); hud();
+}
+
+// Hold-to-drop: track which gun slot is being held and for how long
+var _holdSlot=-1, _holdStart=0, _holdTimer=null;
+var HOLD_MS=550; // ms to trigger drop
+
+function _startGunHold(i){
+  _holdSlot=i; _holdStart=Date.now();
+  _holdTimer=setTimeout(function(){ _fireGunDrop(i); },HOLD_MS);
+}
+function _cancelGunHold(){
+  if(_holdTimer){ clearTimeout(_holdTimer); _holdTimer=null; }
+  _holdSlot=-1; _holdStart=0;
+}
+function _fireGunDrop(i){
+  _cancelGunHold();
+  if(!player||!player.guns[i]) return;
+  if(player.guns.length<=1){ banner('LAST WEAPON','CAN\'T DROP IT',1); return; }
+  var id=player.guns[i].id;
+  dropGun(player.x,player.y,id,player.face,0.4);
+  player.guns.splice(i,1);
+  if(player.gi>=player.guns.length) player.gi=player.guns.length-1;
+  if(player.gi<0) player.gi=0;
+  var g2=player.guns[player.gi];
+  player.wep=g2.id; player.mag=g2.mag; player.res=g2.res; player.reload=0;
+  sfx('ric'); banner('DROPPED '+WEAPONS[id].name,'',1); hud();
+}
+function _holdProgress(){
+  if(_holdSlot<0||_holdStart<=0) return 0;
+  return Math.min(1,(Date.now()-_holdStart)/HOLD_MS);
 }
 function addGun(id){
   var W2=WEAPONS[id];
@@ -4313,7 +4345,7 @@ function showOilBossClear(x,y){
 function killEnemy(e,ang,gib){
   var idx=enemies.indexOf(e); if(idx>=0) enemies.splice(idx,1);
   if(e.finalBoss){ redBossDefeated=1; bossBarrels.length=0; banner('FINAL BOSS DEFEATED','RED SQUARE SECURED',2.5);
-    try{ window.parent.postMessage({type:'gd:sectorComplete',sector:6},'*'); }catch(ex){} }
+    try{ window.parent.postMessage({type:'gd:sectorComplete',sector:6,kills:totalKills,squadLost:squadLost,moneyEnd:money,timeAlive:Math.floor(timeAlive),belt:belt.slice()},'*'); }catch(ex){} }
   if(e.airfieldBoss){
     airfieldBossDefeated=1; miniNukes.length=0; killed++; totalKills++;
     showAirfieldBossClear(e.x,e.y); hud(); return;
@@ -5928,14 +5960,27 @@ window.addEventListener('touchstart',function(e){
   var t=e.changedTouches[0], i=beltHit(t.clientX,t.clientY);
   if(i>=0&&belt[i]){ e.preventDefault(); e.stopPropagation(); useTool(i); return; }
   var g=gunHit(t.clientX,t.clientY);
-  if(g>=0&&player.guns[g]){ e.preventDefault(); e.stopPropagation(); equipGun(g); }
+  if(g>=0&&player.guns[g]){ e.preventDefault(); e.stopPropagation(); _startGunHold(g); }
 },{passive:false,capture:true});
+window.addEventListener('touchend',function(e){
+  if(state!=='play'||_holdSlot<0) return;
+  var prog=_holdProgress(), slot=_holdSlot;
+  _cancelGunHold();
+  if(prog<1) equipGun(slot); // short tap = equip
+},{passive:false,capture:true});
+window.addEventListener('touchcancel',function(){ _cancelGunHold(); },{passive:true});
 window.addEventListener('mousedown',function(e){
   if(state!=='play') return;
   var i=beltHit(e.clientX,e.clientY);
   if(i>=0&&belt[i]){ e.preventDefault(); e.stopPropagation(); useTool(i); return; }
   var g=gunHit(e.clientX,e.clientY);
-  if(g>=0&&player.guns[g]){ e.preventDefault(); e.stopPropagation(); equipGun(g); }
+  if(g>=0&&player.guns[g]){ e.preventDefault(); e.stopPropagation(); _startGunHold(g); }
+},true);
+window.addEventListener('mouseup',function(e){
+  if(state!=='play'||_holdSlot<0) return;
+  var prog=_holdProgress(), slot=_holdSlot;
+  _cancelGunHold();
+  if(prog<1) equipGun(slot); // short click = equip
 },true);
 window.addEventListener('keydown',function(e){
   if(state!=='play') return;
@@ -7125,7 +7170,7 @@ async function sectorClear(){
     }catch(e){clearing=false;banner('CONNECTION LOST','RECONNECT TO CONTINUE',3);setTimeout(function(){sectorClear();},3000);return;}
   }
   // Notify parent window (Next.js) that this sector was completed
-  try{ window.parent.postMessage({type:'gd:sectorComplete',sector:level},'*'); }catch(e){}
+  try{ window.parent.postMessage({type:'gd:sectorComplete',sector:level,kills:totalKills,squadLost:squadLost,moneyEnd:money,timeAlive:Math.floor(timeAlive),belt:belt.slice()},'*'); }catch(e){}
   banner('SECTOR CLEAR','RESUPPLY · SECTOR '+(level+1),2.2);
   setTimeout(function(){
     clearing=false;
@@ -10579,6 +10624,14 @@ function drawGunRail(){
       var mg=on?player.mag:g.mag, rs=on?player.res:g.res;
       ctx.fillStyle=on?'#f2ead2':'rgba(232,228,216,.6)'; ctx.font='bold 9px Arial'; ctx.textAlign='center';
       ctx.fillText(mg+'/'+rs,R.x+R.w/2,R.y+R.h-6); ctx.textAlign='start';
+      // Hold-to-drop progress arc
+      if(_holdSlot===i){
+        var prog=_holdProgress(), cx2=R.x+R.w/2, cy2=R.y+R.h/2, rad=R.w/2+3;
+        ctx.save(); ctx.globalAlpha=0.85;
+        ctx.strokeStyle='#e04b3c'; ctx.lineWidth=2.5; ctx.lineCap='round';
+        ctx.beginPath(); ctx.arc(cx2,cy2,rad,-Math.PI/2,-Math.PI/2+Math.PI*2*prog); ctx.stroke();
+        ctx.restore();
+      }
     } else {
       ctx.strokeStyle='rgba(232,228,216,.14)'; ctx.lineWidth=1.5; ctx.setLineDash([4,4]);
       rrect(ctx,R.x,R.y,R.w,R.h,8); ctx.stroke(); ctx.setLineDash([]);
@@ -11394,11 +11447,14 @@ bindTap(document.getElementById('go'),function(){
   document.getElementById('start').classList.add('hide'); ac(); showLevelIntro(1);
 });
 // Auto-start: when loaded with ?autostart=N, skip splash + menu and go straight to level intro
-// ?coins=N seeds the player's starting cash (admin use only).
+// ?coins=N seeds the player's starting cash. ?belt=id,id,... seeds the belt (carry-over from previous sector).
 (function(){
   var params=new URLSearchParams(window.location.search);
   var sc=parseInt(params.get('coins')||'0',10);
   if(sc>0&&sc<=99999) startCoins=sc;
+  var beltParam=params.get('belt');
+  if(beltParam){ var VALID_TOOLS={droneS:1,drone:1,droneL:1,usv:1,sentry:1,strike:1,stim:1,smoke:1,incend:1,flamer:1,emp:1,med:1,plate:1}; var bids=beltParam.split(',').filter(function(b){return VALID_TOOLS[b];}).slice(0,6); if(bids.length) belt=bids; }
+  window._recEnabled = params.get('rec')==='1';
   var autolvl=parseInt(params.get('autostart')||'0',10);
   if(!params.has('boss')&&autolvl>=1&&autolvl<=6){
     var sp2=document.getElementById('splash');
@@ -11667,6 +11723,7 @@ var REC = (function () {
   var _lowHPT = 0, _lowHPTriggered = false;
 
   function tick(dt) {
+    if (!window._recEnabled) return; // recording features admin-only
     blitVert();
     /* manage highlight buffer lifecycle */
     if (state === 'play' && !hlMR) startHL();

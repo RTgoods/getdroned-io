@@ -26,6 +26,7 @@ export const STATIC_GAMES: Game[] = [
     genre: 'Action',
     is_published: true,
     is_featured: true,
+    rec_enabled: false,
     release_date: '2026-09-03',
     created_at: '2026-09-03T00:00:00.000Z',
     updated_at: '2026-09-03T00:00:00.000Z',
