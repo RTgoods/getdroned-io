@@ -106,6 +106,26 @@ export function ProfileContent({ game, user, hasPurchased, isAdmin, completedSec
       <div style={{ flex: 1, minWidth: 0, height: '100dvh', overflowY: 'auto', padding: '32px 24px' }}>
         <div style={{ maxWidth: 640, margin: '0 auto' }}>
 
+          {/* Back to game */}
+          <div style={{ marginBottom: 24 }}>
+            <a
+              href="/"
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 7,
+                fontSize: 8, fontWeight: 900, letterSpacing: '2px', textTransform: 'uppercase',
+                color: UA.muted, textDecoration: 'none',
+                padding: '7px 14px', borderRadius: 3,
+                border: `1px solid ${UA.borderFaint}`,
+                background: UA.surface,
+                transition: 'color 150ms, border-color 150ms',
+              }}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = UA.yellow; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,215,0,0.3)' }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = UA.muted; (e.currentTarget as HTMLElement).style.borderColor = UA.borderFaint }}
+            >
+              ← BACK TO GAME
+            </a>
+          </div>
+
           {/* Title row */}
           <div style={{ marginBottom: 28 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
