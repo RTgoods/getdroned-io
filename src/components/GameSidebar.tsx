@@ -547,7 +547,23 @@ function LevelRow({ sector, unlocked, done, stat, open, expanded, onToggle, onPl
           )}
 
           {/* Play / Unlock / locked-by-progression button */}
-          {unlocked ? (
+          {sector.num === 1 && !hasUser ? (
+            <a href="/auth/login" style={{
+              marginTop: 4, display: 'block', width: '100%', padding: '6px 0',
+              background: `linear-gradient(180deg, ${UA.blue} 0%, #004a99 100%)`,
+              border: `1px solid ${UA.blueDim}`,
+              borderRadius: 3, textAlign: 'center',
+              fontSize: 8, fontWeight: 900, letterSpacing: '2px',
+              color: '#e8f4ff', textTransform: 'uppercase',
+              textDecoration: 'none', transition: 'filter 140ms',
+              boxSizing: 'border-box' as const,
+            }}
+            onMouseEnter={e => (e.currentTarget.style.filter = 'brightness(1.15)')}
+            onMouseLeave={e => (e.currentTarget.style.filter = 'none')}
+            >
+              SIGN IN · SECTOR 1 FREE
+            </a>
+          ) : unlocked ? (
             <button
               onClick={onPlay}
               style={{
