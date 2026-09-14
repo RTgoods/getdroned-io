@@ -194,7 +194,7 @@ export function GameLanding({ game, user, hasPurchased, onPlay }: Props) {
 
         {/* ── ABOUT ────────────────────────────────────────── */}
         <div className="py-5 sm:py-7" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-          <div className="text-[8px] font-black tracking-[3px] uppercase mb-3" style={{ color: '#e2b13c' }}>
+          <div className="text-[8px] font-black tracking-[3px] uppercase mb-3" style={{ color: '#ffd700' }}>
             ABOUT THIS GAME
           </div>
           <p className="text-[12.5px] leading-relaxed max-w-xl" style={{ color: '#9a9288' }}>
@@ -232,7 +232,7 @@ export function GameLanding({ game, user, hasPurchased, onPlay }: Props) {
 
         {/* ── SPECS — hidden on mobile ─────────────────────── */}
         <div className="hidden sm:block pt-5 sm:pt-7">
-          <div className="text-[8px] font-black tracking-[3px] uppercase mb-4" style={{ color: '#e2b13c' }}>
+          <div className="text-[8px] font-black tracking-[3px] uppercase mb-4" style={{ color: '#ffd700' }}>
             MISSION SPECS
           </div>
           {/* 1-col on mobile, 2-col on sm+ */}
