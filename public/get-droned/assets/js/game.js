@@ -3901,7 +3901,11 @@ function releaseControls(){
   keys={}; mv.m=0; joyId=null; mouseAim.active=false; actUp(); placeJoyHome();
 }
 window.addEventListener('blur',releaseControls);
-document.addEventListener('visibilitychange',function(){if(document.hidden) releaseControls();});
+document.addEventListener('visibilitychange',function(){
+  if(document.hidden){ releaseControls(); stopMusic(true); }
+});
+// Stop music when the iframe is removed from the DOM (mobile back / sidebar close)
+window.addEventListener('pagehide',function(){ stopMusic(true); });
 var joyZone=document.getElementById('joyZone'), joyBase=document.getElementById('joyBase'), joyKnob=document.getElementById('joyKnob');
 var actBtn=document.getElementById('act'), nadeBtn=document.getElementById('nade');
 var joyId=null, joyOx=0, joyOy=0, joyHX=0, joyHY=0;

@@ -147,7 +147,10 @@ export function GamePageClient({ game }: { game: Game }) {
       sectorStats={sectorStats}
       playing={playing}
       onPlay={play}
-      onBack={() => setPlaying(false)}
+      onBack={() => {
+        frame.current?.contentWindow?.postMessage({ type: 'gd:setMute', muted: true }, '*')
+        setPlaying(false)
+      }}
       onReset={reset}
       avatarUrl={avatarUrl}
       onMuteToggle={(muted) => {
