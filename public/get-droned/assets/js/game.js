@@ -1690,6 +1690,7 @@ var CARDS=[
   {k:'t',id:'flamer', rar:2,wt:8, name:'FLAMETHROWER',  desc:'15s of fire · to belt'},
   {k:'t',id:'emp',    rar:1,wt:9, name:'DRONE JAMMER',  desc:'electronic burst · to belt'},
   {k:'t',id:'stim',   rar:1,wt:7, name:'COMBAT STIM',   desc:'to belt'},
+  {k:'t',id:'repair', rar:1,wt:6, name:'REPAIR KIT',    desc:'patch nearby wall · to belt'},
   {k:'p',id:'vest',   rar:2,wt:8, name:'BODY ARMOUR',   desc:'+45 armour'}
 ];
 function rollCard(){
@@ -1717,9 +1718,10 @@ var TOOLS={
   flamer:{n:'FLAMETHROWER',c:'#f2762c', wt:9,  dur:15},
   emp   :{n:'DRONE JAMMER', c:'#7fe8ff', wt:9},
   med   :{n:'FIELD KIT',   c:'#e0483c', wt:14},
-  plate :{n:'ARMOUR PLATE',c:'#8fb6c8', wt:11}
+  plate :{n:'ARMOUR PLATE',c:'#8fb6c8', wt:11},
+  repair:{n:'REPAIR KIT',  c:'#c8b87a', wt:7}
 };
-var TKEYS=['droneS','drone','droneL','usv','sentry','strike','stim','smoke','incend','flamer','emp','med','plate'];
+var TKEYS=['droneS','drone','droneL','usv','sentry','strike','stim','smoke','incend','flamer','emp','med','plate','repair'];
 // Shared handling across every level. Speeds are world pixels per second;
 // response/brake are seconds to close 63% of the velocity difference.
 var DRONE_HANDLING={
@@ -1915,6 +1917,15 @@ function sfx(kind,vol){
     [523,659,784,1046].forEach(function(fq,i3){ var o8=a.createOscillator(), g8=a.createGain(); o8.type='triangle'; o8.frequency.value=fq;
       g8.gain.setValueAtTime(0,t+i3*.12); g8.gain.linearRampToValueAtTime(.16,t+i3*.12+.03); g8.gain.exponentialRampToValueAtTime(.001,t+i3*.12+.5);
       o8.connect(g8); g8.connect(a.destination); o8.start(t+i3*.12); o8.stop(t+i3*.12+.55); });
+  } else if(kind==='hammer'){
+    // Sharp nail crack + low masonry thud
+    var nhm=noise(.038); if(!nhm) return;
+    var fhm=a.createBiquadFilter(); fhm.type='bandpass'; fhm.frequency.value=3100; fhm.Q.value=1.6;
+    nhm.connect(fhm); fhm.connect(g); g.gain.setValueAtTime(.22*vol,t); g.gain.exponentialRampToValueAtTime(.001,t+.04); nhm.start(t);
+    var ohm=a.createOscillator(), ohmg=a.createGain(); ohm.type='sine';
+    ohm.frequency.setValueAtTime(240,t); ohm.frequency.exponentialRampToValueAtTime(52,t+.13);
+    ohmg.gain.setValueAtTime(.26*vol,t); ohmg.gain.exponentialRampToValueAtTime(.001,t+.16);
+    ohm.connect(ohmg); ohmg.connect(a.destination); ohm.start(t); ohm.stop(t+.17);
   }
 }
 
@@ -1967,6 +1978,7 @@ var SHOP=[
   {id:'t_stim', n:'COMBAT STIM',  p:150, d:'to belt'},
   {id:'t_flamer',n:'FLAMETHROWER', p:280, d:'15s of fire'},
   {id:'t_emp',  n:'DRONE JAMMER',  p:190, d:'burst kills drones'},
+  {id:'t_repair',n:'REPAIR KIT',  p:130, d:'patch wall damage'},
   {id:'u_armor',n:'HEAVY PLATE',  p:400, d:'armour cap 120', once:1},
   {id:'u_hp',   n:'COMBAT VEST',  p:450, d:'health 140', once:1},
   {id:'w_railgun',n:'RAILGUN',p:600,d:'3 piercing shots'},
@@ -2196,6 +2208,26 @@ function useTool(i){
   var T2=TOOLS[k];
   if(k==='med'){ player.hp=Math.min(player.mx,player.hp+50); sfx('card'); banner('PATCHED UP','',1); }
   else if(k==='plate'){ player.ap=Math.min(upgAP,player.ap+40); sfx('card'); banner('PLATE ON','',1); }
+  else if(k==='repair'){
+    // Find nearest damaged wall within 3 tiles
+    var rPx=Math.floor(player.x/TILE),rPy=Math.floor(player.y/TILE),rBx=-1,rBy=-1,rBd=Infinity;
+    for(var rRy=rPy-3;rRy<=rPy+3;rRy++) for(var rRx=rPx-3;rRx<=rPx+3;rRx++){
+      var rRt=T(rRx,rRy);
+      if(rRt!==CRUMBLE&&rRt!==BROKEN) continue;
+      var rCx2=(rRx+.5)*TILE,rCy2=(rRy+.5)*TILE,rD2=Math.hypot(rCx2-player.x,rCy2-player.y);
+      if(rD2<rBd){rBd=rD2;rBx=rRx;rBy=rRy;}
+    }
+    if(rBx>=0){
+      var rOld=T(rBx,rBy);
+      if(rOld===CRUMBLE){setT(rBx,rBy,BROKEN);wallHP[rBy*MW+rBx]=60;}
+      else{setT(rBx,rBy,WALL);wallHP[rBy*MW+rBx]=110;}
+      var rWx=(rBx+.5)*TILE,rWy=(rBy+.5)*TILE;
+      dustPuff(rWx,rWy,4,.6); sfx('hammer'); flowT=0;
+      banner('WALL REPAIRED','',1.1);
+    } else {
+      belt.push('repair'); banner('NO WALL DAMAGE IN RANGE','MOVE CLOSER TO THE WALL',1.4);
+    }
+  }
   else if(k==='stim'){ player.stim=T2.dur; sfx('card'); banner('STIM','SPEED + RATE OF FIRE',1.2); }
   else if(k==='flamer'){ player.flamer=T2.dur; sfx('card'); banner('FLAMETHROWER','HOLD FIRE TO SPRAY',1.6); }
   else if(k==='emp'){ fireEMP(); }
@@ -7490,6 +7522,16 @@ function paintTool(c,k){
     gearPoly(c,[[-5,-10],[5,-10],[8,-5],[7,8],[0,11],[-7,8],[-8,-5]],'#829b9b');
     line(-5,-7,5,-7,'#c3d2bb',.8);line(-6,7,6,7,'#364f56',1);
     box(-4,-2,8,5,'#b7b998','#848e72',.4);line(-2,0,2,0,'#4b6058',.7);
+  }else if(k==='repair'){
+    // Hammer head + handle at diagonal
+    c.save(); c.rotate(.52);
+    box(-2,-13,4,20,'#9b7a4a','#52391e',1);      // handle
+    box(-11,-17,22,9,'#8a9a9c','#3e5560',2);     // head
+    box(-11,-18,22,3,'#aababc','#506870');        // bevel
+    c.restore();
+    // Two nails standing nearby
+    line(7,-2,7,10,'#c0cacf',2); box(5.5,-4,3,3,'#d4dce0','#8aa0a6');
+    line(12,0,12,12,'#c0cacf',2); box(10.5,-2,3,3,'#d4dce0','#8aa0a6');
   }else if(k==='ammo'||k==='loose'){
     if(k==='ammo'){box(-12,-7,24,19,'#839263','#394e36',2);box(-13,-8,26,4,'#9ea675','#596746');box(-6,-12,12,4,'#829574','#334a3b');line(-10,4,10,4,'#c6b66c',2);box(-2,-4,4,5,'#a2aa82','#485e44');}
     else {for(var q=0;q<3;q++){c.save();c.translate(-7+q*7,q%2*3);box(-2,-6,4,15,'#e6c878','#886231',.6);gearPoly(c,[[-2,-6],[0,-11],[2,-6]],'#b28a51');line(-1,-4,-1,7,'#f2e4a4',.7);c.restore();}}
@@ -11454,7 +11496,7 @@ bindTap(document.getElementById('go'),function(){
   var sc=parseInt(params.get('coins')||'0',10);
   if(sc>0&&sc<=99999) startCoins=sc;
   var beltParam=params.get('belt');
-  if(beltParam){ var VALID_TOOLS={droneS:1,drone:1,droneL:1,usv:1,sentry:1,strike:1,stim:1,smoke:1,incend:1,flamer:1,emp:1,med:1,plate:1}; var bids=beltParam.split(',').filter(function(b){return VALID_TOOLS[b];}).slice(0,6); if(bids.length) belt=bids; }
+  if(beltParam){ var VALID_TOOLS={droneS:1,drone:1,droneL:1,usv:1,sentry:1,strike:1,stim:1,smoke:1,incend:1,flamer:1,emp:1,med:1,plate:1,repair:1}; var bids=beltParam.split(',').filter(function(b){return VALID_TOOLS[b];}).slice(0,6); if(bids.length) belt=bids; }
   window._recEnabled = params.get('rec')==='1';
   if(params.get('mute')==='1'){ muted=true; var mb=document.getElementById('mute'); if(mb){mb.textContent='✕';mb.style.opacity=.5;} }
   var autolvl=parseInt(params.get('autostart')||'0',10);
