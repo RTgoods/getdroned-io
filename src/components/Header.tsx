@@ -25,8 +25,8 @@ export function Header() {
     window.location.href = '/'
   }
 
-  // Game pages use their own sidebar — no header there
-  if (pathname === '/' || /^\/(get-droned|profile)$/.test(pathname)) return null
+  // Sidebar handles navigation on all pages — no top bar anywhere
+  return null
 
   return (
     <header
