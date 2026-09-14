@@ -10,7 +10,7 @@ import type { SectorStat } from '@/app/api/progress/route'
 
 export function GamePageClient({ game }: { game: Game }) {
   const [playing, setPlaying] = useState(false)
-  const [launch, setLaunch] = useState({ level: 1, version: 0, coins: 0, belt: [] as string[] })
+  const [launch, setLaunch] = useState({ level: 1, version: 0, coins: 0, belt: [] as string[], muted: false })
   const [user, setUser] = useState<User | null>(null)
   const [allowed, setAllowed] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
@@ -112,6 +112,7 @@ export function GamePageClient({ game }: { game: Game }) {
       version: previous.version + 1,
       coins: carryCoins,
       belt: carryBelt,
+      muted: musicMuted, // snapshot at launch — live toggle uses postMessage only
     }))
     setPlaying(true)
   }, [completedSectors, sectorStats, loadAccess])
@@ -132,7 +133,7 @@ export function GamePageClient({ game }: { game: Game }) {
     else if (launch.coins > 0) params.set('coins', String(launch.coins))
     if (launch.belt.length > 0 && !isAdmin) params.set('belt', launch.belt.join(','))
     if (isAdmin && game.rec_enabled) params.set('rec', '1')
-    if (musicMuted) params.set('mute', '1')
+    if (launch.muted) params.set('mute', '1')
     return `/get-droned/index.html?${params.toString()}`
   })()
 
