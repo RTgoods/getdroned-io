@@ -133,7 +133,7 @@ export function GameLanding({ game, user, hasPurchased, onPlay }: Props) {
               >
                 ▶ PLAY GAME
               </button>
-              <p className="mt-2 text-center text-[8px] font-black tracking-[2px] uppercase" style={{ color: '#9db35a' }}>
+              <p className="mt-2 text-center text-[8px] font-black tracking-[2px] uppercase" style={{ color: '#ffffff' }}>
                 MISSION UNLOCKED · FULL ACCESS
               </p>
             </div>
