@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { GameSidebar } from './GameSidebar'
 import { AvatarSelector, AvatarBadge, ALL_KITS } from './AvatarSelector'
 import type { Game } from '@/types/database'
@@ -15,6 +15,7 @@ interface Props {
   completedSectors: number[]
   sectorStats: Record<string, SectorStat>
   avatarUrl: string | null
+  gameId: string | null
 }
 
 const UA = {
@@ -45,7 +46,7 @@ function fmtTime(s: number) {
   return m > 0 ? `${m}m ${s % 60}s` : `${s}s`
 }
 
-export function ProfileContent({ game, user, hasPurchased, isAdmin, completedSectors, sectorStats, avatarUrl: initialAvatarUrl }: Props) {
+export function ProfileContent({ game, user, hasPurchased, isAdmin, completedSectors, sectorStats, avatarUrl: initialAvatarUrl, gameId }: Props) {
   const totalKills = Object.values(sectorStats).reduce((s, x) => s + (x.kills ?? 0), 0)
   const totalTime  = Object.values(sectorStats).reduce((s, x) => s + (x.timeAlive ?? 0), 0)
   const totalSquad = Object.values(sectorStats).reduce((s, x) => s + (x.squadLost ?? 0), 0)
@@ -54,6 +55,13 @@ export function ProfileContent({ game, user, hasPurchased, isAdmin, completedSec
   const [saving, setSaving] = useState(false)
   const [saveMsg, setSaveMsg] = useState<string | null>(null)
   const [avatarOpen, setAvatarOpen] = useState(false)
+  const [musicMuted, setMusicMuted] = useState(false)
+  const [resetting, setResetting] = useState(false)
+  const [resetMsg, setResetMsg] = useState<string | null>(null)
+
+  useEffect(() => {
+    setMusicMuted(localStorage.getItem('gd_muted') === '1')
+  }, [])
 
   const handleSave = useCallback(async (kitId: string) => {
     setSaving(true)
@@ -191,6 +199,95 @@ export function ProfileContent({ game, user, hasPurchased, isAdmin, completedSec
             {avatarOpen && (
               <div style={{ padding: '0 20px 18px' }}>
                 <AvatarSelector current={avatarUrl} onSave={handleSave} saving={saving} />
+              </div>
+            )}
+          </div>
+
+          {/* Pilot Settings — music + reset */}
+          <div style={{ marginBottom: 28, background: UA.surface, border: `1px solid ${UA.border}`, borderRadius: 4, overflow: 'hidden' }}>
+            <div style={{ padding: '14px 20px 10px', borderBottom: `1px solid ${UA.borderFaint}`, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ display: 'inline-block', width: 10, height: 2, background: UA.yellow, borderRadius: 1 }} />
+              <span style={{ fontSize: 8, fontWeight: 900, letterSpacing: '3px', color: UA.yellow, textTransform: 'uppercase' }}>PILOT SETTINGS</span>
+            </div>
+
+            {/* Music toggle */}
+            <button
+              onClick={() => {
+                const next = !musicMuted
+                setMusicMuted(next)
+                localStorage.setItem('gd_muted', next ? '1' : '0')
+              }}
+              style={{
+                width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                padding: '14px 20px', background: 'none', border: 'none',
+                borderBottom: `1px solid ${UA.borderFaint}`, cursor: 'pointer',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ fontSize: 15, color: musicMuted ? UA.dim : UA.muted }}>{musicMuted ? '✕' : '♪'}</span>
+                <span style={{ fontSize: 9, fontWeight: 900, letterSpacing: '2px', color: musicMuted ? UA.dim : UA.text, textTransform: 'uppercase' }}>
+                  MUSIC {musicMuted ? 'OFF' : 'ON'}
+                </span>
+              </div>
+              <div style={{
+                width: 34, height: 18, borderRadius: 9,
+                background: musicMuted ? 'rgba(255,255,255,0.08)' : `rgba(0,104,204,0.35)`,
+                border: `1px solid ${musicMuted ? 'rgba(255,255,255,0.1)' : 'rgba(0,104,204,0.5)'}`,
+                position: 'relative', transition: 'background 200ms, border-color 200ms', flexShrink: 0,
+              }}>
+                <div style={{
+                  position: 'absolute', top: 2,
+                  left: musicMuted ? 2 : 16,
+                  width: 12, height: 12, borderRadius: '50%',
+                  background: musicMuted ? UA.dim : UA.blueMid,
+                  transition: 'left 200ms, background 200ms',
+                }} />
+              </div>
+            </button>
+
+            {/* Reset progress */}
+            {hasPurchased && gameId && (
+              <div style={{ padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div>
+                  <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: '2px', color: UA.dim, textTransform: 'uppercase', marginBottom: 3 }}>RESET PROGRESS</div>
+                  <div style={{ fontSize: 8, color: UA.dim, letterSpacing: '0.5px' }}>Erase all sector data and restart from Sector 1</div>
+                </div>
+                <button
+                  disabled={resetting}
+                  onClick={async () => {
+                    if (!confirm('Reset all sector progress and start from Sector 1?')) return
+                    setResetting(true)
+                    setResetMsg(null)
+                    try {
+                      const res = await fetch(`/api/progress?gameId=${gameId}`, { method: 'DELETE' })
+                      if (res.ok) {
+                        setResetMsg('RESET')
+                        setTimeout(() => window.location.reload(), 800)
+                      } else {
+                        setResetMsg('ERROR')
+                        setTimeout(() => setResetMsg(null), 3000)
+                        setResetting(false)
+                      }
+                    } catch {
+                      setResetMsg('ERROR')
+                      setTimeout(() => setResetMsg(null), 3000)
+                      setResetting(false)
+                    }
+                  }}
+                  style={{
+                    padding: '7px 14px', flexShrink: 0, marginLeft: 16,
+                    background: 'transparent',
+                    border: `1px solid rgba(255,255,255,0.1)`,
+                    borderRadius: 3, cursor: resetting ? 'default' : 'pointer',
+                    fontSize: 8, fontWeight: 900, letterSpacing: '2px',
+                    color: resetMsg === 'RESET' ? UA.green : resetMsg === 'ERROR' ? '#e04b3c' : UA.dim,
+                    textTransform: 'uppercase',
+                    opacity: resetting ? 0.5 : 1,
+                    transition: 'color 200ms',
+                  }}
+                >
+                  {resetMsg ?? (resetting ? 'RESETTING…' : '↺ RESET')}
+                </button>
               </div>
             )}
           </div>

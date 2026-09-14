@@ -64,6 +64,7 @@ export default async function ProfilePage() {
       completedSectors={completedSectors}
       sectorStats={sectorStats}
       avatarUrl={avatarUrl}
+      gameId={access.gameId ?? null}
     />
   )
 }

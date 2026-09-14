@@ -60,7 +60,6 @@ export function GameSidebar({ game, user, hasPurchased, isAdmin = false, complet
   const [mobile, setMobile] = useState(false)
   const [mounted, setMounted] = useState(false)
   const [expandedSector, setExpandedSector] = useState<number | null>(null)
-  const [musicMuted, setMusicMuted] = useState(false)
   const supabase = createClient()
   const price = `$${(game.price_cents / 100).toFixed(2)}`
 
@@ -71,7 +70,6 @@ export function GameSidebar({ game, user, hasPurchased, isAdmin = false, complet
       const saved = localStorage.getItem('sidebar')
       setOpen(saved !== 'closed')
     }
-    setMusicMuted(localStorage.getItem('gd_muted') === '1')
     setMounted(true)
     const check = () => {
       const mob = window.innerWidth < 768
@@ -191,32 +189,6 @@ export function GameSidebar({ game, user, hasPurchased, isAdmin = false, complet
           }
           border
         />
-
-        {/* ── Pilot sub-rows: Music + Reset ────────────────── */}
-        <SideRow
-          open={open}
-          onClick={() => {
-            const next = !musicMuted
-            setMusicMuted(next)
-            localStorage.setItem('gd_muted', next ? '1' : '0')
-            onMuteToggle?.(next)
-          }}
-          icon={<span style={{ fontSize: 13, color: musicMuted ? UA.textDim : UA.textMuted, flexShrink: 0 }}>{musicMuted ? '✕' : '♪'}</span>}
-          label={<span style={{ fontSize: 9, fontWeight: 900, letterSpacing: '2px', color: musicMuted ? UA.textDim : UA.textMuted, textTransform: 'uppercase' }}>{musicMuted ? 'MUSIC OFF' : 'MUSIC ON'}</span>}
-          hover
-          indent
-        />
-
-        {user && hasPurchased && onReset && (
-          <SideRow
-            open={open}
-            onClick={() => { if (confirm('Reset all sector progress and start from Sector 1?')) onReset() }}
-            icon={<span style={{ fontSize: 11, color: UA.textDim, flexShrink: 0 }}>↺</span>}
-            label={<span style={{ fontSize: 9, fontWeight: 900, letterSpacing: '2px', color: UA.textDim, textTransform: 'uppercase' }}>RESET PROGRESS</span>}
-            hover
-            indent
-          />
-        )}
 
         {/* ── Sectors label ────────────────────────────────── */}
         {open ? (
@@ -338,7 +310,7 @@ export function GameSidebar({ game, user, hasPurchased, isAdmin = false, complet
             open={open}
             href="/profile"
             icon={<span style={{ fontSize: 11, color: UA.textMuted, flexShrink: 0 }}>◈</span>}
-            label={<span style={{ fontSize: 9, fontWeight: 900, letterSpacing: '2px', color: UA.textMuted, textTransform: 'uppercase' }}>PILOT STATS</span>}
+            label={<span style={{ fontSize: 9, fontWeight: 900, letterSpacing: '2px', color: UA.textMuted, textTransform: 'uppercase' }}>PILOT SETTINGS</span>}
             hover
             border
           />
