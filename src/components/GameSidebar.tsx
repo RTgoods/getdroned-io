@@ -366,11 +366,6 @@ export function GameSidebar({ game, user, hasPurchased, isAdmin = false, complet
           />
         )}
 
-        {/* ── Bottom flag stripe ───────────────────────────── */}
-        <div style={{ flexShrink: 0 }}>
-          <div style={{ height: 3, background: `linear-gradient(90deg, ${UA.blue} 0%, ${UA.blueMid} 100%)` }} />
-          <div style={{ height: 3, background: `linear-gradient(90deg, ${UA.yellow} 0%, #f5c800 100%)` }} />
-        </div>
       </aside>
 
       {/* Mobile hamburger — always visible on mobile when sidebar is closed */}
