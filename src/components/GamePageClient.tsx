@@ -15,7 +15,7 @@ export function GamePageClient({ game }: { game: Game }) {
   const [allowed, setAllowed] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
   const [gameId, setGameId] = useState<string | null>(null)
-  const [ready, setReady] = useState(false)
+  const [ready, setReady] = useState(true) // show landing immediately; auth check runs in background
   const [completedSectors, setCompletedSectors] = useState<number[]>([])
   const [sectorStats, setSectorStats] = useState<Record<string, SectorStat>>({})
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
@@ -156,7 +156,7 @@ export function GamePageClient({ game }: { game: Game }) {
       }}
     />
     <div style={{ flex: 1, minWidth: 0, height: '100dvh', overflow: 'hidden', position: 'relative' }}>
-      {!ready ? <p className="p-8 text-[#e8e4d8]">Checking access…</p> : playing && user && (allowed || launch.level === 1) ? (
+      {playing && (launch.level === 1 || (!!user && (allowed || isAdmin))) ? (
         <iframe
           key={launch.version}
           ref={frame}
