@@ -230,11 +230,12 @@ export function GameSidebar({ game, user, hasPurchased, isAdmin = false, complet
                 open={open}
                 expanded={expandedSector === s.num}
                 onToggle={() => setExpandedSector(prev => prev === s.num ? null : s.num)}
-                onPlay={() => { if (unlocked) { if (mobile) setOpen(false); onPlay?.(s.num) } }}
+                onPlay={onPlay ? () => { if (unlocked) { if (mobile) setOpen(false); onPlay(s.num) } } : undefined}
                 price={price}
                 hasUser={!!user}
                 hasPurchased={hasPurchased}
                 prevDone={prevDone}
+                gameSlug={game.slug}
               />
             )
           })}
@@ -262,7 +263,7 @@ export function GameSidebar({ game, user, hasPurchased, isAdmin = false, complet
               <div style={{ fontSize: 9, color: UA.textMuted, marginBottom: 8, lineHeight: 1.5 }}>
                 ${(game.price_cents / 100).toFixed(2)} · One-Time · 100% To Ukraine
               </div>
-              <a id="sidebar-unlock-btn" href="/auth/login" style={{
+              <a id="sidebar-unlock-btn" href={user ? `/api/stripe/checkout?slug=${game.slug}` : '/auth/login'} style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 gap: 6, textAlign: 'center', fontSize: 8, fontWeight: 900,
                 letterSpacing: '2px', textTransform: 'uppercase', textDecoration: 'none',
@@ -425,16 +426,17 @@ interface LevelRowProps {
   open: boolean
   expanded: boolean
   onToggle: () => void
-  onPlay: () => void
+  onPlay?: () => void
   price: string
   hasUser: boolean
   hasPurchased: boolean
   prevDone: boolean
+  gameSlug: string
 }
 
 function fmtTime(s: number) { const m = Math.floor(s / 60); return m > 0 ? `${m}m ${s % 60}s` : `${s}s` }
 
-function LevelRow({ sector, unlocked, done, stat, open, expanded, onToggle, onPlay, price, hasUser, hasPurchased, prevDone }: LevelRowProps) {
+function LevelRow({ sector, unlocked, done, stat, open, expanded, onToggle, onPlay, price, hasUser, hasPurchased, prevDone, gameSlug }: LevelRowProps) {
   const [hovered, setHovered] = useState(false)
   const objectives = OBJECTIVES[sector.num] ?? []
 
@@ -558,6 +560,7 @@ function LevelRow({ sector, unlocked, done, stat, open, expanded, onToggle, onPl
           {sector.num === 1 && !hasUser ? (
             <a href="/auth/login" style={{ display: 'block', width: '100%', padding: '6px 0', background: '#0057b7', color: '#fff', marginTop: 4, fontSize: 8, fontWeight: 900, letterSpacing: '2px', textTransform: 'uppercase', lineHeight: 1.4, textAlign: 'center', textDecoration: 'none', borderRadius: 3, boxSizing: 'border-box' as const }}>SIGN IN · PLAY SECTOR 1 FREE</a>
           ) : unlocked ? (
+            onPlay ? (
             <button
               onClick={onPlay}
               style={{
@@ -577,10 +580,31 @@ function LevelRow({ sector, unlocked, done, stat, open, expanded, onToggle, onPl
             >
               {sector.num === 1 ? '▶ PLAY SECTOR 1 FREE' : done ? '↺ REPLAY' : '▶ PLAY'}
             </button>
+            ) : (
+            <a
+              href="/"
+              style={{
+                marginTop: 2, display: 'block', width: '100%', padding: '5px 0',
+                background: done
+                  ? `linear-gradient(180deg, rgba(255,215,0,0.15) 0%, rgba(255,215,0,0.08) 100%)`
+                  : `linear-gradient(180deg, ${UA.blue} 0%, #004a99 100%)`,
+                border: `1px solid ${done ? 'rgba(255,215,0,0.3)' : UA.blueDim}`,
+                borderRadius: 3, cursor: 'pointer',
+                fontSize: 8, fontWeight: 900, letterSpacing: '2px',
+                color: done ? UA.yellow : '#e8f4ff',
+                textTransform: 'uppercase', textDecoration: 'none', textAlign: 'center',
+                transition: 'filter 140ms', boxSizing: 'border-box' as const,
+              }}
+              onMouseEnter={e => (e.currentTarget.style.filter = 'brightness(1.15)')}
+              onMouseLeave={e => (e.currentTarget.style.filter = 'none')}
+            >
+              {done ? '↺ REPLAY' : '▶ PLAY'}
+            </a>
+            )
           ) : !hasPurchased ? (
             <a
-              href={hasUser ? '#unlock' : '/auth/login'}
-              onClick={hasUser ? (e) => { e.preventDefault(); document.getElementById('sidebar-unlock-btn')?.click() } : undefined}
+              href={hasUser ? `/api/stripe/checkout?slug=${gameSlug}` : '/auth/login'}
+              onClick={undefined}
               style={{
                 marginTop: 4, display: 'block', width: '100%', padding: '6px 0',
                 background: `linear-gradient(180deg, #f5c800 0%, #c89e00 100%)`,
