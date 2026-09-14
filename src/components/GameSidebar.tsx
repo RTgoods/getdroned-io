@@ -354,24 +354,25 @@ export function GameSidebar({ game, user, hasPurchased, isAdmin = false, complet
         </div>
       </aside>
 
-      {/* Mobile hamburger — hidden while playing so it doesn't overlap the in-game HP/AP HUD */}
-      {mobile && !open && mounted && !playing && (
+      {/* Mobile hamburger — always visible on mobile when sidebar is closed */}
+      {mobile && !open && mounted && (
         <button
           onClick={toggle}
           aria-label="Open menu"
           style={{
             position: 'fixed', top: 14, left: 14, zIndex: 60,
-            background: `rgba(9,16,31,0.94)`,
-            border: `1px solid ${UA.blueDim}`,
-            borderRadius: 4, width: 36, height: 36,
+            background: `rgba(9,16,31,0.92)`,
+            border: `1px solid rgba(255,215,0,0.35)`,
+            borderRadius: 4, width: 38, height: 38,
             display: 'flex', flexDirection: 'column', alignItems: 'center',
-            justifyContent: 'center', gap: 4, cursor: 'pointer',
-            backdropFilter: 'blur(6px)',
+            justifyContent: 'center', gap: 4.5, cursor: 'pointer',
+            backdropFilter: 'blur(8px)',
+            boxShadow: '0 2px 12px rgba(0,0,0,0.5)',
           }}
         >
-          <span style={{ width: 14, height: 1.5, background: UA.textMuted, display: 'block' }} />
-          <span style={{ width: 10, height: 1.5, background: UA.textMuted, display: 'block' }} />
-          <span style={{ width: 14, height: 1.5, background: UA.textMuted, display: 'block' }} />
+          <span style={{ width: 15, height: 1.5, background: UA.yellow, display: 'block', borderRadius: 1 }} />
+          <span style={{ width: 10, height: 1.5, background: UA.yellow, display: 'block', borderRadius: 1 }} />
+          <span style={{ width: 15, height: 1.5, background: UA.yellow, display: 'block', borderRadius: 1 }} />
         </button>
       )}
     </>
