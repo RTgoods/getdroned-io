@@ -121,11 +121,11 @@ export function GameLanding({ game, user, hasPurchased, onPlay }: Props) {
               <button
                 onClick={onPlay}
                 style={{
-                  display: 'block', marginInline: 'auto', width: '33%', minWidth: 'min(220px, 100%)', background: 'linear-gradient(180deg,#ffd700 0%,#e5b900 100%)',
-                  color: '#003580', border: 'none', borderRadius: 4,
+                  display: 'block', marginInline: 'auto', width: '33%', minWidth: 'min(220px, 100%)', background: 'linear-gradient(180deg,#0057b7 0%,#004a99 100%)',
+                  color: '#fff', border: 'none', borderRadius: 4,
                   padding: '18px 32px', fontWeight: 900, fontSize: 13,
                   letterSpacing: '3px', textTransform: 'uppercase',
-                  cursor: 'pointer', boxShadow: '0 4px 0 #977800, 0 8px 24px rgba(255,215,0,0.3)',
+                  cursor: 'pointer', boxShadow: '0 4px 0 #003070, 0 8px 24px rgba(0,87,183,0.35)',
                   transition: 'filter 150ms',
                 }}
                 onMouseEnter={e => (e.currentTarget.style.filter = 'brightness(1.15)')}
