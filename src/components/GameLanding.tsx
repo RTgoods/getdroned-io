@@ -142,7 +142,10 @@ export function GameLanding({ game, user, hasPurchased, onPlay }: Props) {
             <><div className="flex flex-col sm:flex-row gap-2" style={{ maxWidth: 480 }}>
 
               <div className="flex-1">
-                <button onClick={onPlay} className="w-full rounded px-4 font-bold" style={{ background: '#0057b7', color: '#fff', height: '100%', minHeight: 52, fontSize: 11, fontWeight: 900, letterSpacing: '2px', textTransform: 'uppercase', textAlign: 'center', lineHeight: 1.4 }}>PLAY SECTOR 1 FREE</button>
+                {user
+                  ? <button onClick={onPlay} className="w-full rounded px-4 font-bold" style={{ background: '#0057b7', color: '#fff', height: '100%', minHeight: 52, fontSize: 11, fontWeight: 900, letterSpacing: '2px', textTransform: 'uppercase', textAlign: 'center', lineHeight: 1.4 }}>PLAY SECTOR 1 FREE</button>
+                  : <a href="/auth/login" className="flex items-center justify-center rounded px-4 font-bold" style={{ background: '#0057b7', color: '#fff', height: '100%', minHeight: 52, fontSize: 11, fontWeight: 900, letterSpacing: '2px', textTransform: 'uppercase', textAlign: 'center', lineHeight: 1.4, textDecoration: 'none' }}>SIGN IN · SECTOR 1 FREE</a>
+                }
               </div>
               {/* ── UNLOCK: Full access — Ukraine yellow ── */}
               <button

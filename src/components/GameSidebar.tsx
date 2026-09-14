@@ -231,8 +231,8 @@ export function GameSidebar({ game, user, hasPurchased, isAdmin = false, complet
         <div style={{ overflowY: 'auto', flex: 1 }}>
           {SECTORS.map((s) => {
             const prevDone = s.num === 1 || completedSectors.includes(s.num - 1)
-            // Sector 1: free for everyone (no login required). Sectors 2–6: need purchase + prev done (admins bypass)
-            const unlocked = s.num === 1 || (!!user && (isAdmin || (hasPurchased && prevDone)))
+            // Sector 1: free with sign-in. Sectors 2–6: need purchase + prev done (admins bypass)
+            const unlocked = !!user && (s.num === 1 || isAdmin || (hasPurchased && prevDone))
             const done = completedSectors.includes(s.num)
             const stat = sectorStats[String(s.num)]
             return (
