@@ -192,6 +192,32 @@ export function GameSidebar({ game, user, hasPurchased, isAdmin = false, complet
           border
         />
 
+        {/* ── Pilot sub-rows: Music + Reset ────────────────── */}
+        <SideRow
+          open={open}
+          onClick={() => {
+            const next = !musicMuted
+            setMusicMuted(next)
+            localStorage.setItem('gd_muted', next ? '1' : '0')
+            onMuteToggle?.(next)
+          }}
+          icon={<span style={{ fontSize: 13, color: musicMuted ? UA.textDim : UA.textMuted, flexShrink: 0 }}>{musicMuted ? '✕' : '♪'}</span>}
+          label={<span style={{ fontSize: 9, fontWeight: 900, letterSpacing: '2px', color: musicMuted ? UA.textDim : UA.textMuted, textTransform: 'uppercase' }}>{musicMuted ? 'MUSIC OFF' : 'MUSIC ON'}</span>}
+          hover
+          indent
+        />
+
+        {user && hasPurchased && onReset && (
+          <SideRow
+            open={open}
+            onClick={() => { if (confirm('Reset all sector progress and start from Sector 1?')) onReset() }}
+            icon={<span style={{ fontSize: 11, color: UA.textDim, flexShrink: 0 }}>↺</span>}
+            label={<span style={{ fontSize: 9, fontWeight: 900, letterSpacing: '2px', color: UA.textDim, textTransform: 'uppercase' }}>RESET PROGRESS</span>}
+            hover
+            indent
+          />
+        )}
+
         {/* ── Sectors label ────────────────────────────────── */}
         {open ? (
           <div style={{
@@ -305,32 +331,6 @@ export function GameSidebar({ game, user, hasPurchased, isAdmin = false, complet
             border
           />
         )}
-
-        {user && hasPurchased && onReset && (
-          <SideRow
-            open={open}
-            onClick={() => { if (confirm('Reset all sector progress and start from Sector 1?')) onReset() }}
-            icon={<span style={{ fontSize: 11, color: UA.textDim, flexShrink: 0 }}>↺</span>}
-            label={<span style={{ fontSize: 9, fontWeight: 900, letterSpacing: '2px', color: UA.textDim, textTransform: 'uppercase' }}>RESET PROGRESS</span>}
-            hover
-            border
-          />
-        )}
-
-        {/* ── Music toggle ─────────────────────────────────── */}
-        <SideRow
-          open={open}
-          onClick={() => {
-            const next = !musicMuted
-            setMusicMuted(next)
-            localStorage.setItem('gd_muted', next ? '1' : '0')
-            onMuteToggle?.(next)
-          }}
-          icon={<span style={{ fontSize: 13, color: musicMuted ? UA.textDim : UA.textMuted, flexShrink: 0 }}>{musicMuted ? '✕' : '♪'}</span>}
-          label={<span style={{ fontSize: 9, fontWeight: 900, letterSpacing: '2px', color: musicMuted ? UA.textDim : UA.textMuted, textTransform: 'uppercase' }}>{musicMuted ? 'MUSIC OFF' : 'MUSIC ON'}</span>}
-          hover
-          border
-        />
 
         {/* ── Pilot stats ──────────────────────────────────── */}
         {user && hasPurchased && (
@@ -623,14 +623,16 @@ interface RowProps {
   onClick?: () => void
   border?: boolean
   hover?: boolean
+  indent?: boolean
 }
 
-function SideRow({ open, icon, label, href, target, onClick, border, hover }: RowProps) {
+function SideRow({ open, icon, label, href, target, onClick, border, hover, indent }: RowProps) {
   const style: React.CSSProperties = {
     display: 'flex', alignItems: 'center', gap: 12,
-    padding: '12px 13px',
+    padding: indent ? '8px 13px 8px 20px' : '12px 13px',
     cursor: href || onClick ? 'pointer' : 'default',
     borderTop: border ? `1px solid ${UA.borderFaint}` : undefined,
+    borderBottom: indent ? `1px solid ${UA.borderFaint}` : undefined,
     textDecoration: 'none', transition: 'background 150ms',
     minHeight: 44, flexShrink: 0,
   }
