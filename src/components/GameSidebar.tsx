@@ -164,6 +164,8 @@ export function GameSidebar({ game, user, hasPurchased, isAdmin = false, complet
         {/* ── Player ───────────────────────────────────────── */}
         <SideRow
           open={open}
+          href={!user ? '/auth/login' : undefined}
+          hover={!user}
           icon={
             <div style={{
               width: 26, height: 26, borderRadius: '50%',
@@ -186,7 +188,7 @@ export function GameSidebar({ game, user, hasPurchased, isAdmin = false, complet
                 <div style={{ fontSize: 10, color: UA.textMuted, marginTop: 2 }}>{emailShort}</div>
               </div>
             ) : (
-              <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: '2px', color: UA.textMuted, textTransform: 'uppercase' }}>NOT SIGNED IN</div>
+              <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: '2px', color: UA.blueMid, textTransform: 'uppercase' }}>SIGN IN →</div>
             )
           }
           border
