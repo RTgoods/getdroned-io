@@ -3874,7 +3874,7 @@ var actBtn=document.getElementById('act'), nadeBtn=document.getElementById('nade
 var joyId=null, joyOx=0, joyOy=0, joyHX=0, joyHY=0;
 var joyVis={cx:112,cy:600,kx:112,ky:600,on:0};
 function placeJoyHome(){
-  joyHX=50; joyHY=window.innerHeight-90;
+  joyHX=80; joyHY=window.innerHeight-90;
   if(joyId===null){ joyVis.cx=joyHX; joyVis.cy=joyHY; joyVis.kx=joyHX; joyVis.ky=joyHY; joyVis.on=0; }
 }
 window.addEventListener('resize',placeJoyHome); placeJoyHome();
