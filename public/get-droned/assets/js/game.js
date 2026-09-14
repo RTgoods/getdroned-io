@@ -1936,7 +1936,8 @@ function stopMusic(fast){
 }
 function startMusic(kind){
   stopMusic(true);
-  if(kind!=='compound') return; // only level 1 has a track
+  // same track plays on all levels until user mutes
+  void kind;
   setTimeout(function(){
     if(muted||state!=='play') return;
     var el=new Audio('assets/audio/advance-in-contact-92bpm-lvl1.wav');
