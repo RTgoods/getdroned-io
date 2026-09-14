@@ -129,8 +129,12 @@
 <script>
   (function(){
     var btn = document.getElementById('backBtn');
+    var muteBtn = document.getElementById('mute');
     if (window.self === window.top) {
       btn.style.display = 'block';
+    } else {
+      // Running inside the Next.js iframe — sidebar owns the mute button
+      muteBtn.style.display = 'none';
     }
     btn.addEventListener('mouseenter', function(){
       this.style.color='#e2b13c';

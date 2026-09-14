@@ -11455,6 +11455,7 @@ bindTap(document.getElementById('go'),function(){
   var beltParam=params.get('belt');
   if(beltParam){ var VALID_TOOLS={droneS:1,drone:1,droneL:1,usv:1,sentry:1,strike:1,stim:1,smoke:1,incend:1,flamer:1,emp:1,med:1,plate:1}; var bids=beltParam.split(',').filter(function(b){return VALID_TOOLS[b];}).slice(0,6); if(bids.length) belt=bids; }
   window._recEnabled = params.get('rec')==='1';
+  if(params.get('mute')==='1'){ muted=true; var mb=document.getElementById('mute'); if(mb){mb.textContent='✕';mb.style.opacity=.5;} }
   var autolvl=parseInt(params.get('autostart')||'0',10);
   if(!params.has('boss')&&autolvl>=1&&autolvl<=6){
     var sp2=document.getElementById('splash');
@@ -11547,6 +11548,13 @@ bindTap(document.getElementById('retry'),function(){
 bindTap(document.getElementById('mute'),function(){
   var m=document.getElementById('mute');
   muted=!muted; m.textContent=muted?'✕':'♪'; m.style.opacity=muted?.5:1;
+  if(muted) stopMusic(); else if(state==='play') startMusic(mapKind);
+});
+// Parent sidebar can send {type:'gd:setMute', muted: bool} to toggle music
+window.addEventListener('message',function(e){
+  if(!e.data||e.data.type!=='gd:setMute') return;
+  muted=!!e.data.muted;
+  var m=document.getElementById('mute'); if(m){m.textContent=muted?'✕':'♪';m.style.opacity=muted?.5:1;}
   if(muted) stopMusic(); else if(state==='play') startMusic(mapKind);
 });
 

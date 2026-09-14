@@ -19,6 +19,7 @@ export function GamePageClient({ game }: { game: Game }) {
   const [completedSectors, setCompletedSectors] = useState<number[]>([])
   const [sectorStats, setSectorStats] = useState<Record<string, SectorStat>>({})
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
+  const [musicMuted, setMusicMuted] = useState(false)
   const frame = useRef<HTMLIFrameElement>(null)
 
   const loadAccess = useCallback(async () => {
@@ -38,6 +39,10 @@ export function GamePageClient({ game }: { game: Game }) {
       setUser(null); setAllowed(false); setIsAdmin(false); setPlaying(false)
       return null
     } finally { setReady(true) }
+  }, [])
+
+  useEffect(() => {
+    setMusicMuted(localStorage.getItem('gd_muted') === '1')
   }, [])
 
   useEffect(() => {
@@ -127,6 +132,7 @@ export function GamePageClient({ game }: { game: Game }) {
     else if (launch.coins > 0) params.set('coins', String(launch.coins))
     if (launch.belt.length > 0 && !isAdmin) params.set('belt', launch.belt.join(','))
     if (isAdmin && game.rec_enabled) params.set('rec', '1')
+    if (musicMuted) params.set('mute', '1')
     return `/get-droned/index.html?${params.toString()}`
   })()
 
@@ -143,6 +149,10 @@ export function GamePageClient({ game }: { game: Game }) {
       onBack={() => setPlaying(false)}
       onReset={reset}
       avatarUrl={avatarUrl}
+      onMuteToggle={(muted) => {
+        setMusicMuted(muted)
+        frame.current?.contentWindow?.postMessage({ type: 'gd:setMute', muted }, '*')
+      }}
     />
     <div style={{ flex: 1, minWidth: 0, height: '100dvh', overflow: 'hidden', position: 'relative' }}>
       {!ready ? <p className="p-8 text-[#e8e4d8]">Checking access…</p> : playing && user && (allowed || launch.level === 1) ? (
