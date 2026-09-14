@@ -231,8 +231,8 @@ export function GameSidebar({ game, user, hasPurchased, isAdmin = false, complet
         <div style={{ overflowY: 'auto', flex: 1 }}>
           {SECTORS.map((s) => {
             const prevDone = s.num === 1 || completedSectors.includes(s.num - 1)
-            // Sector 1: free for signed-in users. Sectors 2–6: need purchase + prev sector done (admins bypass)
-            const unlocked = !!user && (s.num === 1 || isAdmin || (hasPurchased && prevDone))
+            // Sector 1: free for everyone (no login required). Sectors 2–6: need purchase + prev done (admins bypass)
+            const unlocked = s.num === 1 || (!!user && (isAdmin || (hasPurchased && prevDone)))
             const done = completedSectors.includes(s.num)
             const stat = sectorStats[String(s.num)]
             return (
@@ -545,9 +545,7 @@ function LevelRow({ sector, unlocked, done, stat, open, expanded, onToggle, onPl
           )}
 
           {/* Play / Unlock / locked-by-progression button */}
-          {sector.num === 1 && !hasUser ? (
-            <a href="/auth/login" style={{ display: 'block', width: '100%', padding: '6px 0', background: '#0057b7', color: '#fff', marginTop: 4, fontSize: 8, fontWeight: 900, letterSpacing: '2px', textTransform: 'uppercase', lineHeight: 1.4, textAlign: 'center', textDecoration: 'none', borderRadius: 3, boxSizing: 'border-box' as const }}>SIGN IN · PLAY SECTOR 1 FREE</a>
-          ) : unlocked ? (
+          {unlocked ? (
             <button
               onClick={onPlay}
               style={{

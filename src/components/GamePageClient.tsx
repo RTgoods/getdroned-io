@@ -95,7 +95,8 @@ export function GamePageClient({ game }: { game: Game }) {
 
   const play = useCallback(async (level = 1) => {
     const access = await loadAccess()
-    if (!access?.user) { window.location.href = '/auth/login'; return }
+    // Sector 1 is free — no login required. Sectors 2+ need an account.
+    if (!access?.user && level !== 1) { window.location.href = '/auth/login'; return }
 
     // Sector 1 is always free; sectors 2–6 require purchase + previous sector complete (unless admin)
     const prevDone = completedSectors.includes(level - 1)
