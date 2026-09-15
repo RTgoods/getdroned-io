@@ -197,3 +197,11 @@ h1 small{display:block;font-size:11px;letter-spacing:6px;color:#c0562f;margin-to
 #topL{top:calc(144px + env(safe-area-inset-top))}
 #topR{top:calc(10px + env(safe-area-inset-top))}
 @media(max-width:600px){#statusBars{width:150px;gap:3px}#statusBars .statusMeter{padding:4px 6px}#statusBars span{font-size:7px}#topL{top:calc(133px + env(safe-area-inset-top))}}
+/* Short horizontal status row, contained within the left half of the screen. */
+#statusBars{left:calc(10px + env(safe-area-inset-left));width:min(420px,calc(50% - 20px - env(safe-area-inset-left)));grid-template-columns:repeat(3,minmax(0,1fr));gap:4px}
+#statusBars .statusMeter{padding:5px;min-width:0}
+#statusBars span{font-size:clamp(5px,.8vw,8px);letter-spacing:0;white-space:normal;min-height:2em;margin-bottom:3px}
+#statusBars b{float:none;display:block;font-size:inherit}
+#statusBars .bar,#statusBars #apBar{height:7px}
+#topL{top:calc(65px + env(safe-area-inset-top))}
+@media(max-width:600px){#statusBars{gap:2px}#statusBars .statusMeter{padding:3px}#statusBars span{font-size:clamp(5px,1.1vw,7px)}#statusBars .bar,#statusBars #apBar{height:6px}#topL{top:calc(60px + env(safe-area-inset-top))}}
