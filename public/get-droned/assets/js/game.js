@@ -7251,8 +7251,7 @@ var hpF=document.getElementById('hpF'), apF=document.getElementById('apF'), flas
 function hud(){
   if(!player) return;
   var statusPanel=document.getElementById('statusBars');
-  var lastWeapon=gunRect(3); // Reserve all four weapon slots, including empty ones.
-  statusPanel.style.top=(lastWeapon.y+lastWeapon.h+6)+'px';
+  statusPanel.style.top='112px';
   var healthPercent=Math.max(0,Math.min(100,player.hp/player.mx*100));
   hpF.style.width=healthPercent+'%';
   document.getElementById('hpPercent').textContent=Math.round(healthPercent)+'%';
@@ -10852,7 +10851,7 @@ function drawStick(){
   ctx.globalAlpha=1; ctx.restore();
 }
 function beltRect(i){ var w=46,h=46,g=6; return {x:VW-w-9,y:112+i*(h+g),w:w,h:h}; }
-function gunRect(i){ var w=46,h=46,g=6; return {x:9,y:112+i*(h+g),w:w,h:h}; }
+function gunRect(i){ var w=46,h=46,g=6; return {x:9,y:112+(i+3)*(h+g),w:w,h:h}; }
 function gunHit(cx,cy){
   if(!player||!player.guns) return -1;
   for(var i=0;i<player.guns.length;i++){ var R=gunRect(i);
