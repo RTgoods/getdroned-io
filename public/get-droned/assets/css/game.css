@@ -167,3 +167,14 @@ h1 small{display:block;font-size:11px;letter-spacing:6px;color:#c0562f;margin-to
   #topL,#topR{top:calc(14px + env(safe-area-inset-top))}
 }
 
+
+/* Base defeat uses the site's navy, Ukraine blue and yellow palette. */
+#over[data-outcome="base"]{background:radial-gradient(ellipse at 50% 35%,#142c42 0%,#0d1720 55%,#05090e 100%)}
+#over[data-outcome="base"] #overT{color:#ffd700;text-shadow:0 3px 0 #003b7c,0 6px 20px #000}
+#over[data-outcome="base"] #overT small{color:#79b9f1}
+#over[data-outcome="base"] #overStats{color:#b0bdc6;background:#0b1622;border:1px solid #263746;border-top:3px solid #0057b7;border-radius:7px;padding:18px 26px;line-height:1.9}
+#over[data-outcome="base"] #overStats b{color:#ffd700}
+#over[data-outcome="base"] #retry{background:#0057b7;color:#ffd700;border:1px solid #287ac9;box-shadow:0 4px 0 #003580}
+#over[data-outcome="base"] #retry:hover{background:#076bce}
+#over[data-outcome="base"] #retry:active{box-shadow:0 1px 0 #003580}
+#over[data-outcome="base"] #retry:focus-visible{outline:2px solid #ffd700;outline-offset:4px}

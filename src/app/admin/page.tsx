@@ -203,6 +203,17 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
                     ☠ BOSS
                   </Link>
                 </div>
+                {<div style={{ marginTop: 12 }}>
+                  <p style={{ color: UA.text, fontSize: 9, margin: '0 0 6px' }}>Base damage previews · integrity remaining</p>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    {[75, 50, 25].map(percent => <Link key={percent}
+                      href={`/get-droned/index.html?autostart=${i + 1}&basePreview=${percent}&coins=5000&belt=repair,repair,repair${recEnabled ? '&rec=1' : ''}`}
+                      style={{ flex: 1, padding: '8px 0', textAlign: 'center', background: UA.blue, color: '#ffd700', borderRadius: 3, fontSize: 11, fontWeight: 900, textDecoration: 'none' }}>
+                      {percent}%
+                    </Link>)}
+                  </div>
+                </div>}
+
               </div>
             </div>
           ))}

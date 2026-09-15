@@ -1072,95 +1072,13 @@ function drawProp(c,o){
     c.beginPath(); c.arc(x+w*.82,y+h+11,2.4,0,6.3); c.fill();
     c.beginPath(); c.arc(x+w*.66,y+h+15,1.7,0,6.3); c.fill();
     c.beginPath(); c.arc(x+w*.45,y+h+20,2.1,0,6.3); c.fill();
-    // Every patient has independent breathing speed, phase and occasional movement.
-    var patientSeed=o.x*37+o.y*97,bph=hs(patientSeed)*Math.PI*2;
-    var breath=Math.sin(timeAlive*(1.15+hs(patientSeed+3)*.6)+bph);
-    var shiftPhase=timeAlive*(.42+hs(patientSeed+7)*.22)+bph;
-    var smallShift=Math.pow(Math.max(0,Math.sin(shiftPhase)),8);
-    var br=breath*.95;
-    var brS=breath*.45;
-    var brA=Math.sin(timeAlive*(1.05+hs(patientSeed+11)*.65)+bph+.6)*.55+smallShift*.8;
-    var hdS=Math.sin(timeAlive*(.34+hs(patientSeed+13)*.22)+bph+2.1)*.45+smallShift*.65;
-    if(o.sitting){
-      var sitX=x+w*.35,sitY=y+h*.57;
-      // Raised pillow supports the back; legs remain stretched along the mattress.
-      gearBox(c,sitX-12,sitY-27,20,27,'#d9dfd5','#89988b',3);
-      // Body and legs share the same hip origin and scale so they stay connected.
-      c.save();c.translate(sitX,sitY);c.rotate(-.12);c.scale(.7128,.729);
-      gearBox(c,-5,-5,14,10,'#55604b','#293327',2);
-      for(var restingLeg=0;restingLeg<2;restingLeg++){
-        var legY=-5+restingLeg*7;
-        gearBox(c,3,legY,25,5,'#55604b','#293327',1.5);
-        gearLine(c,9,legY+1,25,legY+1,'#748064',.8);
-        gearBox(c,26,legY-.5,7,6,'#30372e','#182019',1.5);
-      }
-      gearBox(c,-7,-23+brS,16,23,'#657157','#293528',3);
-      c.save();rrect(c,-7,-23+brS,16,23,3);c.clip();camoFleck(c,patientSeed,-7,-23+brS,16,23,9,MC);c.restore();
-      gearBox(c,-3,-27+brS,6,6,SKIN2,'#594e3b',1);
-      c.fillStyle=SKIN;c.beginPath();c.ellipse(0,-32+hdS,7,8,0,0,6.3);c.fill();outl(c,'#443b2c',1.2);
-      c.fillStyle='#d6b966';c.beginPath();c.arc(0,-34+hdS,6.5,Math.PI,Math.PI*2);c.fill();
-      gearBox(c,-6.5,-35+hdS,13,3,'#e7e9dc','#a5ada0',.7);
-      // Soft field cap sits above the dressing, with blonde hair at the sides.
-      gearBox(c,-6.5,-41+hdS,13,7,'#65714f','#303b29',2);
-      gearLine(c,-5,-39+hdS,5,-39+hdS,'#8b966c',.8);
-      gearBox(c,-6,-35+hdS,13,2.5,'#465239','#293326',.8);
-      c.fillStyle='#536043';c.beginPath();c.ellipse(6,-33.5+hdS,6,1.8,.08,0,6.3);c.fill();outl(c,'#2d3827',.8);
-      gearBox(c,-1,-39+hdS,2.5,3,'#b7a66b','#64704e',.5);
-      gearLine(c,2,-31+hdS,4,-31+hdS,'#3e3a2c',1);
-      // Cigarette follows the head; a thin smoke ribbon curls upward from its tip.
-      gearLine(c,4,-27+hdS,7,-26.5+hdS,'#ba8b52',1.7);
-      gearLine(c,7,-26.5+hdS,12,-26+hdS,'#e4dfcd',1.7);
-      gearLine(c,12,-26+hdS,13,-26+hdS,'#cf7241',1.6);
-      c.save();c.lineCap='round';
-      for(var smokeLayer=0;smokeLayer<2;smokeLayer++){
-        c.strokeStyle=smokeLayer?'rgba(218,222,216,.25)':'rgba(184,195,188,.18)';
-        c.lineWidth=smokeLayer?1:2.2;
-        for(var smokeSegment=0;smokeSegment<9;smokeSegment++){
-          var smokeLow=smokeSegment/9,smokeHigh=(smokeSegment+1)/9;
-          var smokeTime=timeAlive*1.6+bph;
-          var smokeX1=13+Math.sin(smokeTime-smokeLow*5)*smokeLow*4+smokeLow*3;
-          var smokeX2=13+Math.sin(smokeTime-smokeHigh*5)*smokeHigh*4+smokeHigh*3;
-          c.globalAlpha=1-smokeLow;
-          c.beginPath();c.moveTo(smokeX1,-26+hdS-smokeLow*24);
-          c.lineTo(smokeX2,-26+hdS-smokeHigh*24);c.stroke();
-        }
-      }
-      c.restore();
-      // Forearms rest in the lap with gentle independent shifts.
-      gearLine(c,-6,-20+brS,-10,-9+brA,'#59664c',5);
-      gearLine(c,-10,-9+brA,3,-3,'#59664c',4);
-      gearLine(c,7,-20+brS,13,-11-brA*.5,'#59664c',5);
-      gearLine(c,13,-11-brA*.5,10,-2,'#59664c',4);
-      gearBox(c,1,-5,5,4,SKIN2,'#75634c',1);
-      gearBox(c,8,-4,5,4,SKIN2,'#75634c',1);
-      gearBox(c,-8,-16+brS,5,7,'#e3e6da','#919c8b',1);
-      c.restore();
-    } else {
-    // Side-profile head and short neck align with the horizontal body.
-    c.fillStyle=SKIN2; rrect(c,x+w*.25,y+h*.44+hdS,7,5,2); c.fill(); outl(c,'#15130e',1);
-    c.fillStyle=SKIN; c.beginPath(); c.ellipse(x+w*.2,y+h*.5+hdS,7.5,5.4,0,0,6.3); c.fill(); outl(c,'#15130e',1.3);
-    c.beginPath(); c.moveTo(x+w*.27,y+h*.48+hdS); c.lineTo(x+w*.31,y+h*.51+hdS); c.lineTo(x+w*.27,y+h*.54+hdS); c.closePath(); c.fill(); outl(c,'#15130e',.8);
-    c.fillStyle='#59634f'; rrect(c,x+w*.29,y+h*.35+brS,w*.52,h*.3,3); c.fill(); outl(c,'#15130e',1.2);
-    c.save(); rrect(c,x+w*.29,y+h*.35+brS,w*.52,h*.3,3); c.clip();
-    camoFleck(c,o.x*37+o.y*11,x+w*.29,y+h*.35+brS,w*.52,h*.3,8,MC); c.restore();
-    // Two uniformed arms resting across the soldier and sheet.
-    c.strokeStyle='#59634f'; c.lineWidth=5; c.lineCap='round'; c.lineJoin='round';
-    c.beginPath(); c.moveTo(x+w*.36,y+h*.4+brA); c.lineTo(x+w*.48,y+h*.3+br); c.lineTo(x+w*.59,y+h*.39+brA); c.stroke();
-    c.beginPath(); c.moveTo(x+w*.36,y+h*.59+brA); c.lineTo(x+w*.49,y+h*.68+br); c.lineTo(x+w*.61,y+h*.57+brA); c.stroke();
-    c.fillStyle=SKIN2; c.beginPath(); c.arc(x+w*.59,y+h*.39+brA,2.4,0,6.3); c.fill(); outl(c,'#15130e',1);
-    c.beginPath(); c.arc(x+w*.61,y+h*.57+brA,2.4,0,6.3); c.fill(); outl(c,'#15130e',1);
-    c.fillStyle='#343a31'; rrect(c,x+w*.77,y+h*.34,w*.12,h*.32,2); c.fill(); // boots
-    // Plain arm dressing—kept away from the face.
-    c.fillStyle='#e7ebe6'; rrect(c,x+w*.38,y+h*.34+brS,w*.12,h*.3,2); c.fill(); outl(c,'#7e8881',.8);
-    c.fillStyle='#526048'; c.beginPath(); c.ellipse(x+w*.19,y+h*.43+hdS,7.3,4.4,0,Math.PI,Math.PI*2); c.fill(); outl(c,'#15130e',1.1);
-    c.fillStyle='#2f6fd0'; rrect(c,x+w*.48,y+h*.33+brS,5,h*.34,1); c.fill(); outl(c,'#15130e',.8);
-    // Forehead wrap leaves the side-profile face unobstructed.
-    c.fillStyle='#e9ece7'; rrect(c,x+w*.16,y+h*.36+hdS,w*.11,3.5,1.5); c.fill(); outl(c,'#7e8881',.7);
-    c.strokeStyle='#282d28'; c.lineWidth=1;
-    c.beginPath(); c.moveTo(x+w*.22,y+h*.49+hdS); c.lineTo(x+w*.26,y+h*.49+hdS); c.stroke();
-    c.strokeStyle='#d9ddd8'; c.lineWidth=3;
-    c.beginPath(); c.moveTo(x+w*.38,y+h*.43+brA); c.lineTo(x+w*.52,y+h*.57+br); c.lineTo(x+w*.61,y+h*.43+brA); c.stroke();
-    }
+    // Use the normal playable soldier artwork, positioned along the mattress.
+    var patientSeed=o.x*37+o.y*97;
+    var brA=Math.sin(timeAlive*(1.2+hs(patientSeed)*.45)+patientSeed)*.45;
+    var patientKit=o.patientKit||(o.patientKit=Object.assign({},PKITS[o.sitting?2:0],{hideSupportArm:true}));
+    c.save();c.translate(x+w*.86,y+h*.52+brA);c.rotate(-Math.PI/2);c.scale(.95,1.35);
+    drawUnit(c,0,0,Math.PI/2,patientKit.col,patientKit.band,0,0,null,null,true,false,false,patientSeed,0,null,false,patientKit);
+    c.restore();
     if(!o.sitting){
     // Bedside IV stand, bag and flexible line following the patient's resting arm.
     var ivX=x+w*.12,ivY=y+h+3,ivTop=ivY-58;
@@ -2131,7 +2049,7 @@ function drawShop(){
     ctx.fillText(it.n,R.x+48,R.y+16);
     // Description
     ctx.fillStyle=own?'#86b4de':(can?'#b1c1d0':'#8a9caf'); ctx.font='9px Arial';
-    ctx.fillText(it.d,R.x+48,R.y+29);
+    ctx.fillText(it.id==='t_repair'&&[1,3,5].indexOf(level)!==-1?'+25% integrity · use inside base':it.d,R.x+48,R.y+29);
     // Price / status (right-aligned, 4 px gap left of arrow column)
     ctx.textAlign='right';
     if(own){
@@ -2209,6 +2127,14 @@ function useTool(i){
   if(k==='med'){ player.hp=Math.min(player.mx,player.hp+50); sfx('card'); banner('PATCHED UP','',1); }
   else if(k==='plate'){ player.ap=Math.min(upgAP,player.ap+40); sfx('card'); banner('PLATE ON','',1); }
   else if(k==='repair'){
+    if([1,3,5].indexOf(level)!==-1&&inBase(player.x,player.y)){
+      if(baseHP>=baseMX){belt.push('repair');banner('BASE AT FULL INTEGRITY','REPAIR KIT SAVED',1.5);}
+      else{
+        baseHP=Math.min(baseMX,baseHP+baseMX*.25);baseFlash=0;
+        sfx('hammer');banner('BASE REPAIRED',Math.round(baseHP/baseMX*100)+'% INTEGRITY',1.8);
+      }
+      hud();return;
+    }
     // Find nearest damaged wall within 3 tiles
     var rPx=Math.floor(player.x/TILE),rPy=Math.floor(player.y/TILE),rBx=-1,rBy=-1,rBd=Infinity;
     for(var rRy=rPy-3;rRy<=rPy+3;rRy++) for(var rRx=rPx-3;rRx<=rPx+3;rRx++){
@@ -5510,6 +5436,8 @@ function update(dt,realDt){
   updateTruck(dt);
   updateDepotWorkers(dt);
   updateAA(dt);
+  updateBaseRaids(dt);
+  if(state!=='play')return;
   updateEDrones(dt);
   updateTank(dt);
   for(var ep=emps.length-1;ep>=0;ep--){ var EP=emps[ep];
@@ -6852,10 +6780,68 @@ function updateAA(dt){
     }
   }
 }
+function hurtRaidedBase(damage){
+  baseHP=Math.max(0,baseHP-damage);baseFlash=.6;hud();
+  if(baseHP<=0){banner('BASE DESTROYED','MISSION FAILED',2.5);gameOver(false,'base');}
+}
+function updateBaseRaids(dt){
+  if((level!==1&&level!==5)||player.dead||state!=='play')return;
+  if(BASE.raidTimer===undefined){BASE.raidTimer=level===1?45:55;BASE.raidCount=0;BASE.strikes=[];}
+  BASE.raidTimer-=dt;
+  if(BASE.raidTimer<=0){
+    BASE.raidCount++;
+    BASE.raidTimer=level===1?rr(36,48):rr(32,44);
+    var count=BASE.raidCount%3===0?2:1;
+    for(var raid=0;raid<count;raid++){
+      var tx=(BASE.x0+2+hs(BASE.raidCount*31+raid)* (BASE.x1-BASE.x0-4))*TILE;
+      var ty=(BASE.y0+2+hs(BASE.raidCount*53+raid)*(BASE.y1-BASE.y0-4))*TILE;
+      if(level===1){
+        var sx=Math.max(32,(BASE.x0-9-raid*2)*TILE),sy=Math.min(WH-32,(BASE.y1+5)*TILE);
+        edrones.push({x:sx,y:sy,hx:sx,hy:sy,vx:0,vy:0,state:'hunt',baseRaid:true,tx:tx,ty:ty,
+          rot:0,bob:raid,hp:3,mx:3,hurt:0,warn:3+raid*1.5});
+      }else BASE.strikes.push({tx:tx,ty:ty,t:0,dur:5+raid*1.5});
+    }
+    banner(level===1?'DRONES HEADING FOR HOME':'BASE MISSILE WARNING',level===1?'SHOOT THEM DOWN OR USE THE JAMMER':'IMPACT IN 5 SECONDS · CLEAR THE MARKERS',3);
+    sfx('ric',.6);
+  }
+  for(var si=BASE.strikes.length-1;si>=0;si--){
+    var strike=BASE.strikes[si];strike.t+=dt;
+    if(strike.t>=strike.dur){
+      explode(strike.tx,strike.ty,75,0,true);
+      if(!player.dead&&Math.hypot(player.x-strike.tx,player.y-strike.ty)<65)hurtPlayer(20,true);
+      hurtRaidedBase(16);BASE.strikes.splice(si,1);
+      if(state!=='play')return;
+    }
+  }
+}
+function drawBaseRaidWarnings(c){
+  if(level!==5||!BASE.strikes)return;
+  for(var si=0;si<BASE.strikes.length;si++){
+    var strike=BASE.strikes[si],progress=strike.t/strike.dur;
+    c.save();c.strokeStyle='#ffd700';c.lineWidth=2;
+    c.strokeRect(strike.tx-23,strike.ty-23,46,46);
+    gearLine(c,strike.tx-30,strike.ty,strike.tx+30,strike.ty,'#ffd700',1);
+    gearLine(c,strike.tx,strike.ty-30,strike.tx,strike.ty+30,'#ffd700',1);
+    c.fillStyle='#ffd700';c.font='bold 10px Arial';c.textAlign='center';c.fillText(Math.ceil(strike.dur-strike.t)+'s',strike.tx,strike.ty-31);
+    if(progress>.6){
+      var flight=(progress-.6)/.4,mx=strike.tx+(1-flight)*170,my=strike.ty-(1-flight)*330;
+      gearLine(c,mx+18,my-35,mx,my,'#dca35e',3);
+      gearPoly(c,[[mx-4,my-10],[mx+3,my-13],[mx+5,my],[mx,my+6]],'#b8c3bc');
+    }
+    c.restore();
+  }
+}
 function updateEDrones(dt){
   for(var i=edrones.length-1;i>=0;i--){
     var D=edrones[i];
     D.rot+=dt*38; D.bob+=dt*2.6;
+    if(D.baseRaid){
+      if(D.warn>0){D.warn-=dt;continue;}
+      var rdx=D.tx-D.x,rdy=D.ty-D.y,rd=Math.hypot(rdx,rdy),rs=Math.min(rd,100*dt);
+      if(rd>0){D.x+=rdx/rd*rs;D.y+=rdy/rd*rs;}
+      if(rd<=rs+3){edrones.splice(i,1);explode(D.tx,D.ty,65,0,true);hurtRaidedBase(20);if(state!=='play')return;}
+      continue;
+    }
     if(D.hurt>0) D.hurt-=dt;
     var pd=Math.hypot(player.x-D.x,player.y-D.y);
     if(D.state==='idle'){
@@ -7078,6 +7064,7 @@ function doSpawn(){
   hud();
 }
 function startSector(n){
+  baseHP=baseMX=400; baseFlash=0;
   level=n; killed=0; baseCatsDone=0; compoundBossSpawned=0; compoundBossDefeated=0; levelTwoBossSpawned=0; levelTwoBossDefeated=0; oilBossSpawned=0; oilBossDefeated=0; airfieldBossSpawned=0; airfieldBossDefeated=0; seaBossSpawned=0; seaBossDefeated=0;
   document.getElementById('bossVictory').classList.remove('show');
   document.getElementById('levelTwoBossVictory').classList.remove('show');
@@ -7168,6 +7155,10 @@ function startSector(n){
   buildFlow();
   cam.x=player.x-VW/2; cam.y=player.y-VH/2;
   if(n===1&&player.nades<5) player.nades=5;
+  var previewIntegrity=Number(new URLSearchParams(window.location.search).get('basePreview'));
+  if([75,50,25].indexOf(previewIntegrity)!==-1){
+    baseHP=baseMX*previewIntegrity/100;baseFlash=0;
+  }
   state='play'; focusGame(); hud(); startMusic(mapKind);
   intro=(mapKind==='redSquare')?[{t:0,a:'SECTOR '+n,b:'RED SQUARE · MOSCOW'},
         {t:2.4,a:'RED SQUARE CATHEDRAL AND KREMLIN',b:'TWO PRIMARY OBJECTIVES'},
@@ -7231,6 +7222,7 @@ function gameOver(win,why){
   document.getElementById('overStats').innerHTML =
     ((mapKind==='sea'||mapKind==='redSquare')?('Base integrity <b>'+Math.round(Math.max(0,baseHP)/baseMX*100)+'%</b><br>'):'')+
     'Sector reached <b>'+level+'</b><br>Hostiles down <b>'+totalKills+'</b><br>Squad lost <b>'+squadLost+'/5</b><br>Cash lifted <b>$'+money+'</b><br>Time on target <b>'+Math.floor(timeAlive)+'s</b>';
+  document.getElementById('over').dataset.outcome=why==='base'?'base':'other';
   document.getElementById('over').classList.remove('hide');
 }
 
@@ -7527,15 +7519,16 @@ function paintTool(c,k){
     line(-5,-7,5,-7,'#c3d2bb',.8);line(-6,7,6,7,'#364f56',1);
     box(-4,-2,8,5,'#b7b998','#848e72',.4);line(-2,0,2,0,'#4b6058',.7);
   }else if(k==='repair'){
-    // Hammer head + handle at diagonal
-    c.save(); c.rotate(.52);
-    box(-2,-13,4,20,'#9b7a4a','#52391e',1);      // handle
-    box(-11,-17,22,9,'#8a9a9c','#3e5560',2);     // head
-    box(-11,-18,22,3,'#aababc','#506870');        // bevel
-    c.restore();
-    // Two nails standing nearby
-    line(7,-2,7,10,'#c0cacf',2); box(5.5,-4,3,3,'#d4dce0','#8aa0a6');
-    line(12,0,12,12,'#c0cacf',2); box(10.5,-2,3,3,'#d4dce0','#8aa0a6');
+    // Centered field-repair case, with a clearly readable steel hammer.
+    box(-12,-7,24,18,'#776b4d','#303a30',2);
+    box(-6,-11,12,4,'#8d8262','#343c31',1);
+    box(-11,-6,22,4,'#a0936c','#504b37',1);
+    line(-8,5,8,5,'#484b39',1);
+    c.save();c.translate(-1,1);c.rotate(.55);
+    box(-1.5,-6,3,15,'#b39561','#59432a',.7);
+    box(-7,-9,14,5,'#bfc8c3','#455752',1);
+    line(-6,-8,6,-8,'#eef0df',.8);c.restore();
+    box(7,1,2,5,'#b4bab0','#4c574a',.5);
   }else if(k==='ammo'||k==='loose'){
     if(k==='ammo'){box(-12,-7,24,19,'#839263','#394e36',2);box(-13,-8,26,4,'#9ea675','#596746');box(-6,-12,12,4,'#829574','#334a3b');line(-10,4,10,4,'#c6b66c',2);box(-2,-4,4,5,'#a2aa82','#485e44');}
     else {for(var q=0;q<3;q++){c.save();c.translate(-7+q*7,q%2*3);box(-2,-6,4,15,'#e6c878','#886231',.6);gearPoly(c,[[-2,-6],[0,-11],[2,-6]],'#b28a51');line(-1,-4,-1,7,'#f2e4a4',.7);c.restore();}}
@@ -7718,6 +7711,7 @@ function drawUnit(c,x,y,ang,col,band,walk,amt,kind,gun,dark,noHead,rus,seed,reco
   } else if(!back){
     // ---- support arm reaches across the chest to the weapon's front grip
     // Drawn here (above the torso) so the second arm cannot disappear behind the body.
+    if(!kit.hideSupportArm){
     var ssx=-4.2, ssy=-22.2+bob, sax=gripX-ssx, say=gripY-ssy, sal=Math.hypot(sax,say);
     c.save(); c.translate(ssx,ssy); c.rotate(Math.atan2(say,sax));
     c.fillStyle=shade(col,.76); rrect(c,-1,-2.6,sal+1.2,5.2,2.6); c.fill(); outl(c,'#15130e',1.5);
@@ -7728,6 +7722,7 @@ function drawUnit(c,x,y,ang,col,band,walk,amt,kind,gun,dark,noHead,rus,seed,reco
     c.strokeStyle='rgba(35,30,20,.72)'; c.lineWidth=1.25;
     c.beginPath(); c.moveTo(-4.8,-24+bob); c.quadraticCurveTo(0,-15+bob,gripX,gripY+2); c.stroke();
 
+    }
     // ---- gun arm + weapon, aimed in screen space (vertical foreshortened)
     var ax=hx-sx, ay=hy-sy, al=Math.hypot(ax,ay);
     c.save(); c.translate(sx,sy); c.rotate(Math.atan2(ay,ax));
@@ -7739,11 +7734,13 @@ function drawUnit(c,x,y,ang,col,band,walk,amt,kind,gun,dark,noHead,rus,seed,reco
     c.fillStyle=SKIN2; c.beginPath(); c.arc(0,1.5,2.8,0,6.3); c.fill(); outl(c,'#15130e',1.4);
     c.restore();
 
+    if(!kit.hideSupportArm){
     // Support hand on the foregrip, also above the weapon: both hands stay visible.
     c.fillStyle=SKIN2; c.beginPath(); c.arc(gripX,gripY,2.75,0,6.3); c.fill(); outl(c,'#15130e',1.4);
     // Small glove cuffs help separate both hands from the sleeves and gun.
     c.strokeStyle='#34382f'; c.lineWidth=1.35;
     c.beginPath(); c.arc(gripX,gripY,3.1,.15,2.7); c.stroke();
+    }
   }
 
   c.restore();
@@ -9043,25 +9040,51 @@ function drawDroneCameraPanel(c,x,y,w,h){
   c.restore();c.strokeStyle='rgba(132,183,173,.45)';c.lineWidth=1;rrect(c,x,y,w,h,3);c.stroke();
 }
 
-function seaBaseDamageStage(){
-  if(level!==3||mapKind!=='sea'||baseMX<=0)return 0;
+function baseDamageStage(){
+  if(level<1||level>6||baseMX<=0)return 0;
   var health=baseHP/baseMX;
   return health<=.25?3:health<=.5?2:health<=.75?1:0;
 }
-function drawSeaBaseDamage(c){
-  var stage=seaBaseDamageStage();if(!stage)return;
+function drawBaseDamage(c){
+  var stage=baseDamageStage();if(!stage)return;
   c.save();
   // Fixed damage sites accumulate as integrity drops; no random flicker per frame.
   var sites=[[8,57],[24,59],[6,65],[18,69],[15,58],[24,67],
-             [12,58],[8,64],[21,64],[17,62],[27,66],[23,58]];
-  for(var site=0;site<stage*4;site++){
+             [12,58],[8,64],[21,64],[17,62],[27,66],[23,58],[6,59],[10,69],[24,65],[15,62],[20,57],[6,62],[22,69],[16,58],[27,59],[9,64],[21,58],[25,65]];
+  if(level!==3){
+    if(!BASE.damageSites){
+      var walls=[],equipment=[];
+      for(var dy=Math.ceil(BASE.y0);dy<=Math.floor(BASE.y1);dy++)for(var dx=Math.ceil(BASE.x0);dx<=Math.floor(BASE.x1);dx++){
+        if(T(dx,dy)===WALL)walls.push([dx,dy]);
+      }
+      props.forEach(function(p){if(inBase((p.x+.5)*TILE,(p.y+.5)*TILE)&&p.kind!=='medbed')equipment.push([p.x,p.y]);});
+      walls.sort(function(a,b){return hs(a[0]*31+a[1]*71)-hs(b[0]*31+b[1]*71);});
+      BASE.damageSites=[];
+      for(var slot=0;slot<24;slot++){
+        var pool=slot%3===2&&equipment.length?equipment:walls;
+        if(pool.length)BASE.damageSites.push(pool[Math.floor(slot/3)*2+slot%2<pool.length?Math.floor(slot/3)*2+slot%2:slot%pool.length]);
+      }
+    }
+    sites=BASE.damageSites;
+  }
+  for(var site=0;site<Math.min(sites.length,8+stage*5);site++){
     var x=(sites[site][0]+.5)*TILE,y=(sites[site][1]+.5)*TILE;
     if(x<cam.x-140||x>cam.x+VW+140||y<cam.y-70||y>cam.y+VH+180)continue;
     var seed=site*79+37;
+    if(T(sites[site][0],sites[site][1])===WALL){
+      // Collapsed-looking wall face: blackened cavity, broken edges and exposed rebar.
+      gearPoly(c,[[x-15,y-16],[x-4,y-11],[x+7,y-17],[x+16,y-5],[x+11,y+12],[x-7,y+15],[x-16,y+4]],'#252c29');
+      for(var bar=0;bar<3;bar++){
+        gearLine(c,x-11+bar*9,y+9,x-13+bar*9,y-10,'#555e59',2);
+        gearLine(c,x-13+bar*9,y-10,x-9+bar*9,y-15,'#92988b',1);
+      }
+      gearPoly(c,[[x-18,y-15],[x-8,y-12],[x-12,y],[x-18,y+4]],'#858678');
+      gearPoly(c,[[x+10,y+7],[x+18,y-3],[x+19,y+17],[x+2,y+17]],'#727768');
+    }
     // Jagged scorch patch, chipped masonry and branching fractures.
-    c.fillStyle='rgba(31,27,23,'+(.19+stage*.07)+')';c.beginPath();
+    c.fillStyle='rgba(31,27,23,'+(.28+stage*.09)+')';c.beginPath();
     for(var edge=0;edge<11;edge++){
-      var angle=edge/11*6.283,radius=18+hs(seed+edge*17)*22;
+      var angle=edge/11*6.283,radius=25+stage*5+hs(seed+edge*17)*29;
       var px=x+Math.cos(angle)*radius,py=y+Math.sin(angle)*radius*.6;
       if(!edge)c.moveTo(px,py);else c.lineTo(px,py);
     }
@@ -9072,26 +9095,43 @@ function drawSeaBaseDamage(c){
       gearLine(c,ax-5,ay+9,ax+2,ay+18,'#272a25',1.3);
       gearLine(c,ax-5,ay+9,ax-12,ay+11,'#777363',.8);
     }
-    for(var rubble=0;rubble<4+stage*3;rubble++){
-      var rx=x+(hs(seed+rubble*31)-.5)*65,ry=y+8+hs(seed+rubble*43)*23;
+    for(var rubble=0;rubble<9+stage*5;rubble++){
+      var rx=x+(hs(seed+rubble*31)-.5)*90,ry=y+5+hs(seed+rubble*43)*40;
       var size=3+hs(seed+rubble*59)*5;
       gearPoly(c,[[rx-size,ry],[rx-2,ry-size],[rx+size,ry-2],[rx+size*.5,ry+3]],rubble%2?'#77776a':'#54584f');
       gearLine(c,rx-size,ry,rx-2,ry-size,'#a29b86',.8);
     }
-    if(stage>=2&&site%2===0){
+    if(site%2===0||stage>=2){
       // Thin drifting smoke thickens at critical health; wisps dissipate upward.
-      for(var wisp=0;wisp<stage+1;wisp++){
-        var age=(now*.19+wisp/(stage+1)+hs(seed))%1;
+      for(var wisp=0;wisp<stage+4;wisp++){
+        var age=(now*.19+wisp/(stage+4)+hs(seed))%1;
         var smokeX=x+Math.sin(now*.65+site+age*4)*9+age*13;
-        var smokeY=y-10-age*(stage===3?95:62);
-        c.strokeStyle='rgba(77,75,68,'+((1-age)*.23)+')';c.lineWidth=4+age*12;c.lineCap='round';
+        var smokeY=y-10-age*(85+stage*30);
+        c.strokeStyle='rgba(77,75,68,'+((1-age)*(.26+stage*.06))+')';c.lineWidth=7+age*(15+stage*4);c.lineCap='round';
         c.beginPath();c.moveTo(smokeX,smokeY);c.quadraticCurveTo(smokeX-9,smokeY-9,smokeX+3,smokeY-21);c.stroke();
       }
     }
-    if(stage===3&&site%3===0){
-      var flame=4+Math.sin(now*9+site)*2;
+    if(site%3===0||(stage>=2&&site%3===1)){
+      var flame=7+stage*4+Math.sin(now*9+site)*4;
       gearPoly(c,[[x-6,y],[x-3,y-10-flame],[x,y-5],[x+3,y-15-flame],[x+6,y]],'#cc722b');
       gearPoly(c,[[x-3,y],[x,y-9-flame*.4],[x+3,y]],'#e7be65');
+    }
+  }
+  // Short, staggered electrical arcs from damaged console banks.
+  var electrics=[[12,58],[8,64],[21,64],[17,58],[23,58],[26,66]];
+  if(level!==3)electrics=props.filter(function(p){return p.kind==='console'&&inBase((p.x+.5)*TILE,(p.y+.5)*TILE);}).map(function(p){return [p.x,p.y];});
+  for(var wire=0;wire<Math.min(electrics.length,stage+2);wire++){
+    var ex=(electrics[wire][0]+.5)*TILE,ey=(electrics[wire][1]+.5)*TILE;
+    gearLine(c,ex-7,ey-8,ex+3,ey+4,'#171f22',2);
+    gearLine(c,ex+3,ey+4,ex+9,ey+2,'#a97c46',1);
+    var tick=Math.floor(now*13+wire*7);
+    if(hs(tick+wire*59)>.57){
+      for(var arc=0;arc<3;arc++){
+        var tipX=ex+(hs(tick*11+arc*23)-.5)*(25+stage*8),tipY=ey-7-hs(tick*19+arc)*24;
+        gearLine(c,ex,ey,tipX-4,tipY+6,'rgba(89,173,255,.65)',3);
+        gearLine(c,ex,ey,tipX-4,tipY+6,'#e6f5ff',1);
+        gearLine(c,tipX-4,tipY+6,tipX,tipY,'#c9eaff',1);
+      }
     }
   }
   c.restore();
@@ -9107,7 +9147,8 @@ function draw(){
 
   ctx.drawImage(stat,0,0);
   drawConsoleScreens(ctx);
-  drawSeaBaseDamage(ctx);
+  drawBaseDamage(ctx);
+  drawBaseRaidWarnings(ctx);
   for(var patient=0;patient<props.length;patient++){
     var bed=props[patient];if(bed.kind!=='medbed')continue;
     if(bed.x*TILE<cam.x-120||bed.x*TILE>cam.x+VW+50||bed.y*TILE<cam.y-100||bed.y*TILE>cam.y+VH+50)continue;
@@ -10306,15 +10347,15 @@ function draw(){
   drawCombatLighting(ctx);
   ctx.restore();
 
-  // Base integrity HUD shared by defended sectors.
-  if(mapKind==='trench'||mapKind==='sea'||mapKind==='oil'||mapKind==='redSquare'){
+  // Base integrity HUD shared by all sectors.
+  if(level>=1&&level<=6){
     var bw=Math.min(240,VW-220), bx4=VW/2-bw/2, by4=VH-42, bh4=20;
     var frac=Math.max(0,baseHP/baseMX);
-    var col4=frac>.5?(mapKind==='trench'?'#0057b7':'#4fd08a'):(frac>.25?'#e2b13c':'#d84a34');
+    var col4=frac>.25?'#0057b7':'#ffd700';
     var jolt=baseFlash>0?rr(-2,2):0;
     ctx.save(); ctx.translate(jolt,jolt*.5);
-    ctx.fillStyle='rgba(6,10,12,.75)'; rrect(ctx,bx4-3,by4-3,bw+6,bh4+6,5); ctx.fill();
-    ctx.strokeStyle=baseFlash>0?'#ff6a4a':'rgba(200,214,222,.35)'; ctx.lineWidth=2;
+    ctx.fillStyle='#0d1720'; rrect(ctx,bx4-3,by4-3,bw+6,bh4+6,5); ctx.fill();
+    ctx.strokeStyle=baseFlash>0?'#ffd700':'#287ac9'; ctx.lineWidth=2;
     rrect(ctx,bx4-3,by4-3,bw+6,bh4+6,5); ctx.stroke();
     ctx.fillStyle='rgba(255,255,255,.06)'; rrect(ctx,bx4,by4,bw,bh4,3); ctx.fill();
     ctx.fillStyle=col4; rrect(ctx,bx4,by4,bw*frac,bh4,3); ctx.fill();
@@ -10323,11 +10364,11 @@ function draw(){
     for(var tk4=1;tk4<10;tk4++){
       ctx.beginPath(); ctx.moveTo(bx4+bw*tk4/10,by4); ctx.lineTo(bx4+bw*tk4/10,by4+bh4); ctx.stroke();
     }
-    if(baseFlash>0){ ctx.fillStyle='rgba(255,90,60,'+(baseFlash*.5)+')'; rrect(ctx,bx4,by4,bw,bh4,3); ctx.fill(); }
-    ctx.fillStyle='#f2ead2'; ctx.font='bold 10px Arial'; ctx.textAlign='center';
+    if(baseFlash>0){ ctx.fillStyle='rgba(255,215,0,'+(baseFlash*.35)+')'; rrect(ctx,bx4,by4,bw,bh4,3); ctx.fill(); }
+    ctx.fillStyle=frac>.25?'#ffd700':'#0d1720'; ctx.font='bold 10px Arial'; ctx.textAlign='center';
     ctx.fillText('BASE INTEGRITY   '+Math.round(frac*100)+'%',VW/2,by4+14);
     if(frac<.3){
-      ctx.fillStyle='rgba(216,74,52,'+(.5+Math.abs(Math.sin(now*5))*.5)+')'; ctx.font='bold 9px Arial';
+      ctx.fillStyle='rgba(255,215,0,'+(.5+Math.abs(Math.sin(now*5))*.5)+')'; ctx.font='bold 9px Arial';
       ctx.fillText('BASE CRITICAL',VW/2,by4+bh4+13);
     }
     ctx.textAlign='start'; ctx.restore();

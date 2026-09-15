@@ -15,6 +15,7 @@ const tools = [
   ['flamer', 'Flamethrower', 'Fire', 'Hold fire to project a long stream of flames and set enemies alight.'],
   ['emp', 'Drone Jammer', 'Anti-drone', 'Releases an electronic burst to take down nearby enemy drones.'],
   ['med', 'Field Kit', 'Recovery', 'Stored in your tool belt when purchased. Activate it when needed to restore 50 health.'],
+  ['repair', 'Repair Kit', 'Fortifications', 'In Sectors 1, 3 and 5, use anywhere inside your base to restore 25 percentage points of integrity and repair its appearance. Elsewhere, repairs a nearby damaged wall by one stage. Kept if no repair is needed.'],
   ['plate', 'Armour Plate', 'Protection', 'Replenishes armour to absorb more incoming damage.'],
 ]
 const weapons = [
@@ -38,7 +39,7 @@ export function EquipmentGuide() {
         {(['tools', 'weapons'] as const).map(tab => <button key={tab} type="button" aria-pressed={view === tab} onClick={() => setView(tab)} className="rounded px-4 py-3 text-[10px] font-black uppercase tracking-widest border transition-colors" style={{ color: view === tab ? '#ffd700' : '#b2c2cc', background: view === tab ? '#0057b7' : '#101c26', borderColor: view === tab ? '#287ac9' : '#283b49' }}>{tab} · {tab === 'tools' ? tools.length : weapons.length}</button>)}
       </div>
     </div>
-    <div className="mt-5 mb-4 flex items-center justify-between gap-3 text-[10px] text-[#93a7b5] uppercase tracking-wider"><span>{view === 'tools' ? '13 tools · Six belt slots' : 'Seven gun types · Different strengths'}</span><span className="text-[#ffd700]">Equipment briefing</span></div>
+    <div className="mt-5 mb-4 flex items-center justify-between gap-3 text-[10px] text-[#93a7b5] uppercase tracking-wider"><span>{view === 'tools' ? '14 tools · Six belt slots' : 'Seven gun types · Different strengths'}</span><span className="text-[#ffd700]">Equipment briefing</span></div>
     <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
       {entries.map(([id, name, role, description], index) => <article key={id} className="overflow-hidden rounded-lg border border-[#263746] bg-[#0d1720]">
         <div className="relative h-32 flex items-center justify-center border-b border-[#263746]" style={{ background: 'radial-gradient(ellipse at center, #20384b 0%, #101e2a 70%)' }}>
