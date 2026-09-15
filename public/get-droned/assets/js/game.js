@@ -7233,6 +7233,10 @@ var hpF=document.getElementById('hpF'), apF=document.getElementById('apF'), flas
 function hud(){
   if(!player) return;
   hpF.style.width=Math.max(0,player.hp/player.mx*100)+'%';
+  var baseFraction=Math.max(0,Math.min(1,baseHP/baseMX));
+  document.getElementById('baseF').style.width=baseFraction*100+'%';
+  document.getElementById('baseF').classList.toggle('critical',baseFraction<=.25);
+  document.getElementById('basePercent').textContent=Math.round(baseFraction*100)+'%';
   apF.style.width=Math.max(0,player.ap/upgAP*100)+'%';
   document.getElementById('apBar').style.opacity=player.ap>0?1:.25;
   document.getElementById('wname').innerHTML=WEAPONS[player.wep].name+' &nbsp;·&nbsp; <span id="ammo">'+player.mag+' / '+player.res+'</span>';
@@ -10346,33 +10350,6 @@ function draw(){
 
   drawCombatLighting(ctx);
   ctx.restore();
-
-  // Base integrity HUD shared by all sectors.
-  if(level>=1&&level<=6){
-    var bw=Math.min(240,VW-220), bx4=VW/2-bw/2, by4=VH-42, bh4=20;
-    var frac=Math.max(0,baseHP/baseMX);
-    var col4=frac>.25?'#0057b7':'#ffd700';
-    var jolt=baseFlash>0?rr(-2,2):0;
-    ctx.save(); ctx.translate(jolt,jolt*.5);
-    ctx.fillStyle='#0d1720'; rrect(ctx,bx4-3,by4-3,bw+6,bh4+6,5); ctx.fill();
-    ctx.strokeStyle=baseFlash>0?'#ffd700':'#287ac9'; ctx.lineWidth=2;
-    rrect(ctx,bx4-3,by4-3,bw+6,bh4+6,5); ctx.stroke();
-    ctx.fillStyle='rgba(255,255,255,.06)'; rrect(ctx,bx4,by4,bw,bh4,3); ctx.fill();
-    ctx.fillStyle=col4; rrect(ctx,bx4,by4,bw*frac,bh4,3); ctx.fill();
-    ctx.fillStyle='rgba(255,255,255,.18)'; rrect(ctx,bx4,by4,bw*frac,bh4*.4,3); ctx.fill();
-    ctx.strokeStyle='rgba(6,10,12,.55)'; ctx.lineWidth=1.4;                 // segment ticks
-    for(var tk4=1;tk4<10;tk4++){
-      ctx.beginPath(); ctx.moveTo(bx4+bw*tk4/10,by4); ctx.lineTo(bx4+bw*tk4/10,by4+bh4); ctx.stroke();
-    }
-    if(baseFlash>0){ ctx.fillStyle='rgba(255,215,0,'+(baseFlash*.35)+')'; rrect(ctx,bx4,by4,bw,bh4,3); ctx.fill(); }
-    ctx.fillStyle=frac>.25?'#ffd700':'#0d1720'; ctx.font='bold 10px Arial'; ctx.textAlign='center';
-    ctx.fillText('BASE INTEGRITY   '+Math.round(frac*100)+'%',VW/2,by4+14);
-    if(frac<.3){
-      ctx.fillStyle='rgba(255,215,0,'+(.5+Math.abs(Math.sin(now*5))*.5)+')'; ctx.font='bold 9px Arial';
-      ctx.fillText('BASE CRITICAL',VW/2,by4+bh4+13);
-    }
-    ctx.textAlign='start'; ctx.restore();
-  }
 
   captureDroneCamera();
 
