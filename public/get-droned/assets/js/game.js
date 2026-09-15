@@ -56,7 +56,7 @@ var baseGuards=[];
 var startCoins=0; // set from ?coins= URL param; applied at every level reset
 var belt=[], drops=[], twitchers=[], money=0, sentries=[], strikes=[], smokes=[], drone=null, piloting=false, fx2=[];
 var fires=[], plume=[], embers=[], motes=[], flares=[], chunks=[], mist=[], splat=[], pools=[], arty={t:5,flash:0}, wind=14, now=0;
-var corpses=[];
+var corpses=[], crawlers=[];
 var medStation=null;
 var spawnQ=0, spawnT=0, aliveTarget=0, killed=0, totalKills=0, timeAlive=0;
 
@@ -4341,13 +4341,22 @@ function killEnemy(e,ang,gib){
     shake=Math.min(20,shake+8); sfx('hit',1); sfx('boom',.28);
     fx.push({t:'ring',x:e.x,y:e.y,life:.4,max:.4}); fx.push({t:'gore',x:e.x,y:e.y,life:.3,max:.3});
   } else {
-    spawnCorpse(e,a,behead);
+    var isBoss=e.boss||e.airfieldBoss||e.compoundBoss||e.oilBoss||e.finalBoss||e.levelTwoBoss;
+    if(!isBoss&&Math.random()<.22){
+      spawnCrawler(e,a);
+    } else {
+      spawnCorpse(e,a,behead);
+    }
     if(behead){
       launchPart(e.x,e.y,'head',e.d.col,e.d.band,a,1.25);
       mistBurst(e.x,e.y,a,26,1.5);
       bloodSpray(e.x,e.y,a,rr(90,160),44);
       wallHit(e.x,e.y,a,150);
     }
+    // Helmet pops off, occasional hand or arm flies loose
+    if(Math.random()<.45) launchPart(e.x,e.y,'helmet',e.d.col,e.d.band,a+rr(-1.2,1.2),rr(.65,1.1));
+    if(Math.random()<.28) launchPart(e.x,e.y,'hand',e.d.col,e.d.band,a+rr(-.8,.8),rr(.5,.85));
+    if(Math.random()<.18) launchPart(e.x,e.y,'arm',e.d.col,e.d.band,a+rr(-1,1),rr(.45,.75));
     mistBurst(e.x,e.y,a,16,1.0);
     if(Math.hypot(e.x-player.x,e.y-player.y)<190) screenSplat(ri(3,7));
     sfx('hit',.8); fx.push({t:'ring',x:e.x,y:e.y,life:.3,max:.3});
@@ -5401,6 +5410,7 @@ function update(dt,realDt){
     PO.t+=dt; PO.r=PO.max*Math.min(1,PO.t/2.1);
     if(PO.t>2.3){ bloodPool(PO.x,PO.y,PO.r); pools.splice(po,1); } }
   updateCorpses(dt);
+  updateCrawlers(dt);
   for(var sp2=splat.length-1;sp2>=0;sp2--){ splat[sp2].life-=dt; if(splat[sp2].life<=0) splat.splice(sp2,1); }
   for(var ck=chunks.length-1;ck>=0;ck--){
     var CK=chunks[ck];
@@ -7084,7 +7094,7 @@ function startSector(n){
   player=makePlayer();
   impactMarks.length=0;
   enemies.length=0; bullets.length=0; eb.length=0; fx.length=0; nades.length=0; smoke.length=0;
-  chunks.length=0; mist.length=0; splat.length=0; pools.length=0; corpses.length=0;
+  chunks.length=0; mist.length=0; splat.length=0; pools.length=0; corpses.length=0; crawlers.length=0;
   civs.length=0; baseGuards.length=0;
   if(level===1){
     // Lean against the south side of the cab, opposite the computer consoles.
@@ -8155,6 +8165,57 @@ function gibCorpse(C){
   bakeGibs(C.x,C.y,C.ang,C.col,C.band,C.kind);
   shake=Math.min(20,shake+6); sfx('boom',.35);
   fx.push({t:'gore',x:C.x,y:C.y,life:.3,max:.3});
+}
+function spawnCrawler(e,ang){
+  var crawlAng=ang+Math.PI+rr(-.55,.55);
+  crawlers.push({x:e.x,y:e.y,crawlAng:crawlAng,
+    col:e.d.col,band:e.d.band,kind:e.k,sid:ri(0,9000),
+    life:rr(2.0,3.5),bleedClock:0,walk:0});
+  bloodSpray(e.x,e.y,ang,rr(35,70),18);
+  mistBurst(e.x,e.y,ang,10,.8);
+}
+function updateCrawlers(dt){
+  var SPEED=24;
+  for(var ci=crawlers.length-1;ci>=0;ci--){
+    var C=crawlers[ci];
+    C.life-=dt; C.walk+=dt*5; C.bleedClock+=dt;
+    var nx=C.x+Math.cos(C.crawlAng)*SPEED*dt;
+    var ny=C.y+Math.sin(C.crawlAng)*SPEED*dt;
+    if(!onWall(nx,ny)){C.x=nx;C.y=ny;}
+    // Blood smear trail onto bloodC
+    if(C.bleedClock>=.09){
+      C.bleedClock=0;
+      bc.fillStyle='rgba('+ri(88,126)+',11,9,'+rr(.28,.55)+')';
+      bc.beginPath(); bc.arc(C.x+rr(-4,4),C.y+rr(-3,3),rr(1.5,4.5),0,6.3); bc.fill();
+      if(Math.random()<.35){
+        bc.save(); bc.translate(C.x,C.y); bc.rotate(C.crawlAng);
+        bc.fillStyle='rgba(100,11,9,.38)';
+        bc.beginPath(); bc.ellipse(0,0,rr(7,16),rr(2,4.5),0,0,6.3); bc.fill();
+        bc.restore();
+      }
+    }
+    if(C.life<=0){
+      bloodPool(C.x,C.y,rr(16,26));
+      dc.save(); dc.translate(C.x,C.y+3); dc.scale(1,.90);
+      dc.rotate(C.crawlAng+Math.PI/2+rr(-.3,.3)); dc.globalAlpha=.92;
+      drawUnit(dc,0,0,rr(1.1,1.9),C.col,C.band,2.0,.85,C.kind,gunFor(C.kind),true,false,true,C.sid);
+      dc.restore(); dc.globalAlpha=1;
+      crawlers.splice(ci,1);
+    }
+  }
+}
+function drawCrawlers(c){
+  for(var ci=0;ci<crawlers.length;ci++){
+    var C=crawlers[ci];
+    var alpha=C.life>.55?.92:.45+Math.abs(Math.sin(C.life*20))*.4;
+    c.save();
+    c.translate(C.x,C.y+3);
+    c.rotate(C.crawlAng+Math.PI/2);
+    c.scale(1,.90);
+    c.globalAlpha=alpha;
+    drawUnit(c,0,0,C.crawlAng+Math.PI,C.col,C.band,C.walk,.55,C.kind,gunFor(C.kind),false,false,true,C.sid);
+    c.restore(); c.globalAlpha=1;
+  }
 }
 
 /* whole bodies land in a few different attitudes */
@@ -9505,8 +9566,9 @@ function draw(){
 
   if(mapKind==='redSquare') for(var mcd=0;mcd<motorcade.length;mcd++) drawMotorcadeCar(ctx,motorcade[mcd]);
 
-  // falling corpses drawn below live units
+  // falling corpses and wounded crawlers drawn below live units
   drawCorpses(ctx);
+  drawCrawlers(ctx);
 
   // characters, depth-sorted so nearer figures overlap farther ones
   var units=[];
