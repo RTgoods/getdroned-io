@@ -7250,12 +7250,19 @@ function gameOver(win,why){
 var hpF=document.getElementById('hpF'), apF=document.getElementById('apF'), flash=document.getElementById('dmgFlash');
 function hud(){
   if(!player) return;
-  hpF.style.width=Math.max(0,player.hp/player.mx*100)+'%';
+  var statusPanel=document.getElementById('statusBars');
+  var lastWeapon=gunRect(Math.max(0,player.guns.length-1));
+  statusPanel.style.top=(lastWeapon.y+lastWeapon.h+6)+'px';
+  var healthPercent=Math.max(0,Math.min(100,player.hp/player.mx*100));
+  hpF.style.width=healthPercent+'%';
+  document.getElementById('hpPercent').textContent=Math.round(healthPercent)+'%';
   var baseFraction=Math.max(0,Math.min(1,baseHP/baseMX));
   document.getElementById('baseF').style.width=baseFraction*100+'%';
   document.getElementById('baseF').classList.toggle('critical',baseFraction<=.25);
   document.getElementById('basePercent').textContent=Math.round(baseFraction*100)+'%';
-  apF.style.width=Math.max(0,player.ap/upgAP*100)+'%';
+  var armourPercent=Math.max(0,Math.min(100,player.ap/upgAP*100));
+  apF.style.width=armourPercent+'%';
+  document.getElementById('apPercent').textContent=Math.round(armourPercent)+'%';
   document.getElementById('apBar').style.opacity=player.ap>0?1:.25;
   document.getElementById('wname').innerHTML=WEAPONS[player.wep].name+' &nbsp;·&nbsp; <span id="ammo">'+player.mag+' / '+player.res+'</span>';
   document.getElementById('sector').textContent='SECTOR '+level;

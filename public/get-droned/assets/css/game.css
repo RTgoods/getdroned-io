@@ -205,3 +205,11 @@ h1 small{display:block;font-size:11px;letter-spacing:6px;color:#c0562f;margin-to
 #statusBars .bar,#statusBars #apBar{height:7px}
 #topL{top:calc(65px + env(safe-area-inset-top))}
 @media(max-width:600px){#statusBars{gap:2px}#statusBars .statusMeter{padding:3px}#statusBars span{font-size:clamp(5px,1.1vw,7px)}#statusBars .bar,#statusBars #apBar{height:6px}#topL{top:calc(60px + env(safe-area-inset-top))}}
+
+/* Status boxes follow the weapon slots and use the same 46px footprint. */
+#statusBars{left:9px;width:46px;grid-template-columns:1fr;gap:6px;transform:none}
+#statusBars .statusMeter{box-sizing:border-box;width:46px;height:46px;padding:4px;border-radius:5px;display:flex;flex-direction:column;justify-content:space-between}
+#statusBars span{font-size:6px;line-height:1.15;letter-spacing:0;min-height:0;margin:0;white-space:normal}
+#statusBars b{font-size:9px;display:block;margin-top:2px;float:none}
+#statusBars .bar,#statusBars #apBar{height:6px;flex-shrink:0}
+#topL{top:calc(65px + env(safe-area-inset-top))}
