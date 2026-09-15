@@ -7251,7 +7251,7 @@ var hpF=document.getElementById('hpF'), apF=document.getElementById('apF'), flas
 function hud(){
   if(!player) return;
   var statusPanel=document.getElementById('statusBars');
-  var lastWeapon=gunRect(Math.max(0,player.guns.length-1));
+  var lastWeapon=gunRect(3); // Reserve all four weapon slots, including empty ones.
   statusPanel.style.top=(lastWeapon.y+lastWeapon.h+6)+'px';
   var healthPercent=Math.max(0,Math.min(100,player.hp/player.mx*100));
   hpF.style.width=healthPercent+'%';
