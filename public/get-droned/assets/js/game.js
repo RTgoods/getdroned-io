@@ -56,6 +56,7 @@ var baseGuards=[];
 var startCoins=0; // set from ?coins= URL param; applied at every level reset
 var belt=[], drops=[], twitchers=[], money=0, sentries=[], strikes=[], smokes=[], drone=null, piloting=false, fx2=[];
 var fires=[], plume=[], embers=[], motes=[], flares=[], chunks=[], mist=[], splat=[], pools=[], arty={t:5,flash:0}, wind=14, now=0;
+var corpses=[];
 var medStation=null;
 var spawnQ=0, spawnT=0, aliveTarget=0, killed=0, totalKills=0, timeAlive=0;
 
@@ -4159,6 +4160,11 @@ function explode(x,y,r,dmg,fromPlayer,depotBlast){
     var en=enemies[e2], d=Math.hypot(en.x-x,en.y-y);
     if(d<r&&los(x,y,en.x,en.y)) hurtEnemy(en, dmg*(1-d/r*.6), Math.atan2(en.y-y,en.x-x), d<r*.62);
   }
+  // Frag catches dead bodies and blows them apart
+  for(var cgi=corpses.length-1;cgi>=0;cgi--){
+    var CG=corpses[cgi];
+    if(Math.hypot(CG.x-x,CG.y-y)<r*0.85) gibCorpse(CG);
+  }
   if(!fromPlayer){
     var dp=Math.hypot(player.x-x,player.y-y);
     if(dp<r*.8) hurtPlayer(dmg*.45*(1-dp/r));
@@ -4328,15 +4334,24 @@ function killEnemy(e,ang,gib){
   killed++; totalKills++;
   var a=(ang||0);
   var behead = !gib && !e.compoundBoss && Math.random()<.3;
-  bakeCorpse(e.x,e.y,a+rr(-.35,.35),e.d.col,e.d.band,e.k,!!gib,behead);
-  if(behead){
-    launchPart(e.x,e.y,'head',e.d.col,e.d.band,a,1.25);
-    mistBurst(e.x,e.y,a,26,1.5);
-    bloodSpray(e.x,e.y,a,rr(90,160),44);
-    wallHit(e.x,e.y,a,150);
+  if(gib){
+    bakeCorpse(e.x,e.y,a+rr(-.35,.35),e.d.col,e.d.band,e.k,true,false);
+    mistBurst(e.x,e.y,a,46,1.9);
+    if(Math.hypot(e.x-player.x,e.y-player.y)<190) screenSplat(ri(9,16));
+    shake=Math.min(20,shake+8); sfx('hit',1); sfx('boom',.28);
+    fx.push({t:'ring',x:e.x,y:e.y,life:.4,max:.4}); fx.push({t:'gore',x:e.x,y:e.y,life:.3,max:.3});
+  } else {
+    spawnCorpse(e,a,behead);
+    if(behead){
+      launchPart(e.x,e.y,'head',e.d.col,e.d.band,a,1.25);
+      mistBurst(e.x,e.y,a,26,1.5);
+      bloodSpray(e.x,e.y,a,rr(90,160),44);
+      wallHit(e.x,e.y,a,150);
+    }
+    mistBurst(e.x,e.y,a,16,1.0);
+    if(Math.hypot(e.x-player.x,e.y-player.y)<190) screenSplat(ri(3,7));
+    sfx('hit',.8); fx.push({t:'ring',x:e.x,y:e.y,life:.3,max:.3});
   }
-  mistBurst(e.x,e.y,a,gib?46:16,gib?1.9:1);
-  if(Math.hypot(e.x-player.x,e.y-player.y)<190) screenSplat(gib?ri(9,16):ri(3,7));
   for(var bf=0;bf<fires.length;bf++){ // bodies dropped in a fire start burning
     if(Math.hypot(e.x-fires[bf].x,e.y-fires[bf].y)<fires[bf].r*2.4&&fires.length<15){
       fires.push({x:e.x,y:e.y,r:rr(8,12),p:rr(0,6),life:rr(14,26),sp:0});
@@ -4353,14 +4368,6 @@ function killEnemy(e,ang,gib){
   var dropChance = e.boss?1:(e.k==='heavy'?.5:(e.k==='sniper'?.34:.26));
   if(e.boss){ dropTool(e.x,e.y,rollTool(),a,1.2); dropTool(e.x,e.y,'droneL',a+2,1.2); }
   if(Math.random()<dropChance) dropTool(e.x,e.y,rollTool(),a,gib?1.25:.95);
-  if(!gib){
-    for(var i=0;i<ri(6,11);i++) launchPart(e.x,e.y,'meat',e.d.col,e.d.band,a+rr(-1.2,1.2),rr(.55,.95));
-    if(Math.random()<.35) launchPart(e.x,e.y,'hand',e.d.col,e.d.band,a,1.0);
-    if(Math.random()<.3)  launchPart(e.x,e.y,'helmet',e.d.col,e.d.band,rr(0,6.3),1.1);
-  }
-  if(gib){ shake=Math.min(20,shake+8); sfx('hit',1); sfx('boom',.28);
-    fx.push({t:'ring',x:e.x,y:e.y,life:.4,max:.4}); fx.push({t:'gore',x:e.x,y:e.y,life:.3,max:.3}); }
-  else { sfx('hit',.8); fx.push({t:'ring',x:e.x,y:e.y,life:.3,max:.3}); }
   hud();
 }
 function downPlayer(){
@@ -5393,6 +5400,7 @@ function update(dt,realDt){
   for(var po=pools.length-1;po>=0;po--){ var PO=pools[po];
     PO.t+=dt; PO.r=PO.max*Math.min(1,PO.t/2.1);
     if(PO.t>2.3){ bloodPool(PO.x,PO.y,PO.r); pools.splice(po,1); } }
+  updateCorpses(dt);
   for(var sp2=splat.length-1;sp2>=0;sp2--){ splat[sp2].life-=dt; if(splat[sp2].life<=0) splat.splice(sp2,1); }
   for(var ck=chunks.length-1;ck>=0;ck--){
     var CK=chunks[ck];
@@ -7076,7 +7084,7 @@ function startSector(n){
   player=makePlayer();
   impactMarks.length=0;
   enemies.length=0; bullets.length=0; eb.length=0; fx.length=0; nades.length=0; smoke.length=0;
-  chunks.length=0; mist.length=0; splat.length=0; pools.length=0;
+  chunks.length=0; mist.length=0; splat.length=0; pools.length=0; corpses.length=0;
   civs.length=0; baseGuards.length=0;
   if(level===1){
     // Lean against the south side of the cab, opposite the computer consoles.
@@ -8045,6 +8053,110 @@ function gibHelmet(c,col){
   c.fill(); outl(c,'#15130e',1.8);
   c.fillStyle='rgba(0,0,0,.35)'; c.beginPath(); c.ellipse(0,1.4,5,1.8,0,0,6.3); c.fill();
 }
+// [fallDur, dirOffset_from_shot, drift, lieAng_offset, lookAng, stride, amt, easeType]
+// easeType: 0=linear, 1=ease-out (gravity), 2=ease-in-out, 3=ease-in (snap)
+var DEATH_POSES=[
+  [0.38, Math.PI,       20, 0.50,  1.55, 2.1, 0.95, 1], // 0 backward sprawl
+  [0.42, 0,             14,-0.50, -1.55, 0.35,0.25, 1], // 1 forward face-down
+  [0.36, Math.PI*1.5,   22, 0.30,  0.5,  1.5, 0.70, 1], // 2 spin-drop right
+  [0.50, Math.PI,        8, 0.30,  2.8,  2.9, 1.00, 2], // 3 crumple-kneel (slow)
+  [0.40, Math.PI*0.5,   20, 0.25, -0.5,  1.5, 0.70, 1], // 4 side-roll left
+  [0.33, Math.PI,       12, 0.40,  1.70, 2.0, 0.85, 3], // 5 headshot snap fast
+  [0.45, 0,             16,-0.40, -1.6,  0.4, 0.30, 1], // 6 gut-drop forward
+  [0.28, Math.PI,        6, 0.30,  1.30, 2.2, 0.95, 3], // 7 instant drop fastest
+  [0.52, Math.PI*1.25,  24, 0.50,  2.5,  2.7, 0.90, 1], // 8 diagonal back-sprawl
+  [0.44, Math.PI*0.75,  10, 0.20,  0.6,  1.8, 0.75, 1], // 9 twist-fall
+];
+function deathEase(type,t){
+  if(type===1) return 1-(1-t)*(1-t);          // ease-out (gravity pull)
+  if(type===2) return t<.5?2*t*t:1-2*(1-t)*(1-t); // ease-in-out
+  if(type===3) return t*t;                    // ease-in (snap)
+  return t;                                   // linear
+}
+function spawnCorpse(e,ang,behead){
+  var poseIdx=ri(0,9);
+  var PD=DEATH_POSES[poseIdx];
+  var fallDur=PD[0], dirOff=PD[1], drift=PD[2], lieOff=PD[3];
+  var lookAng=PD[4], stride=PD[5], amt=PD[6];
+  var fallDir=ang+dirOff;
+  var lieAng=ang+Math.PI/2+lieOff+rr(-.25,.25);
+  corpses.push({
+    x:e.x, y:e.y, ang:ang, col:e.d.col, band:e.d.band, kind:e.k,
+    behead:behead, sid:ri(0,9000),
+    standAng:e.ang,
+    pose:poseIdx, fallDir:fallDir, drift:drift,
+    lieAng:lieAng, lookAng:lookAng, stride:stride, amt:amt,
+    easeType:PD[7],
+    fallT:0, fallDur:fallDur,
+    bleedR:0, bleedMax:rr(19,30), bleedDur:rr(3.5,5.5), bleedT:0,
+    baked:false
+  });
+  // Immediate impact blood — splashes on the canvas now
+  bloodSpray(e.x,e.y,ang,rr(60,120),40);
+  bloodSpray(e.x,e.y,ang+Math.PI,rr(25,60),18);
+  wallHit(e.x,e.y,ang,130); wallHit(e.x,e.y,ang+rr(-1.2,1.2),110);
+}
+function updateCorpses(dt){
+  for(var ci=corpses.length-1;ci>=0;ci--){
+    var C=corpses[ci]; if(C.baked) continue;
+    C.fallT+=dt; C.bleedT+=dt;
+    C.bleedR=C.bleedMax*Math.min(1, C.bleedT/C.bleedDur);
+    if(C.fallT>=C.fallDur&&C.bleedT>=C.bleedDur){
+      bakeCorpseFromObj(C); C.baked=true;
+    }
+  }
+}
+function drawCorpses(c){
+  for(var ci=0;ci<corpses.length;ci++){
+    var C=corpses[ci]; if(C.baked) continue;
+    var p=Math.min(1,C.fallT/C.fallDur);
+    var ep=deathEase(C.easeType,p);
+    var scY=1.0-ep*(1.0-0.58);
+    var dx=Math.cos(C.fallDir)*C.drift*ep;
+    var dy=Math.sin(C.fallDir)*C.drift*ep*0.5;
+    var rot=C.lieAng*ep;
+    var look=C.standAng*(1-ep)+C.lookAng*ep;
+    var stride=C.stride*ep, amt=C.amt*ep;
+    // Growing blood pool drawn under the falling body
+    if(C.bleedR>0){
+      var br=C.bleedR;
+      c.fillStyle='rgba(104,12,9,.62)';
+      c.beginPath(); c.ellipse(C.x,C.y,br*1.25,br*0.85,C.ang,0,6.3); c.fill();
+      c.fillStyle='rgba(158,26,18,.38)';
+      c.beginPath(); c.ellipse(C.x,C.y,br*0.85,br*0.55,C.ang,0,6.3); c.fill();
+    }
+    c.save(); c.translate(C.x+dx,C.y+dy+3*ep);
+    c.rotate(rot); c.scale(1,scY); c.globalAlpha=0.93;
+    drawUnit(c,0,0,look,C.col,C.band,stride,amt,C.kind,gunFor(C.kind),true,C.behead&&ep>0.55,true,C.sid);
+    c.restore(); c.globalAlpha=1;
+  }
+}
+function bakeCorpseFromObj(C){
+  var endX=C.x+Math.cos(C.fallDir)*C.drift;
+  var endY=C.y+Math.sin(C.fallDir)*C.drift*0.5;
+  bloodPool(endX,endY,C.bleedMax);
+  dc.save(); dc.translate(endX,endY+3); dc.scale(1,0.58);
+  dc.rotate(C.lieAng); dc.globalAlpha=0.93;
+  drawUnit(dc,0,0,C.lookAng,C.col,C.band,C.stride,C.amt,C.kind,gunFor(C.kind),true,C.behead,true,C.sid);
+  dc.restore(); dc.globalAlpha=1;
+  if(C.behead){
+    dc.save(); dc.translate(endX,endY+3); dc.scale(1,0.58); dc.rotate(C.lieAng);
+    dc.fillStyle='rgba(126,16,12,.92)'; dc.beginPath(); dc.arc(1.2,-30,4.6,0,6.3); dc.fill();
+    dc.restore();
+  }
+  if(Math.random()<0.55){
+    dc.save(); dc.translate(endX+rr(-26,26),endY+rr(-15,15));
+    dc.scale(1,0.62); dc.rotate(rr(0,6.3));
+    drawGun(dc,gunFor(C.kind),0,0); dc.restore();
+  }
+}
+function gibCorpse(C){
+  var idx=corpses.indexOf(C); if(idx>=0) corpses.splice(idx,1);
+  bakeGibs(C.x,C.y,C.ang,C.col,C.band,C.kind);
+  shake=Math.min(20,shake+6); sfx('boom',.35);
+  fx.push({t:'gore',x:C.x,y:C.y,life:.3,max:.3});
+}
+
 /* whole bodies land in a few different attitudes */
 function bakeCorpse(x,y,ang,col,band,kind,gib,behead){
   if(gib){ bakeGibs(x,y,ang,col,band,kind); return; }
@@ -9392,6 +9504,9 @@ function draw(){
   if(medStation) drawHealSpot(ctx,medStation);
 
   if(mapKind==='redSquare') for(var mcd=0;mcd<motorcade.length;mcd++) drawMotorcadeCar(ctx,motorcade[mcd]);
+
+  // falling corpses drawn below live units
+  drawCorpses(ctx);
 
   // characters, depth-sorted so nearer figures overlap farther ones
   var units=[];
