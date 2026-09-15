@@ -8111,7 +8111,7 @@ function drawCorpses(c){
     var C=corpses[ci]; if(C.baked) continue;
     var p=Math.min(1,C.fallT/C.fallDur);
     var ep=deathEase(C.easeType,p);
-    var scY=1.0-ep*(1.0-0.58);
+    var scY=1.0-ep*(1.0-0.90);
     var dx=Math.cos(C.fallDir)*C.drift*ep;
     var dy=Math.sin(C.fallDir)*C.drift*ep*0.5;
     var rot=C.lieAng*ep;
@@ -8135,12 +8135,12 @@ function bakeCorpseFromObj(C){
   var endX=C.x+Math.cos(C.fallDir)*C.drift;
   var endY=C.y+Math.sin(C.fallDir)*C.drift*0.5;
   bloodPool(endX,endY,C.bleedMax);
-  dc.save(); dc.translate(endX,endY+3); dc.scale(1,0.58);
+  dc.save(); dc.translate(endX,endY+3); dc.scale(1,0.90);
   dc.rotate(C.lieAng); dc.globalAlpha=0.93;
   drawUnit(dc,0,0,C.lookAng,C.col,C.band,C.stride,C.amt,C.kind,gunFor(C.kind),true,C.behead,true,C.sid);
   dc.restore(); dc.globalAlpha=1;
   if(C.behead){
-    dc.save(); dc.translate(endX,endY+3); dc.scale(1,0.58); dc.rotate(C.lieAng);
+    dc.save(); dc.translate(endX,endY+3); dc.scale(1,0.90); dc.rotate(C.lieAng);
     dc.fillStyle='rgba(126,16,12,.92)'; dc.beginPath(); dc.arc(1.2,-30,4.6,0,6.3); dc.fill();
     dc.restore();
   }
@@ -8165,14 +8165,14 @@ function bakeCorpse(x,y,ang,col,band,kind,gib,behead){
   bloodSpray(x,y,a,rr(60,120),40);
   bloodSpray(x,y,a+Math.PI,rr(25,60),18);
   wallHit(x,y,a,130); wallHit(x,y,a+rr(-1.2,1.2),110);
-  dc.save(); dc.translate(x,y+3); dc.scale(1,.58);
+  dc.save(); dc.translate(x,y+3); dc.scale(1,.90);
   dc.rotate(a+Math.PI/2+rr(-.55,.55)); dc.globalAlpha=.93;
   // pose 0 sprawled on the back, 1 face down, 2 twisted, 3 crumpled with the legs folded
   var look=[rr(1.2,1.9),-1.55,rr(-.5,.5),rr(2.4,3.1)][pose];
   var stride=[2.1,0.35,1.5,2.9][pose], amt=[.95,.25,.7,1][pose];
   drawUnit(dc,0,0,look,col,band,stride,amt,kind,gunFor(kind),true,behead,true,ri(0,9000));
   dc.restore(); dc.globalAlpha=1;
-  if(behead){ dc.save(); dc.translate(x,y+3); dc.scale(1,.58); dc.rotate(a+Math.PI/2);
+  if(behead){ dc.save(); dc.translate(x,y+3); dc.scale(1,.90); dc.rotate(a+Math.PI/2);
     dc.fillStyle='rgba(126,16,12,.92)'; dc.beginPath(); dc.arc(1.2,-30,4.6,0,6.3); dc.fill(); dc.restore(); }
   if(Math.random()<.55){ // weapon dropped clear of the body
     dc.save(); dc.translate(x+rr(-26,26),y+rr(-15,15)); dc.scale(1,.62); dc.rotate(rr(0,6.3));
