@@ -2279,6 +2279,19 @@ function rebuildDroneBay(craft){
   craft.pad.inFlight=false;
   craft.pad.cd=craft.pad.clearStand?7:0;
 }
+function damageDroneEmplacements(x,y,blast){
+  for(var i=aaGuns.length-1;i>=0;i--){
+    var gun=aaGuns[i];
+    if(Math.hypot(gun.x-x,gun.y-y)>=blast[0]*.9)continue;
+    gun.hp-=blast[1];gun.hurt=.2;
+    if(gun.hp<=0){
+      aaGuns.splice(i,1);
+      explode(gun.x,gun.y,70,20,true);
+      for(var part=0;part<14;part++)launchPart(gun.x,gun.y,'debris',null,null,rr(0,6.283),rr(.8,1.6));
+      banner(gun.tower?'LOOKOUT TOWER DESTROYED':'AA GUN DOWN','',1.2);
+    }
+  }
+}
 function droneBoom(x,y){
   var dk=(drone&&drone.kind)||'drone', bl=(TOOLS[dk]&&TOOLS[dk].blast)||[100,145];
   if(level===2&&dk==='droneL') for(var depotHit=0;depotHit<depots.length;depotHit++){
@@ -2289,6 +2302,8 @@ function droneBoom(x,y){
       else banner('DEPOT HIT',targetDepot.heavyHits+' / 3 HEAVY DRONE HITS',2);
     }
   }
+  // Drone warheads share tower health with bullets and grenade fragments.
+  damageDroneEmplacements(x,y,bl);
   var onTank = tank&&Math.hypot(tank.x-x,tank.y-y)<bl[0]*.55;
   if(onTank){
     tank.hp-=(dk==='droneL'?3:1); tank.hurt=.3; shake=Math.min(22,shake+10);
@@ -2735,7 +2750,7 @@ function buildRedSquare(){
 /* ======================= LEVEL 5 — MILITARY AID ======================= */
 function buildAirfield(){
   seed=9900+level*19; setMapSize(82,58,false); grid.fill(EXT);
-  airAssaultWave=0; airAssaultT=18; airfieldBossSpawned=0; airfieldBossDefeated=0; miniNukes.length=0;
+  siegeCover=[];airAssaultWave=0; airAssaultT=25; airfieldBossSpawned=0; airfieldBossDefeated=0; miniNukes.length=0;
   props.length=0; holes.length=0; roads.length=0; duck.length=0; wires.length=0; bunkers.length=0; bases.length=0; flags.length=0;
   aircraft.length=0; sams.length=0; samShots.length=0; refineries.length=0; ships.length=0; missiles.length=0; aaGuns.length=0;
   // home operations base
@@ -2754,12 +2769,17 @@ function buildAirfield(){
   // Three North Korean cargo aircraft actively unloading weapons and troops.
   var AP=[[40,11,0,'NK CARGO 1'],[62,11,0,'NK CARGO 2'],[56,30,0,'NK CARGO 3']];
   for(var ai=0;ai<AP.length;ai++){
-    var A=AP[ai]; aircraft.push({i:ai,x:A[0]*TILE,y:A[1]*TILE,ang:A[2],name:A[3],cargo:true,hp:620,mx:620,dead:0,hurt:0,unload:1+ai*.45,deployed:0,weaponPile:2});
+    var A=AP[ai]; aircraft.push({i:ai,x:A[0]*TILE,y:A[1]*TILE,ang:A[2],name:A[3],cargo:true,hp:620,mx:620,dead:0,hurt:0,unload:1+ai*.45,deployed:0,weaponPile:8});
     var aa=[[A[0]-5,A[1]-4],[A[0]+5,A[1]+4]];
     for(var sj=0;sj<aa.length;sj++) sams.push({aircraft:ai,x:aa[sj][0]*TILE,y:aa[sj][1]*TILE,ang:rr(0,6.28),cd:rr(2,6),hp:95,mx:95,hurt:0,rack:2});
     // Separate unloading areas make each cargo operation look different.
     for(var cr=0;cr<6;cr++) addProp(A[0]+7+(cr%2)*2,A[1]+3+Math.floor(cr/2)*2,1,1,'ammocrate');
   }
+  // One heavy-gun lookout per apron, using the destructible tower combat system.
+  [[47,22],[73,21],[66,40]].forEach(function(pos,i){
+    aaGuns.push({tower:true,airfield:true,x:(pos[0]+.5)*TILE,y:(pos[1]+.5)*TILE,
+      ang:Math.PI,cd:1+i*.4,burst:0,spin:0,hp:600,mx:600,hurt:0});
+  });
   SPAWNS=[[34,18],[48,20],[62,20],[74,20],[32,38],[52,39],[72,39]];
   plantSnowTrees();
   placeFires(); buildStatic(); initWallHP();
@@ -3044,7 +3064,7 @@ function moveEnt(e,dx,dy){
       if(!hitBox(e.x+k,e.y,e.r)&&!hitBox(e.x+k,e.y+dy,e.r)){ e.x+=k*.3; e.y+=dy*.8; break; } }
   }
   e.x=Math.max(e.r,Math.min(WW-e.r,e.x)); e.y=Math.max(e.r,Math.min(WH-e.r,e.y));
-  if(level===2&&e.d&&!e.baseAssault&&inBase(e.x,e.y)){e.x=entryX;e.y=entryY;}
+  if(e.d&&((level===2&&!e.baseAssault)||level===5)&&inBase(e.x,e.y)){e.x=entryX;e.y=entryY;}
 }
 function hitBox(x,y,r){
   var x0=Math.floor((x-r)/TILE), x1=Math.floor((x+r)/TILE), y0=Math.floor((y-r)/TILE), y1=Math.floor((y+r)/TILE);
@@ -3206,7 +3226,7 @@ var CIVCOL=['#8a5f52','#4f6b7a','#7a6a8a','#5f7a5a','#8a7a4a','#6a5a4a'];
 var CIVSAY=['GO! GO!','MY HOUSE!','NOT AGAIN','RUN!','THIS WAY!','DON\u2019T SHOOT','KEEP MOVING','HURRY'];
 var pfPrev, pfSeen, pfQ, pfMark=0;
 var PFD=[[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]];
-function findPath(sx,sy,tx,ty){
+function findPath(sx,sy,tx,ty,avoidBase){
   if(sx<0||sy<0||sx>=MW||sy>=MH||tx<0||ty<0||tx>=MW||ty>=MH) return null;
   if(blocksMove(T(sx,sy))||blocksMove(T(tx,ty))) return null;
   pfMark++;
@@ -3220,6 +3240,7 @@ function findPath(sx,sy,tx,ty){
       var nx=cx+PFD[i][0], ny=cy+PFD[i][1];
       if(nx<0||ny<0||nx>=MW||ny>=MH) continue;
       if(blocksMove(T(nx,ny))) continue;
+      if(avoidBase&&inBase((nx+.5)*TILE,(ny+.5)*TILE))continue;
       if(i>3&&(blocksMove(T(cx+PFD[i][0],cy))||blocksMove(T(cx,cy+PFD[i][1])))) continue;
       var ni=ny*MW+nx; if(pfSeen[ni]===pfMark) continue;
       pfSeen[ni]=pfMark; pfPrev[ni]=c; pfQ[tail++]=ni;
@@ -3618,6 +3639,7 @@ function drawBaseGuard(c,G){
 }
 var ASSAULT_KIT={col:'#69584d',band:'#ed7739',rig:'#302f2c',pal:['#796958','#453f38','#a29277','#555047'],mask:true,gog:true};
 function updateBaseAssault(E,dt){
+  E.coverFlash=Math.max(0,(E.coverFlash||0)-dt);
   if(E.stag>0){E.amt=0;return;}
   E.playerShotCD=Math.max(0,(E.playerShotCD||0)-dt);
   if(!player.dead&&!piloting&&Math.hypot(player.x-E.x,player.y-E.y)<300&&los(E.x,E.y,player.x,player.y)&&!smokeBlocked(E.x,E.y,player.x,player.y)){
@@ -3805,7 +3827,10 @@ function controlKey(e){
   return physical[e.code]||e.key.toLowerCase();
 }
 var reducedMotion=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-function manualAim(){ return mouseAim.active&&player&&!player.dead&&!piloting&&!aboard; }
+var autoAimEnabled=false;
+try{autoAimEnabled=(localStorage.getItem('gd_autoAim')||localStorage.getItem('gd_autoFire'))==='1';}catch(e){}
+window.addEventListener('storage',function(e){if(e.key==='gd_autoAim')autoAimEnabled=e.newValue==='1';});
+function manualAim(){ return !autoAimEnabled&&mouseAim.active&&player&&!player.dead&&!piloting&&!aboard; }
 // Mouse aims at the visible firing plane, 18 pixels above world collision coordinates.
 function aimAngle(){ return Math.atan2(mouseAim.y+Math.round(cam.y)+18-player.y,mouseAim.x+Math.round(cam.x)-player.x); }
 window.addEventListener('pointermove',function(e){
@@ -3931,14 +3956,14 @@ function keyVec(){
 /* =========================================================================
    COMBAT
    ========================================================================= */
-function nearestTarget(){
+function nearestTarget(closestOnly){
   var best=null, bd=1e9;
   for(var i=0;i<enemies.length;i++){
     var e=enemies[i], d=Math.hypot(e.x-player.x,e.y-player.y);
     var targetRange=(e.compoundBoss||e.levelTwoBoss||e.oilBoss||e.airfieldBoss)?720:560;
-    if(d>targetRange) continue;
+    if(e.hp<=0||d>targetRange||(closestOnly&&smokeBlocked(player.x,player.y,e.x,e.y))) continue;
     if(!los(player.x,player.y,e.x,e.y)) continue;
-    if(e.compoundBoss||e.levelTwoBoss||e.oilBoss||e.airfieldBoss) return e;
+    if(!closestOnly&&(e.compoundBoss||e.levelTwoBoss||e.oilBoss||e.airfieldBoss)) return e;
     if(d<bd){ bd=d; best=e; }
   }
   return best;
@@ -4003,10 +4028,10 @@ function addGun(id){
   hud(); return W2.name;
 }
 function spray(dt){
-  var tgt=nearestTarget(), ang=player.face;
+  var tgt=nearestTarget(autoAimEnabled), ang=player.face;
   var moving=Math.hypot(player.lvx||0,player.lvy||0)>8;
   if(manualAim()) ang=aimAngle();
-  if(!manualAim()&&!moving&&tgt&&Math.hypot(tgt.x-player.x,tgt.y-player.y)<420) ang=Math.atan2(tgt.y-player.y,tgt.x-player.x);
+  if((autoAimEnabled||(bot&&bot.on))&&!manualAim()&&tgt&&Math.hypot(tgt.x-player.x,tgt.y-player.y)<420) ang=Math.atan2(tgt.y-player.y,tgt.x-player.x);
   player.face=ang; player.ang=ang;
   for(var i=0;i<3&&flames.length<190;i++){
     var a=ang+rr(-.26,.26), sp=rr(620,760);
@@ -4074,10 +4099,10 @@ function shoot(){
   var W=WEAPONS[player.wep];
   if(player.reload>0) return;
   if(player.mag<=0){ startReload(); return; }
-  var tgt=nearestTarget(), ang=player.face;
+  var tgt=nearestTarget(autoAimEnabled), ang=player.face;
   var moving=Math.hypot(player.lvx||0,player.lvy||0)>8;
   if(manualAim()){ ang=aimAngle(); player.face=ang; }
-  if(!manualAim()&&tgt&&(!moving||tgt.compoundBoss||tgt.levelTwoBoss||tgt.oilBoss||tgt.airfieldBoss)){
+  if((autoAimEnabled||(bot&&bot.on))&&!manualAim()&&tgt){
     var aimX=tgt.x,aimY=tgt.y;
     if(tgt.compoundBoss){
       var shotTravel=Math.min(.48,Math.hypot(tgt.x-player.x,tgt.y-player.y)/Math.max(1,W.spd));
@@ -4144,6 +4169,11 @@ function fragExplosion(x,y,r,damage){
 function explode(x,y,r,dmg,fromPlayer,depotBlast){
   if(!depotBlast) fx.push({t:'boom',x:x,y:y,life:.5,max:.5,r:r});
   blastWalls(x,y,r,dmg);
+  if(level===5&&dmg>0)for(var cv=0;cv<siegeCover.length;cv++){
+    var C=siegeCover[cv],cd=Math.hypot(C.x-x,C.y-y);
+    if(C.hp>0&&cd<r)hitSiegeCover(C,dmg*2*(1-.5*cd/r));
+  }
+
   for(var dq7=0;dq7<depots.length;dq7++){
     var DQ7=depots[dq7];
     if(DQ7.blown) continue;
@@ -4657,6 +4687,9 @@ function update(dt,realDt){
 
   if(manualAim()){ player.face=aimAngle(); player.ang=player.face; }
 
+  var autoTarget=autoAimEnabled&&!piloting&&!aboard&&!player.dead?nearestTarget(true):null;
+  if(autoTarget){player.face=Math.atan2(autoTarget.y-player.y,autoTarget.x-player.x);player.ang=player.face;}
+  var combatFire=firing;
   // --- ACT
   if(onCrate&&!piloting){
     if(player.openC!==onCrate){ player.openC=onCrate; player.open=0; }
@@ -4668,8 +4701,8 @@ function update(dt,realDt){
     if(player.reload>0){ player.reload-=dt; if(player.reload<=0){ player.reload=0; finishReload(); } }
     if(aboard){ }
     else if(player.flamer>0){
-      if(firing&&!player.dead) spray(dt);
-    } else if(firing&&!player.dead&&player.cd<=0) shoot();
+      if(combatFire&&!player.dead) spray(dt);
+    } else if(combatFire&&!player.dead&&player.cd<=0) shoot();
   }
   if(player.hurt>0) player.hurt-=dt;
   // Remaining in the marked field-aid zone restores health slowly.
@@ -4856,6 +4889,7 @@ function update(dt,realDt){
       }
     }
     if(en.stag>0) en.stag-=dt;
+    if(level===5&&en.airSiege){updateAirSiege(en,dt);if(state!=='play')return;continue;}
     if(level===2&&en.baseAssault){updateBaseAssault(en,dt);if(state!=='play')return;continue;}
     if(en.levelTwoBoss){
       var mgTarget=(piloting&&drone)?drone:player,mgx=mgTarget.x-en.x,mgy=mgTarget.y-en.y,mgd=Math.hypot(mgx,mgy)||1;
@@ -5250,6 +5284,18 @@ function update(dt,realDt){
     var bu=bullets[b], steps=3;
     for(var s=0;s<steps;s++){
       bu.x+=bu.vx*dt/steps; bu.y+=bu.vy*dt/steps;
+      if(level===5){
+        for(var cv=0;cv<siegeCover.length;cv++){
+          var cover=siegeCover[cv];if(cover.hp<=0||cover.progress<.25)continue;
+          var cx=bu.x-cover.x,cy=bu.y-cover.y,ca=Math.cos(cover.angle),sn=Math.sin(cover.angle);
+          if(Math.abs(cx*ca+cy*sn)<30&&Math.abs(-cx*sn+cy*ca)<10){
+            // Sandbags stop bullets without losing health; explosions can break them.
+            impact(bu.x,bu.y);bullets.splice(b,1);bu=null;break;
+          }
+        }
+        if(!bu)break;
+      }
+
       if(blocksShot(T(Math.floor(bu.x/TILE),Math.floor(bu.y/TILE)))){
         shootTree(bu.x,bu.y,bu.dmg||24); impact(bu.x,bu.y); bullets.splice(b,1); bu=null; break;
       }
@@ -5386,6 +5432,7 @@ function update(dt,realDt){
     EN2.x=EN2.sx+(EN2.tx-EN2.sx)*pr; EN2.y=EN2.sy+(EN2.ty-EN2.sy)*pr;
     if(pr>=1){
       explode(EN2.x,EN2.y,62*EN2.pw,30*EN2.pw,false);
+      if(EN2.baseDamage&&level===5&&inBase(EN2.x,EN2.y))hurtRaidedBase(EN2.baseDamage);
       enades.splice(q3,1);
     }
   }
@@ -6620,6 +6667,130 @@ function hitAircraft(A,dmg){
     banner(A.name+' DESTROYED',A.cargo?'UNLOADING STOPPED':'',1.8); money+=300; hud();
   }
 }
+var siegeCover=[];
+function hitSiegeCover(C,damage){
+  C.hp=Math.max(0,C.hp-damage);
+}
+function drawSiegeCover(c){
+  if(level!==5)return;
+  for(var i=0;i<siegeCover.length;i++){
+    var C=siegeCover[i];c.save();c.translate(C.x,C.y);c.rotate(C.angle);
+    var bags=C.hp<=0?Math.ceil(C.progress*12):0;
+    for(var n=0;n<bags;n++){
+      var row=Math.floor(n/4),bx=(n%4)*13-26+(row%2)*3,by=-row*5-7;
+      if(C.hp<=0){bx+=(hs(n*7+i)-.5)*24;by+=hs(n*11)*18;}
+      c.fillStyle=C.hp<=0?'#68664f':'#7b7054';rrect(c,bx,by,15,8,3);c.fill();outl(c,'#4a5147',.8);
+      // Uneven settled snow along each sack, with exposed seams beneath.
+      c.fillStyle='#bec9bf';rrect(c,bx+1,by,12,2+hs(n+3)*2,2);c.fill();
+      c.strokeStyle='#6a705b';c.lineWidth=.6;c.beginPath();c.moveTo(bx+3,by+6);c.lineTo(bx+12,by+6);c.stroke();
+    }
+    if(C.progress<1&&C.hp>0){
+      for(var puff=0;puff<5;puff++){
+        var phase=(timeAlive*2+puff*.2)%1;
+        c.globalAlpha=(1-phase)*.5;c.fillStyle=puff%2?'#e2eeec':'#82765b';
+        c.beginPath();c.arc((puff-2)*7,8-phase*15,1+phase*2,0,6.3);c.fill();
+      }
+    }
+    c.restore();
+    if(C.hp>0&&C.owner){
+      var E=C.owner,rows=Math.ceil(C.progress*4);
+      // Front face hides the body at its original scale, leaving the helmet and gun exposed.
+      for(var row=0;row<rows;row++)for(var bag=0;bag<4;bag++){
+        var bx=E.x-28+bag*14+(row%2)*3,by=E.y+1-row*7;
+        c.fillStyle=row%2?'#817052':'#6f654c';rrect(c,bx,by,16,9,3);c.fill();outl(c,'#47544c',.8);
+        c.fillStyle='#c4cec3';rrect(c,bx+1,by,13,3,2);c.fill();
+        c.fillStyle='rgba(62,47,30,.48)';
+        for(var dirt=0;dirt<4;dirt++)c.fillRect(bx+2+hs(bag*31+row*7+dirt)*11,by+2+hs(dirt*17+bag+row)*5,2+hs(dirt+row)*3,1.5);
+        c.strokeStyle='#534c36';c.lineWidth=.7;c.beginPath();c.moveTo(bx+3,by+7);c.lineTo(bx+12,by+7);c.stroke();
+
+      }
+      if(C.progress===1&&E.hp>0){
+        c.save();c.translate(E.x+17,E.y-18);c.rotate(E.ang);c.scale(.8,.8);drawGun(c,'rifle',0,0);
+        if(E.coverFlash>0){c.fillStyle='#ffe6a0';c.beginPath();c.ellipse(25,0,7,3,0,0,6.3);c.fill();}
+        c.restore();
+      }
+    }
+  }
+}
+function updateAirSiege(E,dt){
+  E.coverFlash=Math.max(0,(E.coverFlash||0)-dt);
+  E.playerFireCD=Math.max(0,(E.playerFireCD||0)-dt);
+  if(E.stag>0){E.amt=0;E.demoCharge=0;return;}
+  // React to exposed players even while marching, building or preparing a grenade.
+  if(!player.dead&&!piloting&&!inBase(player.x,player.y)&&Math.hypot(player.x-E.x,player.y-E.y)<420&&los(E.x,E.y,player.x,player.y)&&!smokeBlocked(E.x,E.y,player.x,player.y)){
+    E.ang=Math.atan2(player.y-E.y,player.x-E.x);E.amt=0;E.building=false;E.crouched=false;E.demoCharge=0;
+    if(E.playerFireCD<=0){enemyShot(E,E.d);E.playerFireCD=.85;E.coverFlash=.12;}
+    return;
+  }
+  var distance=Math.hypot(E.holdX-E.x,E.holdY-E.y);
+  if(distance>5){
+    E.routeWait-=dt;
+    if(!E.siegePath||E.routeWait<=0){
+      E.siegePath=findPath(Math.floor(E.x/TILE),Math.floor(E.y/TILE),Math.floor(E.holdX/TILE),Math.floor(E.holdY/TILE),true);
+      E.siegeStep=0;E.routeWait=5;
+    }
+    var point=E.siegePath&&E.siegePath[E.siegeStep];
+    if(point&&Math.hypot(point.x-E.x,point.y-E.y)<3)point=E.siegePath[++E.siegeStep];
+    if(point){
+      var dx=point.x-E.x,dy=point.y-E.y,d=Math.hypot(dx,dy),step=Math.min(d,60*dt),ox=E.x,oy=E.y;
+      moveEnt(E,dx/d*step,dy/d*step);var moved=Math.hypot(E.x-ox,E.y-oy);
+      E.walk+=moved*.14;E.amt=Math.min(1,moved/Math.max(step,.001));E.ang=Math.atan2(dy,dx);
+      if(moved<step*.1)E.routeWait=Math.min(E.routeWait,.5);
+    }else E.amt=0;
+    return;
+  }
+  E.amt=0;E.siegeCD-=dt;
+  if(E.siegeRole!=='flank'&&!E.cover){
+    var facing=Math.atan2((BASE.y0+BASE.y1)*.5*TILE-E.y,(BASE.x0+BASE.x1)*.5*TILE-E.x);
+    E.cover={x:E.x+Math.cos(facing)*23,y:E.y+Math.sin(facing)*23,angle:facing+Math.PI/2,owner:E,hp:180,progress:0};
+    siegeCover.push(E.cover);
+  }
+  E.building=false;E.crouched=false;
+  if(E.cover&&E.cover.hp>0){
+    if(E.cover.progress<1){
+      E.cover.progress=Math.min(1,E.cover.progress+dt/4.5);E.building=true;E.crouched=true;
+      E.ang=E.cover.angle-Math.PI/2;E.walk+=dt*5;return;
+    }
+    E.coverCycle=(E.coverCycle||0)+dt;
+    E.crouched=(E.coverCycle+(E.sid||0)*.37)%3.6<2.1;
+    if(E.crouched&&E.siegeRole==='rifle')return;
+  }
+
+  if(E.siegeRole==='demo'){
+    if(E.hurt>0)E.demoCharge=0;
+    E.demoCharge+=dt;
+    E.ang=Math.atan2((BASE.y0+BASE.y1)*.5*TILE-E.y,(BASE.x0+BASE.x1)*.5*TILE-E.x);
+    if(E.demoCharge>=5){
+      E.demoCharge=0;
+      var tx=(BASE.x0+BASE.x1)*.5*TILE,ty=(BASE.y0+BASE.y1)*.5*TILE;
+      // Lob a visible frag toward the nearest interior edge of the base.
+      tx=Math.max((BASE.x0+2)*TILE,Math.min((BASE.x1-2)*TILE,E.x));
+      ty=Math.max((BASE.y0+2)*TILE,Math.min((BASE.y1-2)*TILE,E.y));
+      enades.push({sx:E.x,sy:E.y,x:E.x,y:E.y,tx:tx,ty:ty,t:0,
+        dur:Math.max(1.2,Math.hypot(tx-E.x,ty-E.y)/240),spin:8,rot:0,pw:1,baseDamage:8});
+      sfx('reload',.4);
+    }
+  }else if(!player.dead&&!inBase(player.x,player.y)&&Math.hypot(player.x-E.x,player.y-E.y)<420&&los(E.x,E.y,player.x,player.y)&&!smokeBlocked(E.x,E.y,player.x,player.y)){
+    E.ang=Math.atan2(player.y-E.y,player.x-E.x);
+    if(E.siegeCD<=0){enemyShot(E,E.d);E.coverFlash=.12;E.siegeCD=1.1;}
+  }
+  if(E.siegeRole==='rifle'&&E.siegeCD<=0&&!player.dead){
+    var bx=Math.max(BASE.x0*TILE,Math.min(BASE.x1*TILE,E.x));
+    var by=Math.max(BASE.y0*TILE,Math.min(BASE.y1*TILE,E.y));
+    E.ang=Math.atan2(by-E.y,bx-E.x);E.siegeCD=.32;E.coverFlash=.12;
+    fx.push({t:'baseTracer',x:E.x,y:E.y-27,tx:bx,ty:by,life:.13,max:.13});
+    impact(bx,by);sfx('enemy',.18);hurtRaidedBase(.35);
+  }
+  if(E.siegeRole==='flank'){
+    E.flankWait=(E.flankWait==null?2+(E.sid||0)%3:E.flankWait)-dt;
+    if(E.flankWait<=0){
+      E.flankWait=2+(E.sid||0)%3;E.flankSide=!E.flankSide;
+      var patrolOffset=(E.sid||0)%4;
+      var dest=freeSpot((E.flankSide?17.5+patrolOffset*2:27.5+patrolOffset)*TILE,(E.flankSide?40.5:45.5+patrolOffset*2)*TILE);
+      if(!inBase(dest.x,dest.y)){E.holdX=dest.x;E.holdY=dest.y;E.siegePath=null;}
+    }
+  }
+}
 function updateAirfield(dt){
   updateOil(dt); var remaining=0;
   for(var i=0;i<aircraft.length;i++){ var A=aircraft[i]; if(A.dead) continue; remaining++; if(A.hurt>0) A.hurt-=dt;
@@ -6633,18 +6804,29 @@ function updateAirfield(dt){
       A.deployed++; A.unload=rr(1.4,2.1); if(A.deployed===1) banner(A.name+' UNLOADING','WEAPONS AND TROOPS ON THE APRON',2.4);
     }}
   }
-  if(airAssaultWave<2){
+  if(!BASE.waveStarted&&!inBase(player.x,player.y))BASE.waveStarted=true;
+  var waveAlive=enemies.some(function(e){return e.airSiege&&e.hp>0;});
+  if(airAssaultWave<2&&BASE.waveStarted&&!waveAlive){
     airAssaultT-=dt;
+    if(airAssaultT<=5&&!BASE.waveWarned){
+      BASE.waveWarned=true;banner('ENEMY WAVE '+(airAssaultWave+1)+' INCOMING','5 SECONDS · DEFEND THE BASE EXITS',5);sfx('ric',.7);
+    }
     if(airAssaultT<=0){
-      airAssaultWave++;
+      airAssaultWave++;BASE.waveWarned=false;
+      // Four builders per wave: one forward rifle position, one rear rifle position,
+      // and two staggered demolition positions. The remaining four troops patrol.
+      var positions=airAssaultWave===1?[[8,40],[18,35],[16,40],[19,40],[22,39],[27,45],[6,36],[23,39]]:
+        [[27,45],[33,51],[27,51],[27,54],[21,40],[29,43],[31,44],[28,54]];
       for(var aw=0;aw<8;aw++){
-        var waveSpot=freeSpot((27+aw%4*1.25)*TILE,(42+Math.floor(aw/4)*10+rr(-1,1))*TILE);
-        spawnEnemy(aw===0?'elite':(aw%3===0?'rusher':'rifleman'),waveSpot.x,waveSpot.y,false,null,false);
-        var baseRaider=enemies[enemies.length-1]; baseRaider.marine=1; baseRaider.baseAssault=airAssaultWave;
+        var hold=freeSpot((positions[aw][0]+.5)*TILE,(positions[aw][1]+.5)*TILE);
+        var arrival=freeSpot((32+aw%4*2)*TILE,(36+Math.floor(aw/4)*3)*TILE);
+        if(inBase(hold.x,hold.y)||inBase(arrival.x,arrival.y))continue;
+        spawnEnemy('rifleman',arrival.x,arrival.y,false,null,false);
+        var unit=enemies[enemies.length-1];unit.airSiege=true;unit.siegeRole=aw<2?'rifle':aw<6?'flank':'demo';
+        unit.holdX=hold.x;unit.holdY=hold.y;unit.siegeCD=1;unit.demoCharge=0;unit.routeWait=0;
       }
-      banner('BASE ASSAULT '+airAssaultWave+' OF 2','ENEMY WAVE INBOUND',2.5);
-      airAssaultT=airAssaultWave===1?34:999;
-      hud();
+      banner('ENEMY WAVE '+airAssaultWave+' OF 2','ENEMIES TAKING POSITIONS OUTSIDE THE BASE',3);
+      airAssaultT=20;hud();
     }
   }
   if(!remaining&&enemies.length===0&&airAssaultWave>=2&&state==='play'&&!player.dead) spawnAirfieldBoss();
@@ -6654,39 +6836,87 @@ function drawAircraft(c,A){
   c.save(); c.translate(A.x,A.y); c.rotate(A.ang); c.scale(planeScale,planeScale);
   if(A.dead){ c.globalAlpha=.55; }
   c.fillStyle='rgba(0,0,0,.32)'; c.beginPath(); c.ellipse(4,8,A.cargo?58:42,A.cargo?19:14,0,0,6.3); c.fill();
-  c.fillStyle=A.dead?'#252625':(A.cargo?'#59614f':'#68727a');
-  c.beginPath(); c.moveTo(A.cargo?64:50,0); c.lineTo(-42,-9); c.lineTo(-55,-5); c.lineTo(-55,5); c.lineTo(-42,9); c.closePath(); c.fill(); outl(c,'#151a1d',2);
-  c.beginPath(); c.moveTo(2,-6); c.lineTo(-28,-(A.cargo?42:34)); c.lineTo(-39,-35); c.lineTo(-18,-4); c.closePath(); c.fill(); outl(c,'#151a1d',2);
-  c.beginPath(); c.moveTo(2,6); c.lineTo(-28,(A.cargo?42:34)); c.lineTo(-39,35); c.lineTo(-18,4); c.closePath(); c.fill(); outl(c,'#151a1d',2);
-  // Cockpit glazing, nose panels and fuselage seams.
-  c.fillStyle='#263b43'; rrect(c,39,-6,16,12,5); c.fill(); outl(c,'#11191c',1.2);
-  c.strokeStyle='rgba(174,202,211,.7)'; c.lineWidth=.8;
-  c.beginPath(); c.moveTo(46,-5); c.lineTo(46,5); c.moveTo(39,0); c.lineTo(55,0); c.stroke();
-  c.strokeStyle='rgba(28,34,31,.65)'; c.lineWidth=.7;
-  for(var pn=-32;pn<=25;pn+=14){ c.beginPath(); c.moveTo(pn,-8); c.lineTo(pn,8); c.stroke(); }
-  c.beginPath(); c.moveTo(-40,-5); c.lineTo(35,-5); c.moveTo(-40,5); c.lineTo(35,5); c.stroke();
-  // Four detailed engine nacelles under the wings.
-  var engPos=[[-18,-29],[-4,-18],[-18,29],[-4,18]];
-  for(var eg=0;eg<engPos.length;eg++){
-    var ex=engPos[eg][0],ey=engPos[eg][1];
-    c.fillStyle='#424b45'; c.beginPath(); c.ellipse(ex,ey,10,5.3,0,0,6.3); c.fill(); outl(c,'#131713',1.2);
-    c.fillStyle='#1a211f'; c.beginPath(); c.ellipse(ex+7,ey,3.6,3.5,0,0,6.3); c.fill();
-    c.fillStyle='#87918a'; c.beginPath(); c.arc(ex+7,ey,1.4,0,6.3); c.fill();
+  // Layered airframe: swept wings and tail beneath a rounded, shaded fuselage.
+  var span=A.cargo?42:34,nose=A.cargo?64:50;
+  function panel(points,fill){
+    c.beginPath();c.moveTo(points[0][0],points[0][1]);
+    for(var p=1;p<points.length;p++)c.lineTo(points[p][0],points[p][1]);
+    c.closePath();c.fillStyle=fill;c.fill();outl(c,'#202723',.8);
   }
-  // Landing gear, wing stripes and navigation lights.
-  c.fillStyle='#161b19'; c.beginPath(); c.arc(-15,-10,3,0,6.3); c.fill(); c.beginPath(); c.arc(-15,10,3,0,6.3); c.fill();
-  c.strokeStyle='rgba(220,226,219,.45)'; c.lineWidth=1.2;
-  c.beginPath(); c.moveTo(-25,-35); c.lineTo(-19,-27); c.moveTo(-25,35); c.lineTo(-19,27); c.stroke();
-  c.fillStyle='#48a96a'; c.beginPath(); c.arc(-37,-35,1.8,0,6.3); c.fill();
-  c.fillStyle='#d6453d'; c.beginPath(); c.arc(-37,35,1.8,0,6.3); c.fill();
-  // North Korean flag marking: blue borders, red field, white disc and red star.
-  c.fillStyle='#1c4f9b'; c.fillRect(-19,-7,22,14);
-  c.fillStyle='#fff'; c.fillRect(-19,-5,22,10);
-  c.fillStyle='#c92d35'; c.fillRect(-19,-4,22,8);
-  c.fillStyle='#fff'; c.beginPath(); c.arc(-12,0,3.5,0,6.3); c.fill();
-  c.fillStyle='#c92d35'; c.beginPath();
-  for(var nk=0;nk<10;nk++){ var nka=-Math.PI/2+nk*Math.PI/5,nkr=nk%2?1.25:3; var nkx=-12+Math.cos(nka)*nkr,nky=Math.sin(nka)*nkr; if(nk===0)c.moveTo(nkx,nky);else c.lineTo(nkx,nky); }
-  c.closePath(); c.fill();
+  for(var side=-1;side<=1;side+=2){
+    panel([[8,side*6],[-25,side*span],[-38,side*(span-2)],[-18,side*7]],A.dead?'#333630':'#626b59');
+    panel([[-35,side*5],[-48,side*20],[-56,side*19],[-49,side*4]],'#515b4d');
+    // Flaps, access panels and worn leading edges.
+    c.strokeStyle='#353f35';c.lineWidth=.55;
+    c.beginPath();c.moveTo(-17,side*10);c.lineTo(-32,side*(span-3));
+    c.moveTo(-7,side*18);c.lineTo(-23,side*18);
+    c.moveTo(-18,side*30);c.lineTo(-31,side*30);c.stroke();
+    c.strokeStyle='rgba(199,201,176,.55)';c.lineWidth=.65;
+    c.beginPath();c.moveTo(5,side*8);c.lineTo(-25,side*(span-1));c.stroke();
+    // Exhaust streaks remain fixed to each engine, never flickering randomly.
+    for(var eng=0;eng<2;eng++){
+      var ex=eng?-19:-4,ey=side*(eng?31:18);
+      c.fillStyle='rgba(24,27,23,.25)';
+      c.beginPath();c.ellipse(ex-10,ey,12,2.5,0,0,6.3);c.fill();
+      var metal=c.createLinearGradient(0,ey-4,0,ey+4);
+      metal.addColorStop(0,'#899184');metal.addColorStop(.4,'#596354');metal.addColorStop(1,'#2e3730');
+      c.fillStyle=metal;rrect(c,ex-9,ey-4.4,20,8.8,4);c.fill();outl(c,'#202821',.8);
+      c.fillStyle='#171e1c';c.beginPath();c.ellipse(ex+8,ey,2.5,3.4,0,0,6.3);c.fill();
+      c.strokeStyle='#68746a';c.lineWidth=.45;
+      for(var fan=0;fan<6;fan++){
+        var fa=fan*Math.PI/3;c.beginPath();c.moveTo(ex+8,ey);c.lineTo(ex+8+Math.cos(fa)*1.8,ey+Math.sin(fa)*2.8);c.stroke();
+      }
+      c.fillStyle='#b0b5a4';c.fillRect(ex+7.5,ey-.5,1,1);
+      c.strokeStyle='#30392f';c.strokeRect(ex-4,ey-3.2,5,6.4);
+    }
+    c.fillStyle=side<0?'#63917b':'#ae5248';
+    c.beginPath();c.arc(-29,side*(span-1),.9,0,6.3);c.fill();
+  }
+  var skin=c.createLinearGradient(0,-10,0,10);
+  skin.addColorStop(0,A.dead?'#343832':'#454f42');
+  skin.addColorStop(.35,A.dead?'#494a3f':'#818975');
+  skin.addColorStop(.6,A.dead?'#383a33':'#69735e');skin.addColorStop(1,'#343e33');
+  c.fillStyle=skin;c.beginPath();c.moveTo(nose,0);
+  c.bezierCurveTo(nose-2,-8,24,-10,-28,-9);
+  c.lineTo(-55,-4);c.lineTo(-58,0);c.lineTo(-55,4);c.lineTo(-28,9);
+  c.bezierCurveTo(24,10,nose-2,8,nose,0);c.closePath();c.fill();outl(c,'#202821',1);
+  // Riveted skin panels and narrow cockpit window panes.
+  c.strokeStyle='rgba(29,37,29,.55)';c.lineWidth=.4;
+  for(var seam=-30;seam<36;seam+=11){
+    c.beginPath();c.moveTo(seam,-7.5);c.lineTo(seam,7.5);c.stroke();
+    c.fillStyle='rgba(200,203,180,.5)';
+    for(var riv=-6;riv<=6;riv+=3)c.fillRect(seam+.7,riv,.45,.45);
+  }
+  c.fillStyle='#243a3d';
+  panel([[nose-17,-6],[nose-9,-4],[nose-7,-.7],[nose-18,-.7]],'#263c40');
+  panel([[nose-18,.7],[nose-7,.7],[nose-9,4],[nose-17,6]],'#263c40');
+  c.strokeStyle='#a0b0a5';c.lineWidth=.6;
+  c.beginPath();c.moveTo(nose-15,-5);c.lineTo(nose-10,-3);c.moveTo(nose-15,5);c.lineTo(nose-10,3);c.stroke();
+  c.strokeStyle='#424c3f';c.lineWidth=.55;
+  c.beginPath();c.moveTo(nose-5,-3);c.quadraticCurveTo(nose-8,0,nose-5,3);c.stroke();
+  // Hatches, service stencils, aerial and a raised tail spine.
+  c.strokeStyle='#374232';c.strokeRect(19,-5,6,10);c.strokeRect(-31,-5,7,10);
+  c.fillStyle='#c0bea0';c.fillRect(23,-1,1.4,.6);
+  c.font='bold 3px monospace';c.fillText('07'+((A.i||0)+1),-15,2);
+  c.fillStyle='#b3b39a';c.fillRect(10,-4,3,.5);c.fillRect(10,-2.8,2,.4);
+  panel([[-55,0],[-44,-2],[-30,0],[-44,2]],'#8a907b');
+  c.strokeStyle='#323a30';c.lineWidth=.7;c.beginPath();c.moveTo(6,0);c.lineTo(2,-3);c.stroke();
+  // Small faded national marking leaves the airframe details visible.
+  c.save();c.translate(-22,0);c.scale(.32,.32);c.globalAlpha*=.8;
+  c.fillStyle='#345578';c.fillRect(-11,-7,22,14);
+  c.fillStyle='#d1d0ba';c.fillRect(-11,-5,22,10);
+  c.fillStyle='#a3433f';c.fillRect(-11,-4,22,8);
+  c.fillStyle='#d1d0ba';c.beginPath();c.arc(-5,0,3.5,0,6.3);c.fill();
+  c.fillStyle='#a3433f';c.beginPath();
+  for(var nk=0;nk<10;nk++){var angle=-Math.PI/2+nk*Math.PI/5,radius=nk%2?1.25:3;
+    var px=-5+Math.cos(angle)*radius,py=Math.sin(angle)*radius;if(!nk)c.moveTo(px,py);else c.lineTo(px,py);}
+  c.closePath();c.fill();c.restore();
+  // Deterministic paint chips and grime across the upper fuselage.
+  for(var wear=0;wear<42;wear++){
+    var wx=-39+hs(wear*17+(A.i||0)*71)*72,wy=(hs(wear*29+11)-.5)*13;
+    c.fillStyle=wear%3?'rgba(34,39,29,.23)':'rgba(191,190,162,.55)';
+    c.fillRect(wx,wy,.6+hs(wear+4)*2.1,.3+hs(wear+9)*.6);
+  }
   if(A.cargo&&!A.dead){
     c.fillStyle='#222823'; rrect(c,-49,10,30,15,2); c.fill(); outl(c,'#121612',1.2);
     c.fillStyle='#596055'; rrect(c,-50,24,34,6,1); c.fill(); outl(c,'#151915',1);
@@ -6695,17 +6925,52 @@ function drawAircraft(c,A){
   }
   c.restore();
   if(!A.dead){
-    var pile=A.weaponPile||0,pileX=A.x+460,pileY=A.y+260;
-    for(var wp=0;wp<pile;wp++){
-      var pc=wp%4,pr=Math.floor(wp/4);
-      c.fillStyle=shade('#796a42',.9+(wp%3)*.08); rrect(c,pileX+pc*18,pileY-pr*12,16,11,2); c.fill(); outl(c,'#2a2112',1.2);
-      c.strokeStyle='#c6aa4d'; c.lineWidth=1; c.beginPath(); c.moveTo(pileX+pc*18+3,pileY-pr*12+5); c.lineTo(pileX+pc*18+13,pileY-pr*12+5); c.stroke();
-    }
-    c.fillStyle='rgba(228,238,241,.8)'; c.font='bold 7px Arial'; c.fillText('WEAPON CARGO',pileX,pileY+18);
+    drawAirfieldCargo(c,A);
+
   }
   if(!A.dead){ var barY=A.y-(A.cargo?310:58),barW=A.cargo?250:72;
     c.fillStyle='rgba(0,0,0,.65)'; rrect(c,A.x-barW/2,barY,barW,7,3); c.fill(); c.fillStyle='#d84a34'; rrect(c,A.x-barW/2+2,barY+1.5,(barW-4)*(A.hp/A.mx),4,2); c.fill();
     c.fillStyle='#dce3e6'; c.font='bold 9px Arial'; c.textAlign='center'; c.fillText(A.name,A.x,barY-5); c.textAlign='start'; }
+}
+// Mixed wooden ammunition crates, steel weapon cases and open rifle boxes.
+function drawAirfieldCargo(c,A){
+  var x=A.x+460,y=A.y+260,count=12+(A.weaponPile||0);
+  c.save();c.translate(x,y);
+  c.fillStyle='rgba(18,24,21,.25)';c.beginPath();c.ellipse(40,12,125,37,0,0,6.3);c.fill();
+  for(var pallet=0;pallet<3;pallet++){
+    var px=-65+pallet*76;
+    c.fillStyle='#504936';c.fillRect(px,-20,70,45);
+    for(var slat=0;slat<6;slat++){
+      c.fillStyle=slat%2?'#817154':'#716247';c.fillRect(px+2,-18+slat*7,66,5);
+    }
+  }
+  for(var n=0;n<count;n++){
+    var col=n%6,row=Math.floor(n/6),wide=n%4===0,w=wide?45:27+(n%3)*4,h=wide?14:20;
+    var bx=-66+col*35+(row%2)*4,by=10-row*16,depth=8;
+    c.fillStyle='rgba(0,0,0,.28)';c.fillRect(bx+4,by+5,w+3,h);
+    c.fillStyle=n%3===0?'#333e34':'#535139';c.fillRect(bx,by,w,h);
+    c.fillStyle=n%3===0?'#53604d':'#817555';c.fillRect(bx,by-depth,w,h);
+    c.strokeStyle='#292f24';c.lineWidth=1;c.strokeRect(bx,by-depth,w,h+depth);
+    c.fillStyle='#39402d';c.fillRect(bx+4,by-depth,3,h+depth);c.fillRect(bx+w-7,by-depth,3,h+depth);
+    c.strokeStyle='rgba(202,185,135,.35)';c.beginPath();c.moveTo(bx+9,by-4);c.lineTo(bx+w-9,by-4);c.stroke();
+    c.fillStyle='#c1b68d';c.font='bold 4px monospace';c.fillText(wide?'7.62 × 54':'조선',bx+9,by+5);
+    c.fillStyle='#a64e40';c.fillRect(bx+w-12,by+h-5,5,3);
+    c.fillStyle='#aca68b';c.fillRect(bx+4,by+3,3,2);c.fillRect(bx+w-7,by+3,3,2);
+    // Open top cases expose dark rifles with wood stocks and steel barrels.
+    if(n===count-1||n===count-3){
+      c.fillStyle='#202920';c.fillRect(bx+5,by-depth+2,w-10,h-4);
+      for(var rifle=0;rifle<2;rifle++){
+        var ry=by-depth+5+rifle*5;
+        c.fillStyle='#846045';c.fillRect(bx+7,ry,6,3);
+        c.fillStyle='#737c72';c.fillRect(bx+13,ry,w-21,1.5);
+        c.fillStyle='#111a18';c.fillRect(bx+15,ry+1,3,3);
+      }
+    }
+  }
+  c.fillStyle='#3b4538';rrect(c,-83,23,45,11,2);c.fill();outl(c,'#20291f',1);
+  c.strokeStyle='#92987a';c.strokeRect(-79,25,5,7);c.strokeRect(-47,25,5,7);
+  c.fillStyle='#c6bf9d';c.font='bold 7px monospace';c.fillText('KPA / AMMUNITION',-55,44);
+  c.restore();
 }
 function updateDepotWorkers(dt){
   if(mapKind!=='trench') return;
@@ -7595,6 +7860,7 @@ function camoFleck(c,seed,x0,y0,w,h,n,pal){
 /* Upright 3/4 unit: board is overhead, figures stand up and face the camera-ish.
    Feet sit at (x,y); everything else is built upward from there. */
 function drawUnit(c,x,y,ang,col,band,walk,amt,kind,gun,dark,noHead,rus,seed,recoil,workPose,playerGait,appearance){
+  var unitSkin=rus?'#ae7b56':SKIN,unitSkinShade=rus?'#8e5e40':SKIN2;
   var kit=appearance||(workPose?PKITS[workPose.scout?2:3]:PK);
   seed=seed||7;
   recoil=recoil||0;
@@ -7673,7 +7939,7 @@ function drawUnit(c,x,y,ang,col,band,walk,amt,kind,gun,dark,noHead,rus,seed,reco
   if(kit.operatorHead){kit=PKITS[3];col=kit.col;PAL=kit.pal;}
   if(kit.faceUp){
     // Open eyes remain visible below the helmet rim; no nose or mouth detail.
-    c.fillStyle=SKIN;c.beginPath();c.ellipse(1,-31,6.1,6.8,0,0,6.3);c.fill();outl(c,'#75533b',.7);
+    c.fillStyle=unitSkin;c.beginPath();c.ellipse(1,-31,6.1,6.8,0,0,6.3);c.fill();outl(c,'#75533b',.7);
     c.save();c.beginPath();c.ellipse(1,-35.5,8.2,6.5,0,Math.PI,Math.PI*2);c.lineTo(9.2,-34);c.lineTo(-7.2,-34);c.closePath();
     c.fillStyle=col;c.fill();outl(c,'#263024',1.5);c.clip();camoFleck(c,seed+40,-8,-42,18,9,9,PAL);c.restore();
     gearLine(c,-7,-34,9,-34,shade(col,.65),2.2);
@@ -7684,7 +7950,7 @@ function drawUnit(c,x,y,ang,col,band,walk,amt,kind,gun,dark,noHead,rus,seed,reco
       c.fillStyle='#0a0a0e';c.beginPath();c.arc(eyeX,-31.5,1,0,6.3);c.fill();
     }
   } else {
-  c.fillStyle=rus?(mapKind==='airfield'?'#8d9b99':'#31352e'):(kit.mask?'#31352e':SKIN); c.beginPath(); c.arc(1.2,-31.5,7.2,0,6.3); c.fill(); outl(c,'#15130e',1.9);
+  c.fillStyle=rus?(mapKind==='airfield'?'#8d9b99':'#31352e'):(kit.mask?'#31352e':unitSkin); c.beginPath(); c.arc(1.2,-31.5,7.2,0,6.3); c.fill(); outl(c,'#15130e',1.9);
   if(kit.bareHead){
     // Short blonde hair follows the scalp, leaving the face and ears uncovered.
     c.fillStyle=kit.hair;
@@ -7724,7 +7990,7 @@ function drawUnit(c,x,y,ang,col,band,walk,amt,kind,gun,dark,noHead,rus,seed,reco
   }
   if(!back){
     if(rus&&kind==='heavy'){ c.fillStyle='rgba(40,52,58,.85)'; rrect(c,-4.6,-30.4,11,5,1.6); c.fill(); outl(c,'#15130e',1.2); }
-    else if(rus||kit.mask){ c.fillStyle=SKIN; rrect(c,-3.6,-30.2,9.4,3.1,1.3); c.fill(); }      // balaclava eye slit
+    else if(rus||kit.mask){ c.fillStyle=unitSkin; rrect(c,-3.6,-30.2,9.4,3.1,1.3); c.fill(); }      // balaclava eye slit
     if(!rus&&kit.shades){                                        // sunglasses
       c.fillStyle='#15130e'; rrect(c,-5.2,-31.1,11.4,4,1.5); c.fill();
       c.fillStyle='rgba(126,196,224,.4)';
@@ -7774,12 +8040,12 @@ function drawUnit(c,x,y,ang,col,band,walk,amt,kind,gun,dark,noHead,rus,seed,reco
     c.save(); c.translate(hx,hy); c.rotate(gAng); c.scale(.92,.92*mir);
     drawGun(c,gun,0,0);
     // Trigger hand is drawn over the weapon so it remains readable.
-    c.fillStyle=SKIN2; c.beginPath(); c.arc(0,1.5,2.8,0,6.3); c.fill(); outl(c,'#15130e',1.4);
+    c.fillStyle=unitSkinShade; c.beginPath(); c.arc(0,1.5,2.8,0,6.3); c.fill(); outl(c,'#15130e',1.4);
     c.restore();
 
     if(!kit.hideSupportArm){
     // Support hand on the foregrip, also above the weapon: both hands stay visible.
-    c.fillStyle=SKIN2; c.beginPath(); c.arc(gripX,gripY,2.75,0,6.3); c.fill(); outl(c,'#15130e',1.4);
+    c.fillStyle=unitSkinShade; c.beginPath(); c.arc(gripX,gripY,2.75,0,6.3); c.fill(); outl(c,'#15130e',1.4);
     // Small glove cuffs help separate both hands from the sleeves and gun.
     c.strokeStyle='#34382f'; c.lineWidth=1.35;
     c.beginPath(); c.arc(gripX,gripY,3.1,.15,2.7); c.stroke();
@@ -9638,11 +9904,26 @@ function draw(){
       drawCompoundBoss(ctx,U);
     } else if(!isP&&U.baseAssault){
       drawUnit(ctx,U.x,U.y,U.ang,ASSAULT_KIT.col,ASSAULT_KIT.band,U.walk||0,U.amt||0,'rifleman','rifle',false,false,false,U.sid,0,null,false,ASSAULT_KIT);
+    } else if(!isP&&U.airSiege&&U.crouched){
+      ctx.save();ctx.translate(U.x,U.y);
+      drawUnit(ctx,0,0,U.ang,U.d.col,U.d.band,U.walk||0,0,U.k,U.building?null:gunFor(U.k),false,false,true,U.sid||0,0);
+      if(U.building){
+        var dig=Math.sin(timeAlive*7+(U.sid||0))*.3;
+        ctx.save();ctx.translate(5,-15);ctx.rotate(U.ang+dig);
+        gearLine(ctx,0,0,20,0,'#a3895b',2);gearBox(ctx,18,-3,7,6,'#65736e','#34423c',1);ctx.restore();
+      }
+      ctx.restore();
     } else if(!isP&&U.finalBoss){
       drawMountedBoss(ctx,U);
     } else {
       drawUnit(ctx,U.x,U.y,isP?U.face:U.ang,isP?PK.col:U.d.col,isP?PK.band:U.d.band,
                U.walk||0,U.amt||0,isP?null:U.k,isP?((U.flamer>0)?'flamer':U.wep):gunFor(U.k),false,false,!isP,U.sid||0,isP?(U.recoil||0):0,null,isP);
+    }
+    if(U.airSiege&&U.building){
+      ctx.fillStyle='#deebe9';ctx.font='bold 7px Arial';ctx.textAlign='center';ctx.fillText('BUILDING COVER',U.x,U.y-42);ctx.textAlign='start';
+    }else if(U.airSiege&&U.siegeRole==='demo'){
+      ctx.fillStyle='#ffd700';ctx.font='bold 8px Arial';ctx.textAlign='center';
+      ctx.fillText('DEMOLITION '+Math.ceil(5-(U.demoCharge||0))+'s',U.x,U.y-49);ctx.textAlign='start';
     }
     if(!isP&&U.airWorker&&U.carry){
       ctx.save(); ctx.translate(U.x,U.y-17); ctx.fillStyle='#786941'; rrect(ctx,-8,-5,16,10,2); ctx.fill(); outl(ctx,'#241d10',1.5);
@@ -9929,6 +10210,7 @@ function draw(){
     ctx.restore();
   }
 
+  drawSiegeCover(ctx);
   drawTruck(ctx);
   for(var dtw=0;dtw<depots.length;dtw++) drawDepotTruck(ctx,depots[dtw]);
 
@@ -9937,7 +10219,38 @@ function draw(){
     var AG2=aaGuns[ag2];
     if(AG2.x<cam.x-90||AG2.x>cam.x+VW+90||AG2.y<cam.y-90||AG2.y>cam.y+VH+90) continue;
     ctx.fillStyle='rgba(0,0,0,.35)'; ctx.beginPath(); ctx.ellipse(AG2.x,AG2.y+3,15,8,0,0,6.3); ctx.fill();
-    if(AG2.tower){
+    if(AG2.airfield){
+      // The gun stays at its combat coordinates; timber supports project down to the ground.
+      ctx.save();ctx.translate(AG2.x,AG2.y);
+      ctx.fillStyle='rgba(12,20,19,.28)';ctx.beginPath();ctx.ellipse(13,60,42,15,-.18,0,6.3);ctx.fill();
+      for(var post=0;post<4;post++){
+        var lx=post%2?25:-25,ly=post<2?-13:15,foot=ly+52;
+        gearBox(ctx,lx-5,foot-2,12,7,'#68726c','#343e37',1);
+        gearLine(ctx,lx,ly,lx+(lx<0?-3:3),foot,'#493722',8);
+        gearLine(ctx,lx-2,ly,lx-2+(lx<0?-3:3),foot,'#98764d',2);
+      }
+      gearLine(ctx,-25,18,28,65,'#765b3b',5);gearLine(ctx,25,18,-28,65,'#8b6b45',5);
+      gearLine(ctx,-26,42,26,42,'#4f402c',4);
+      gearLine(ctx,-25,-10,-28,64,'#a18256',1);
+      // Thick deck fascia and individually shaded floorboards.
+      gearBox(ctx,-32,-17,64,40,'#51402c','#2b3026',2);
+      for(var plank=0;plank<8;plank++){
+        gearBox(ctx,-31+plank*8,-17,7,33,plank%2?'#8c7550':'#796342','#4d4230',.5);
+        ctx.fillStyle='#c0ae85';ctx.fillRect(-29+plank*8,-14,1,1);ctx.fillRect(-29+plank*8,12,1,1);
+      }
+      // Ladder is offset so the full cross-bracing remains visible.
+      gearLine(ctx,15,20,28,70,'#ac8a59',3);gearLine(ctx,25,20,38,70,'#745839',3);
+      for(var rung=0;rung<9;rung++)gearLine(ctx,15+rung*1.5,22+rung*5.5,25+rung*1.5,22+rung*5.5,'#b39364',2);
+      for(var rail=-1;rail<=1;rail+=2){
+        gearLine(ctx,rail*29,-17,rail*29,-32,'#705535',4);
+        gearLine(ctx,rail*29,-32,rail*29,3,'#98794f',2);
+      }
+      gearLine(ctx,-29,-30,29,-30,'#96774f',4);
+      gearLine(ctx,-29,-32,29,-32,'#d7e2df',2);
+      ctx.fillStyle='#272e22';ctx.fillRect(23,1,12,10);
+      ctx.fillStyle='#b2a374';ctx.fillRect(25,4,8,2);
+      ctx.restore();
+    }else if(AG2.tower){
       // Braced steel legs, elevated deck, ladder and armored firing shield.
       for(var leg=-1;leg<=1;leg+=2){
         gearLine(ctx,AG2.x+leg*13,AG2.y,AG2.x+leg*18,AG2.y+28,'#394a47',4);
@@ -9955,6 +10268,18 @@ function draw(){
       outl(ctx,'#2c2416',1.2);
     }
     ctx.save(); ctx.translate(AG2.x,AG2.y); ctx.rotate(AG2.ang);
+    if(AG2.airfield){
+      // Seated soldier: boots, winter fatigues, vest, hands and helmet.
+      gearLine(ctx,-18,-5,-25,-9,'#7b8774',6);gearLine(ctx,-18,5,-25,9,'#909b87',6);
+      gearBox(ctx,-28,-12,7,5,'#252e29','#18221d',1);gearBox(ctx,-28,7,7,5,'#252e29','#18221d',1);
+      ctx.fillStyle='#899183';rrect(ctx,-23,-9,16,18,4);ctx.fill();outl(ctx,'#303c31',1);
+      gearBox(ctx,-18,-7,8,14,'#4f5e45','#2e3a2c',1);
+      gearLine(ctx,-15,-8,-4,-7,'#a0a695',4);gearLine(ctx,-15,8,-4,7,'#a0a695',4);
+      gearLine(ctx,-4,-7,3,-5,'#ae7b56',3);gearLine(ctx,-4,7,3,5,'#ae7b56',3);
+      ctx.fillStyle='#ae7b56';ctx.beginPath();ctx.arc(-12,0,5,0,6.3);ctx.fill();
+      ctx.fillStyle='#515e49';ctx.beginPath();ctx.arc(-15,0,6,0,6.3);ctx.fill();outl(ctx,'#263226',1);
+      ctx.fillStyle='#9da791';ctx.fillRect(-18,-3,3,1);ctx.fillRect(-15,2,2,2);
+    }
     ctx.fillStyle='#3d443c'; ctx.beginPath(); ctx.arc(0,0,7,0,6.3); ctx.fill(); outl(ctx,'#14170f',1.8);
     ctx.fillStyle='#2b322b';                                  // twin barrels
     rrect(ctx,4,-4.2,17,3,1.2); ctx.fill(); rrect(ctx,4,1.2,17,3,1.2); ctx.fill();

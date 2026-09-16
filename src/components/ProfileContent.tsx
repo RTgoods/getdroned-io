@@ -56,11 +56,13 @@ export function ProfileContent({ game, user, hasPurchased, isAdmin, completedSec
   const [saveMsg, setSaveMsg] = useState<string | null>(null)
   const [avatarOpen, setAvatarOpen] = useState(false)
   const [musicMuted, setMusicMuted] = useState(false)
+  const [autoAim, setAutoAim] = useState(false)
   const [resetting, setResetting] = useState(false)
   const [resetMsg, setResetMsg] = useState<string | null>(null)
 
   useEffect(() => {
     setMusicMuted(localStorage.getItem('gd_muted') === '1')
+    setAutoAim((localStorage.getItem('gd_autoAim') ?? localStorage.getItem('gd_autoFire')) === '1')
   }, [])
 
   const handleSave = useCallback(async (kitId: string) => {
@@ -229,6 +231,13 @@ export function ProfileContent({ game, user, hasPurchased, isAdmin, completedSec
               <span style={{ display: 'inline-block', width: 10, height: 2, background: UA.yellow, borderRadius: 1 }} />
               <span style={{ fontSize: 8, fontWeight: 900, letterSpacing: '3px', color: UA.yellow, textTransform: 'uppercase' }}>PILOT SETTINGS</span>
             </div>
+
+            <button type="button" role="switch" aria-checked={autoAim} aria-label="Auto Aim"
+              onClick={() => { const next = !autoAim; setAutoAim(next); localStorage.setItem('gd_autoAim', next ? '1' : '0') }}
+              style={{ width: '100%', padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, background: 'none', border: 'none', borderBottom: `1px solid ${UA.borderFaint}`, color: UA.yellow, cursor: 'pointer', textAlign: 'left' }}>
+              <span><strong>AUTO AIM</strong><span style={{ display: 'block', fontSize: 11, color: '#b0bdc6', marginTop: 5 }}>Aim at the closest visible enemy. Press FIRE to shoot. Off: aim manually. Saved on this device.</span></span>
+              <strong>{autoAim ? 'ON' : 'OFF'}</strong>
+            </button>
 
             {/* Music toggle */}
             <button
