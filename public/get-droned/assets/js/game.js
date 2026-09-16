@@ -1076,9 +1076,9 @@ function drawProp(c,o){
     // Use the normal playable soldier artwork, positioned along the mattress.
     var patientSeed=o.x*37+o.y*97;
     var brA=Math.sin(timeAlive*(1.2+hs(patientSeed)*.45)+patientSeed)*.45;
-    var patientKit=o.patientKit||(o.patientKit=Object.assign({},PKITS[o.sitting?2:0],{hideSupportArm:true}));
-    c.save();c.translate(x+w*.86,y+h*.52+brA);c.rotate(-Math.PI/2);c.scale(.95,1.35);
-    drawUnit(c,0,0,Math.PI/2,patientKit.col,patientKit.band,0,0,null,null,true,false,false,patientSeed,0,null,false,patientKit);
+    var patientKit=o.patientKit||(o.patientKit=Object.assign({},PKITS[o.sitting?2:0],{hideSupportArm:true,operatorHead:true}));
+    c.save();c.translate(x+w*(o.sitting?.76:.8),y+h*(o.sitting?.43:.58)+brA);c.rotate(-Math.PI/2+(o.sitting?.1:-.08));
+    drawUnit(c,0,0,Math.PI/2,patientKit.col,patientKit.band,o.sitting?1.1:3.7,o.sitting?.3:.12,null,null,true,false,false,patientSeed,0,null,false,patientKit);
     c.restore();
     if(!o.sitting){
     // Bedside IV stand, bag and flexible line following the patient's resting arm.
@@ -7669,6 +7669,21 @@ function drawUnit(c,x,y,ang,col,band,walk,amt,kind,gun,dark,noHead,rus,seed,reco
     c.fillStyle='rgba(126,16,12,.95)'; c.beginPath(); c.arc(1.2,-26,4.2,0,6.3); c.fill();
     c.restore(); c.restore(); return;
   }
+  var bodyKit=kit,bodyCol=col,bodyPAL=PAL;
+  if(kit.operatorHead){kit=PKITS[3];col=kit.col;PAL=kit.pal;}
+  if(kit.faceUp){
+    // Open eyes remain visible below the helmet rim; no nose or mouth detail.
+    c.fillStyle=SKIN;c.beginPath();c.ellipse(1,-31,6.1,6.8,0,0,6.3);c.fill();outl(c,'#75533b',.7);
+    c.save();c.beginPath();c.ellipse(1,-35.5,8.2,6.5,0,Math.PI,Math.PI*2);c.lineTo(9.2,-34);c.lineTo(-7.2,-34);c.closePath();
+    c.fillStyle=col;c.fill();outl(c,'#263024',1.5);c.clip();camoFleck(c,seed+40,-8,-42,18,9,9,PAL);c.restore();
+    gearLine(c,-7,-34,9,-34,shade(col,.65),2.2);
+    gearLine(c,-5,-38,5,-39,shade(col,1.2),.8);
+    gearBox(c,-8,-36,2,4,'#414b37','#263024',.5);
+    for(var eye=0;eye<2;eye++){
+      var eyeX=eye?3.7:-1.7;
+      c.fillStyle='#0a0a0e';c.beginPath();c.arc(eyeX,-31.5,1,0,6.3);c.fill();
+    }
+  } else {
   c.fillStyle=rus?(mapKind==='airfield'?'#8d9b99':'#31352e'):(kit.mask?'#31352e':SKIN); c.beginPath(); c.arc(1.2,-31.5,7.2,0,6.3); c.fill(); outl(c,'#15130e',1.9);
   if(kit.bareHead){
     // Short blonde hair follows the scalp, leaving the face and ears uncovered.
@@ -7727,7 +7742,10 @@ function drawUnit(c,x,y,ang,col,band,walk,amt,kind,gun,dark,noHead,rus,seed,reco
   }
   if(kind==='sniper'){ c.fillStyle='rgba(60,150,190,.85)'; rrect(c,-3,-30.6,9,3,1.2); c.fill(); outl(c,'#15130e',1.2); }
   if(kind==='rusher'){ c.fillStyle=shade(band,.9); rrect(c,-4,-26.5,10,3,1.4); c.fill(); }
+  }
   c.restore();
+
+  kit=bodyKit;col=bodyCol;PAL=bodyPAL;
 
   // Arms, weapon, and hands are only drawn when facing the player.
   // When back-facing (moving north) they would incorrectly appear in front of the body.
@@ -10639,7 +10657,7 @@ function draw(){
       ctx.fillStyle='#233942';rrect(ctx,hx,hy+5,hw,9,3);ctx.fill();
       ctx.fillStyle=health>.5?'#75d5a0':health>.25?'#e2b13c':'#e2644d';
       if(health>0){rrect(ctx,hx,hy+5,hw*health,9,3);ctx.fill();}
-      ctx.fillStyle='#aac6cc';ctx.font='9px Arial';ctx.textAlign='center';
+      ctx.fillStyle='#79b9f1';ctx.font='bold 9px Arial';ctx.textAlign='center';
       ctx.fillText((TOOLS[drone.kind]||TOOLS.drone).n+' · '+Math.max(0,drone.t).toFixed(1)+'s FLIGHT',VW/2,hy+26);
       drawDroneCameraPanel(ctx,hx,hy+34,hw,feedH);
     }
@@ -11333,7 +11351,7 @@ function drawDroneStand(P,col,cd){
       ctx.strokeStyle='#20282a'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(sx+47,sy+1); ctx.lineTo(sx+47,sy+10); ctx.stroke();
       ctx.fillStyle='#2a3436'; ctx.beginPath(); ctx.arc(sx+47,sy,3.2,0,6.3); ctx.fill();
       ctx.fillStyle='rgba(12,18,20,.78)'; rrect(ctx,sx-28,sy-59,56,9,2); ctx.fill();
-      ctx.fillStyle=live?col:'#83949b'; ctx.font='bold 6px Arial'; ctx.textAlign='center';
+      ctx.fillStyle=live?'#79b9f1':'#83949b'; ctx.font='bold 6px Arial'; ctx.textAlign='center';
       ctx.fillText(P.kind==='droneL'?'HEAVY DRONE CONTROL':'FPV MISSION CONTROL',sx,sy-52.5);
     }
     ctx.textAlign='start';
