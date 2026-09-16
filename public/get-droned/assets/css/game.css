@@ -97,7 +97,7 @@ h1 small{display:block;font-size:11px;letter-spacing:6px;color:#79b9f1;margin-to
 
 #banner{position:absolute;left:0;right:0;top:34%;z-index:8;text-align:center;pointer-events:none;opacity:0;transition:opacity .3s}
 #banner.show{opacity:1}
-#banner b{font-size:30px;font-weight:900;letter-spacing:5px;color:#f2ead2;text-shadow:0 3px 0 #000,0 0 24px rgba(192,86,47,.7)}
+#banner b{font-size:30px;font-weight:900;letter-spacing:5px;color:#f2ead2;text-shadow:0 3px 0 #000,0 0 24px rgba(0,87,183,.65)}
 #banner small{display:block;font-size:11px;letter-spacing:3px;color:#79b9f1;margin-top:6px;font-weight:800;text-shadow:0 1px 4px rgba(0,0,0,.8)}
 #bossVictory,#levelTwoBossVictory,#seaBossVictory,#levelFourBossVictory,#airBossVictory,#finalBossVictory{position:absolute;inset:0;z-index:18;pointer-events:none;display:flex;align-items:center;justify-content:center;opacity:0;transform:scale(1.08);transition:opacity .45s ease,transform .6s cubic-bezier(.2,.8,.2,1);background:radial-gradient(circle at 50% 45%,rgba(0,80,160,.42),rgba(4,8,20,.93) 68%)}
 #bossVictory.show,#levelTwoBossVictory.show,#seaBossVictory.show,#levelFourBossVictory.show,#airBossVictory.show,#finalBossVictory.show{opacity:1;transform:scale(1)}
