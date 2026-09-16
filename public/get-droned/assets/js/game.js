@@ -7250,8 +7250,6 @@ function gameOver(win,why){
 var hpF=document.getElementById('hpF'), apF=document.getElementById('apF'), flash=document.getElementById('dmgFlash');
 function hud(){
   if(!player) return;
-  var statusPanel=document.getElementById('statusBars');
-  statusPanel.style.top='112px';
   var healthPercent=Math.max(0,Math.min(100,player.hp/player.mx*100));
   hpF.style.width=healthPercent+'%';
   document.getElementById('hpPercent').textContent=Math.round(healthPercent)+'%';
@@ -7263,7 +7261,6 @@ function hud(){
   apF.style.width=armourPercent+'%';
   document.getElementById('apPercent').textContent=Math.round(armourPercent)+'%';
   document.getElementById('apBar').style.opacity=player.ap>0?1:.25;
-  document.getElementById('wname').innerHTML=WEAPONS[player.wep].name+' &nbsp;·&nbsp; <span id="ammo">'+player.mag+' / '+player.res+'</span>';
   document.getElementById('sector').textContent='SECTOR '+level;
   var rem=enemies.length+spawnQ;
   var lbl=rem+(rem===1?' HOSTILE':' HOSTILES');
@@ -10851,7 +10848,7 @@ function drawStick(){
   ctx.globalAlpha=1; ctx.restore();
 }
 function beltRect(i){ var w=46,h=46,g=6; return {x:VW-w-9,y:112+i*(h+g),w:w,h:h}; }
-function gunRect(i){ var w=46,h=46,g=6; return {x:9,y:112+(i+3)*(h+g),w:w,h:h}; }
+function gunRect(i){ var w=46,h=46,g=6; return {x:9,y:112+i*(h+g),w:w,h:h}; }
 function gunHit(cx,cy){
   if(!player||!player.guns) return -1;
   for(var i=0;i<player.guns.length;i++){ var R=gunRect(i);
@@ -10868,7 +10865,9 @@ function drawGunRail(){
       ctx.strokeStyle=on?'#e2b13c':'rgba(232,228,216,.35)'; ctx.lineWidth=on?2.6:1.6;
       rrect(ctx,R.x,R.y,R.w,R.h,8); ctx.stroke();
       if(on){ ctx.globalAlpha=.14; ctx.fillStyle='#e2b13c'; rrect(ctx,R.x,R.y,R.w,R.h,8); ctx.fill(); ctx.globalAlpha=1; }
-      ctx.save(); ctx.translate(R.x+R.w/2-(g.id==='pistol'?5:10)*.85,R.y+R.h/2-5); ctx.scale(.85,.85); drawGun(ctx,g.id,0,0); ctx.restore();
+      ctx.save();ctx.textAlign='center';ctx.fillStyle=on?'#ffd700':'#c7d5df';ctx.font='bold 6px Arial';
+      ctx.fillText(WEAPONS[g.id].name,R.x+R.w/2,R.y+9,R.w-6);ctx.restore();
+      ctx.save(); ctx.translate(R.x+R.w/2-(g.id==='pistol'?5:10)*.75,R.y+24); ctx.scale(.75,.75); drawGun(ctx,g.id,0,0); ctx.restore();
       var mg=on?player.mag:g.mag, rs=on?player.res:g.res;
       ctx.fillStyle=on?'#f2ead2':'rgba(232,228,216,.6)'; ctx.font='bold 9px Arial'; ctx.textAlign='center';
       ctx.fillText(mg+'/'+rs,R.x+R.w/2,R.y+R.h-6); ctx.textAlign='start';
