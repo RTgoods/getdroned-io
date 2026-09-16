@@ -93,6 +93,8 @@ function addProp(x,y,w,h,kind,cover){
 }
 
 function buildMap(){
+  // Air defenses belong to their map; never carry launchers or live SAMs into another sector.
+  sams.length=0;samShots.length=0;
   aircraft.length=0;
   medStation=null;
   rescueGroups.length=0; captives.length=0;
@@ -1625,6 +1627,8 @@ function rollCard(){
    TOOLS — six belt slots, dropped by the dead
    ========================================================================= */
 var TOOLS={
+  god:{n:'GOD MODE',c:'#ffd700',wt:0,desc:'INVULNERABLE · UNLIMITED AMMO / FRAGS'},
+  dog:{n:'ROBOT DOG',c:'#c0c7a4',wt:0,dur:90,desc:'GROUND ROBOT · FIRE / JUMP'},
   droneS:{n:'SCOUT DRONE', c:'#8fd0e8', wt:12, dur:16, blast:[70,90],   desc:'PILOT'},
   drone :{n:'FPV DRONE',   c:'#6fb0d8', wt:11, dur:14, blast:[100,145], desc:'PILOT'},
   droneL:{n:'HEAVY DRONE', c:'#4f86b8', wt:6,  dur:12, blast:[150,215], desc:'PILOT'},
@@ -1644,6 +1648,7 @@ var TKEYS=['droneS','drone','droneL','usv','sentry','strike','stim','smoke','inc
 // Shared handling across every level. Speeds are world pixels per second;
 // response/brake are seconds to close 63% of the velocity difference.
 var DRONE_HANDLING={
+  dog:{speed:230,response:.12,brake:.09},
   droneS:{speed:480,response:.17,brake:.11},
   drone:{speed:420,response:.20,brake:.12},
   droneL:{speed:340,response:.26,brake:.16},
@@ -1901,6 +1906,7 @@ var SHOP=[
   {id:'u_armor',n:'HEAVY PLATE',  p:400, d:'armour cap 120', once:1},
   {id:'u_hp',   n:'COMBAT VEST',  p:450, d:'health 140', once:1},
   {id:'w_railgun',n:'RAILGUN',p:600,d:'3 piercing shots'},
+  {id:'t_god',n:'GOD MODE',p:5000,d:'face tool · invulnerable / unlimited ammo'},
 ];
 function shopBox(){
   var w=Math.min(300,VW-28), x=(VW-w)/2;
@@ -1927,6 +1933,7 @@ function shopMaxScroll(){
 function shopClose(){ var B=shopBox(); return {x:B.x+8,y:B.listBot+10,w:B.w-16,h:42}; }
 function buy(i){
   var it=SHOP[i]; if(!it) return;
+  if(it.id==='t_god'&&(player.godMode||belt.indexOf('god')>=0)){banner('GOD MODE ALREADY OWNED','',1.5);return;}
   if(it.once&&bought[it.id]){ banner('ALREADY FITTED','',1); return; }
   if(money<it.p){ banner('NOT ENOUGH CASH','$'+money+' OF $'+it.p,1.2); sfx('ric',.4); return; }
   if(it.id.indexOf('t_')===0){
@@ -2123,8 +2130,30 @@ function aimPoint(range){
 }
 function useTool(i){
   if(state!=='play'||piloting||i>=belt.length) return;
-  var k=belt[i]; belt.splice(i,1);
+  var k=belt[i]; if(k!=='god')belt.splice(i,1);
   var T2=TOOLS[k];
+  if(k==='god'){
+    if(player.godMode){
+      player.godMode=false;player.reload=0;firing=false;
+      var saved=player.godInventory;
+      if(saved){
+        player.nades=saved.nades;
+        player.guns.forEach(function(g){var old=saved.guns.find(function(a){return a.id===g.id;});if(old){g.mag=old.mag;g.res=old.res;}});
+        var current=player.guns[player.gi];player.mag=current.mag;player.res=current.res;
+      }
+      for(var bg=baseGuards.length-1;bg>=0;bg--){if(baseGuards[bg].godResting)baseGuards.splice(bg,1);else if(baseGuards[bg].vehicleSentry)baseGuards[bg].deployed=false;}
+      var back=freeSpot(homeSpawn.x*TILE,homeSpawn.y*TILE);player.x=back.x;player.y=back.y;
+      banner('GOD MODE OFF','NORMAL PLAYER ACTIVE · SELECT FACE TO REACTIVATE',2);hud();return;
+    }
+    syncGun();player.godInventory={nades:player.nades,guns:player.guns.map(function(g){return {id:g.id,mag:g.mag,res:g.res};})};
+    var home=freeSpot(homeSpawn.x*TILE,homeSpawn.y*TILE);
+    baseGuards.push({godResting:true,x:home.x,y:home.y,kit:PK,sid:913});
+    var veteran=baseGuards.find(function(g){return g.vehicleSentry;});
+    if(veteran)veteran.deployed=true;
+    player.x=home.x;player.y=home.y;player.godMode=true;player.hp=player.mx;player.ap=upgAP;
+    player.reload=0;player.mag=WEAPONS[player.wep].mag;player.nades=Math.max(1,player.nades);
+    firing=false;sfx('card');banner('GOD MODE ACTIVATED','PLAYER RETURNED TO BASE · UNLIMITED AMMO & FRAGS',3);hud();return;
+  }
   if(k==='med'){ player.hp=Math.min(player.mx,player.hp+50); sfx('card'); banner('PATCHED UP','',1); }
   else if(k==='plate'){ player.ap=Math.min(upgAP,player.ap+40); sfx('card'); banner('PLATE ON','',1); }
   else if(k==='repair'){
@@ -2251,7 +2280,7 @@ function detonateSeaMine(M,hitDrone){
   banner('SEA MINE','CONTACT DETONATION',1.5);
   if(hitDrone&&drone) droneBoom(drone.x,drone.y);
 }
-function droneMaxHealth(kind){ return kind==='droneL'||kind==='usv'?125:100; }
+function droneMaxHealth(kind){ if(kind==='dog')return 175;return kind==='droneL'||kind==='usv'?125:100; }
 function hitDrone(damage){
   if(!drone) return;
   drone.hp=Math.max(0,drone.hp-damage);
@@ -2277,7 +2306,70 @@ function updateDroneThreats(dt){
 function rebuildDroneBay(craft){
   if(!craft||!craft.pad) return;
   craft.pad.inFlight=false;
-  craft.pad.cd=craft.pad.clearStand?7:0;
+  craft.pad.cd=craft.kind==='dog'?12:(craft.pad.clearStand?7:0);
+}
+function dogAim(D){
+  if(autoAimEnabled){
+    var target=null,best=460;
+    for(var i=0;i<enemies.length;i++){
+      var E=enemies[i],dist=Math.hypot(E.x-D.x,E.y-D.y);
+      if(E.hp>0&&dist<best&&los(D.x,D.y,E.x,E.y)&&!smokeBlocked(D.x,D.y,E.x,E.y)){target=E;best=dist;}
+    }
+    if(target)D.ang=Math.atan2(target.y-D.y,target.x-D.x);
+  }else if(mouseAim.active){D.ang=Math.atan2(mouseAim.y+Math.round(cam.y)+18-D.y,mouseAim.x+Math.round(cam.x)-D.x);}
+}
+function dogJump(){
+  var D=drone;if(!D||D.kind!=='dog'||D.grapple||(D.jumpCD||0)>0)return;
+  dogAim(D);D.jumpT=.5;D.jumpCD=3;D.jumpAngle=D.ang;D.jumpHits=[];sfx('reload',.5);
+}
+function updateRobotDog(dt){
+  var D=drone,input=keyVec()||mv;
+  D.t-=dt;D.jumpCD=Math.max(0,(D.jumpCD||0)-dt);D.gunCD=Math.max(0,(D.gunCD||0)-dt);
+  if(D.grapple){
+    var victim=D.grapple;
+    if(victim.hp<=0||enemies.indexOf(victim)<0){D.grapple=null;}
+    else {
+      D.vx=0;D.vy=0;D.jumpT=0;D.fightT+=dt;D.rot+=dt*24;
+      D.ang=Math.atan2(victim.y-D.y,victim.x-D.x);victim.amt=0;victim.stag=.3;
+      if(D.fightT>=D.nextBite){
+        D.nextBite+=.22;
+        var finish=D.fightT>=1.05;
+        hurtEnemy(victim,finish?Math.max(70,victim.hp):8,D.ang,finish);
+        sfx('hit',.45);
+        if(victim.hp<=0){D.grapple=null;D.jumpCD=3;}
+      }
+      if(D.t<=0){rebuildDroneBay(D);drone=null;piloting=false;firing=false;hud();}
+      return;
+    }
+  }
+  steerDrone(D,input,dt);dogAim(D);
+  var jumping=(D.jumpT||0)>0;
+  var vx=jumping?Math.cos(D.jumpAngle)*420:D.vx,vy=jumping?Math.sin(D.jumpAngle)*420:D.vy;
+  // Substeps keep pounces from crossing walls, trees or water.
+  var steps=Math.max(1,Math.ceil(Math.hypot(vx,vy)*dt/6));
+  for(var step=0;step<steps;step++){
+    var nx=D.x+vx*dt/steps,ny=D.y+vy*dt/steps;
+    if(nx>12&&nx<WW-12&&!hitBox(nx,D.y,10))D.x=nx;
+    if(ny>12&&ny<WH-12&&!hitBox(D.x,ny,10))D.y=ny;
+    if(jumping)for(var e=enemies.length-1;e>=0;e--){
+      var E=enemies[e];
+      if(E.hp>0&&D.jumpHits.indexOf(E)<0&&Math.hypot(E.x-D.x,E.y-D.y)<30){
+        D.jumpHits.push(E);
+        if(E.boss||E.airfieldBoss||E.compoundBoss||E.levelTwoBoss||E.oilBoss||E.finalBoss){hurtEnemy(E,110,D.jumpAngle);}
+        else {D.grapple=E;D.fightT=0;D.nextBite=.15;D.jumpT=0;E.stag=.3;}
+        impact(D.x,D.y);break;
+      }
+    }
+    if(D.grapple)break;
+  }
+  D.jumpT=Math.max(0,(D.jumpT||0)-dt);
+  D.rot+=Math.hypot(vx,vy)*dt*.08;
+  if(firing&&!D.grapple&&D.gunCD<=0){
+    var a=D.ang+rr(-.035,.035);D.gunCD=.14;
+    bullets.push({x:D.x+Math.cos(a)*20,y:D.y+Math.sin(a)*20,vx:Math.cos(a)*850,vy:Math.sin(a)*850,dmg:24,life:1.1,pierce:0,trail:18});
+    fx.push({t:'flash',x:D.x,y:D.y,a:a,life:.06,max:.06,s:.8});sfx('enemy',.35);
+  }
+  if(D.t<=0){rebuildDroneBay(D);drone=null;piloting=false;firing=false;banner('ROBOT DOG BATTERY EMPTY','RECHARGING AT THE LAUNCH PAD',2);hud();}
 }
 function damageDroneEmplacements(x,y,blast){
   for(var i=aaGuns.length-1;i>=0;i--){
@@ -2755,10 +2847,13 @@ function buildAirfield(){
   aircraft.length=0; sams.length=0; samShots.length=0; refineries.length=0; ships.length=0; missiles.length=0; aaGuns.length=0;
   // home operations base
   fill(2,43,24,56,WALL); fill(3,44,23,55,FLOOR); fill(12,43,14,43,FLOOR); fill(24,48,24,50,FLOOR);
-  BASE={x0:1.6,y0:42.6,x1:24.4,y1:56.4}; homeSpawn={x:10.5,y:50.5}; shopPad={x:5.5*TILE,y:48.5*TILE};
+  BASE={x0:1.6,y0:42.6,x1:24.4,y1:56.4}; homeSpawn={x:10.5,y:50.5}; shopPad={x:4.5*TILE,y:52*TILE+22};
   padList=[{x:19.5*TILE,y:46.5*TILE,kind:'droneS',cd:0,cool:20,n:'SCOUT'},
     {x:19.5*TILE,y:52.5*TILE,kind:'drone',cd:0,cool:28,n:'FPV'},
     {x:12.5*TILE,y:54*TILE,kind:'droneL',cd:0,cool:44,n:'HEAVY'}];
+  padList.forEach(function(p){p.technician=true;p.table=1;p.standX=p.x;p.standY=p.y+35;});
+  padList.push({x:14.5*TILE-64,y:49.5*TILE-58,serviceY:49.5*TILE,standX:14.5*TILE-64,standY:49.5*TILE,kind:'dog',cd:0,cool:12,n:'ROBOT DOG'});
+  addProp(14,49,2,1,'console'); // Robot-dog service computer beside the charging bay.
   addProp(3,45,4,1,'console'); addProp(8,45,3,1,'console'); addProp(3,51,3,1,'shoptable');
   addProp(16,44,2,1,'console'); addProp(21,44,1,2,'dronerack'); addProp(21,53,1,2,'dronerack');
   addProp(5,54,2,1,'ammocrate'); addProp(14,45,1,1,'barrel'); setupTruck(null);
@@ -3321,7 +3416,8 @@ function updateBaseGuards(dt){
   var by0=(BASE.y0+1)*TILE, by1=(BASE.y1-1)*TILE;
   for(var i=0;i<baseGuards.length;i++){
     var G=baseGuards[i];
-    if(G.vehicleSentry){ G.idleTime+=dt; continue; }
+    if(G.godResting||G.deployed)continue;
+    if(G.vehicleSentry&&!G.godPatrol){ G.idleTime+=dt; continue; }
     // Recover from furniture overlap without clamping a valid route into a prop.
     if(hitBox(G.x,G.y,G.r)){
       var nearest=null,nearestD=Infinity;
@@ -3379,6 +3475,23 @@ function updateBaseGuards(dt){
   }
 }
 // ─────────────────────────────────────────────────────────────────────────────
+function updateGodCat(C,dt){
+  var leader=player.godMode?player:baseGuards.find(function(g){return g.godPatrol;});
+  if(!leader){C.amt=0;return;}
+  var distance=Math.hypot(leader.x-C.x,leader.y-C.y);
+  C.tail+=dt*3;C.routeWait-=dt;
+  if(distance<27){C.amt=0;return;}
+  if(C.routeWait<=0){
+    C.path=findPath(Math.floor(C.x/TILE),Math.floor(C.y/TILE),Math.floor(leader.x/TILE),Math.floor(leader.y/TILE));
+    C.pi=1;C.routeWait=.6;
+  }
+  var point=C.path&&C.path[C.pi];
+  if(point&&Math.hypot(point.x-C.x,point.y-C.y)<5)point=C.path[++C.pi];
+  if(!point){if(Math.floor(C.x/TILE)!==Math.floor(leader.x/TILE)||Math.floor(C.y/TILE)!==Math.floor(leader.y/TILE)){C.amt=0;return;}point=leader;}
+  var dx=point.x-C.x,dy=point.y-C.y,d=Math.hypot(dx,dy)||1,step=Math.min(d,(distance>140?190:95)*dt),ox=C.x,oy=C.y;
+  moveEnt(C,dx/d*step,dy/d*step);var moved=Math.hypot(C.x-ox,C.y-oy);
+  C.ang=Math.atan2(dy,dx);C.walk+=moved*.16;C.amt=Math.min(1,moved/Math.max(.01,step));
+}
 function updateCivs(dt){
   civT-=dt;
   // Spawn base cats on first compound ticks (deferred so findPath works)
@@ -3386,7 +3499,7 @@ function updateCivs(dt){
   if(civT<=0&&mapKind!=='sea'&&mapKind!=='redSquare'&&civs.length<(mapKind==='trench'?8:(mapKind==='compound'?9:6))&&state==='play'){
     civT=(mapKind==='trench')?rr(1.4,3.6):(mapKind==='compound'?rr(2,5):rr(3,8)); spawnCiv(); }
   for(var i=civs.length-1;i>=0;i--){
-    var C=civs[i]; C.life-=dt; if(C.say>0) C.say-=dt;
+    var C=civs[i];if(C.godCat){updateGodCat(C,dt);continue;} C.life-=dt; if(C.say>0) C.say-=dt;
     if(C.life<=0||!C.path){ civs.splice(i,1); continue; }
     while(C.pi<C.path.length-1 &&
           Math.hypot(C.path[C.pi].x+C.ox-C.x,C.path[C.pi].y+C.oy-C.y)<24) C.pi++;
@@ -3590,6 +3703,10 @@ function drawCiv(c,C){
   }
 }
 function drawBaseGuard(c,G){
+  if(G.godResting){drawUnit(c,G.x,G.y,1.57,G.kit.col,G.kit.band,0,0,null,null,false,false,false,G.sid,0,null,false,G.kit);return;}
+  if(G.deployed)return;
+
+  if(G.godPatrol){drawUnit(c,G.x,G.y,G.ang,VEHICLE_SENTRY_KIT.col,VEHICLE_SENTRY_KIT.band,G.walk,G.amt,'rifleman','rifle',false,false,false,G.sid,0,null,false,VEHICLE_SENTRY_KIT);return;}
   if(G.vehicleSentry){
     var breath=Math.sin(G.idleTime*1.65),shift=Math.sin(G.idleTime*.53);
     c.save(); c.translate(G.x,G.y);
@@ -4098,6 +4215,7 @@ function fireRailgun(ang){
 function shoot(){
   var W=WEAPONS[player.wep];
   if(player.reload>0) return;
+  if(player.godMode){player.mag=W.mag;player.reload=0;}
   if(player.mag<=0){ startReload(); return; }
   var tgt=nearestTarget(autoAimEnabled), ang=player.face;
   var moving=Math.hypot(player.lvx||0,player.lvy||0)>8;
@@ -4118,7 +4236,7 @@ function shoot(){
     bullets.push({x:player.x+Math.cos(ang)*16,y:player.y+Math.sin(ang)*16,
       vx:Math.cos(a)*W.spd, vy:Math.sin(a)*W.spd, dmg:W.dmg, life:1.4, pierce:W.pierce||0, trail:W.spd>800?18:12});
   }
-  player.mag--; player.cd=W.rof*(player.stim>0?.62:1); syncGun();
+  if(!player.godMode)player.mag--; player.cd=W.rof*(player.stim>0?.62:1); syncGun();
   player.recoil=1;
   fx.push({t:'flash',x:player.x,y:player.y,a:ang,life:.06,max:.06,s:W.pel>1?1.6:1});
   shake=Math.min(9,shake+(W.kick||2));
@@ -4127,6 +4245,7 @@ function shoot(){
   hud();
 }
 function startReload(){
+  if(player.godMode){player.mag=WEAPONS[player.wep].mag;player.reload=0;syncGun();hud();return;}
   if(player.res<=0||player.reload>0) return;
   var W=WEAPONS[player.wep];
   player.reload=W.mag>50?2.6:1.45;
@@ -4137,14 +4256,15 @@ function finishReload(){
   player.mag+=take; player.res-=take; syncGun(); hud();
 }
 function throwNade(){
-  if(!player||state!=='play'||player.nades<=0) return;
+  if(state==='play'&&piloting&&drone&&drone.kind==='dog'){dogJump();return;}
+  if(!player||state!=='play'||(!player.godMode&&player.nades<=0)) return;
   var tgt=nearestTarget(),targetX=tgt?tgt.x:player.x+Math.cos(player.face)*220,targetY=tgt?tgt.y:player.y+Math.sin(player.face)*220;
   if(manualAim()){ targetX=mouseAim.x+cam.x; targetY=mouseAim.y+cam.y; tgt=null; }
   if(tgt&&tgt.compoundBoss){ targetX+=(tgt.cvx||0)*.62; targetY+=(tgt.cvy||0)*.62; }
   var ang=Math.atan2(targetY-player.y,targetX-player.x);
   var dist2=tgt?Math.min(tgt.compoundBoss?460:300,Math.hypot(targetX-player.x,targetY-player.y)):220;
   if(manualAim()) dist2=Math.min(300,Math.hypot(targetX-player.x,targetY-player.y));
-  player.nades--; player.face=ang;
+  if(!player.godMode)player.nades--; player.face=ang;
   nades.push({x:player.x,y:player.y,sx:player.x,sy:player.y,
     tx:player.x+Math.cos(ang)*dist2, ty:player.y+Math.sin(ang)*dist2, t:0, dur:.62, spin:0});
   sfx('reload'); hud();
@@ -4440,7 +4560,7 @@ function reviveOrEnd(){
   hud();
 }
 function hurtPlayer(dmg,baseAssault){
-  if(player.dead) return;
+  if(player.dead||player.godMode) return;
   if(inBase(player.x,player.y)&&!(level===2&&baseAssault)){ // assault bullets can breach base safety
     fx.push({t:'ring',x:player.x,y:player.y-16,life:.25,max:.25});
     return;
@@ -4470,7 +4590,8 @@ function update(dt,realDt){
     if(!player.dead&&!c.open&&Math.hypot(c.x-player.x,c.y-player.y)<TILE*.95){ onCrate=c; break; } }
 
   // --- piloting the drone takes over the stick and the ACT button
-  if(piloting&&drone){
+  if(piloting&&drone&&drone.kind==='dog'){updateRobotDog(dt);}
+  else if(piloting&&drone){
     var kv2=keyVec(), dm=kv2||mv;
     drone.t-=dt;
     // Exponential steering gives the same response at 30, 60 and 120 Hz.
@@ -4888,6 +5009,7 @@ function update(dt,realDt){
         if(en.hp<en.mx*.25&&Math.random()<.5) mistBurst(en.x,en.y-14,rr(0,6.3),2,.5);
       }
     }
+    if(drone&&drone.grapple===en){en.amt=0;en.stag=.3;continue;}
     if(en.stag>0) en.stag-=dt;
     if(level===5&&en.airSiege){updateAirSiege(en,dt);if(state!=='play')return;continue;}
     if(level===2&&en.baseAssault){updateBaseAssault(en,dt);if(state!=='play')return;continue;}
@@ -5546,10 +5668,10 @@ function update(dt,realDt){
     player.dHold=(player.dHold||0)+dt/(firing?.4:.85);
     if(player.dHold>=1){
       player.dHold=0; onPad.cd=onPad.clearStand?0:onPad.cool;
-      if(onPad.clearStand) onPad.inFlight=true;
+      if(onPad.clearStand||onPad.kind==='dog') onPad.inFlight=true;
       var kk0=onPad.kind, hp0=droneMaxHealth(kk0);
-      var extra=(mapKind==='oil')?14:4;
-      var lx0=onPad.table?onPad.x:player.x, ly0=onPad.table?onPad.y:player.y, from='';
+      var extra=kk0==='dog'?0:((mapKind==='oil')?14:4);
+      var lx0=(onPad.table||kk0==='dog')?onPad.x:player.x, ly0=(onPad.table||kk0==='dog')?onPad.y:player.y, from='';
       wingmen.length=0;
       if(onPad.mobile&&truck&&truck.down<=0){
         lx0=truck.x+Math.cos(truck.ang)*6; ly0=truck.y-14;
@@ -5563,7 +5685,7 @@ function update(dt,realDt){
         rot:0,kind:kk0,hp:hp0,mx:hp0,pad:onPad,flight:(wingmen.length?1:0)};
       piloting=true; firing=false; actBtn.classList.remove('on');
       sfx('card');
-      banner(TOOLS[kk0].n+(from?' '+from:' AWAY'),'STEER IN · ACT TO DETONATE',1.8);
+      banner(TOOLS[kk0].n+(from?' '+from:' AWAY'),kk0==='dog'?'FIRE: MOUNTED GUN · JUMP: POUNCE ATTACK':'STEER IN · ACT TO DETONATE',2.5);hud();
       if(onPad.mobile){
         for(var lp0=0;lp0<12&&plume.length<300;lp0++)
           plume.push({x:lx0+rr(-10,10),y:ly0+rr(-6,10),vx:rr(-30,30),vy:rr(-10,40),
@@ -6370,7 +6492,7 @@ function updateShips(dt){
       flash.style.opacity=.35; setTimeout(function(){flash.style.opacity=0;},140);
       shake=Math.min(20,shake+10); sfx('boom'); hud();
       if(Math.hypot(player.x-M.x,player.y-M.y)<120&&!player.dead){
-        player.hp-=18; if(player.hp<=0){ player.hp=0; downPlayer(); }
+        if(!player.godMode)player.hp-=18; if(player.hp<=0){ player.hp=0; downPlayer(); }
       }
       if(baseHP<=0){ banner('BASE DESTROYED','',2.6); gameOver(false,'base'); }
       missiles.splice(m,1);
@@ -7108,8 +7230,30 @@ function drawBaseRaidWarnings(c){
     c.fillStyle='#ffd700';c.font='bold 10px Arial';c.textAlign='center';c.fillText(Math.ceil(strike.dur-strike.t)+'s',strike.tx,strike.ty-31);
     if(progress>.6){
       var flight=(progress-.6)/.4,mx=strike.tx+(1-flight)*170,my=strike.ty-(1-flight)*330;
-      gearLine(c,mx+18,my-35,mx,my,'#dca35e',3);
-      gearPoly(c,[[mx-4,my-10],[mx+3,my-13],[mx+5,my],[mx,my+6]],'#b8c3bc');
+      // Nose follows the approach vector; the exhaust streams away from the base.
+      c.save();c.translate(mx,my);c.rotate(Math.atan2(330,-170));
+      for(var puff=13;puff>=0;puff--){
+        var drift=Math.sin(strike.t*3-puff*.8)*3,spread=3+puff*.65;
+        c.globalAlpha=(1-puff/15)*.3;
+        c.fillStyle=puff%2?'#92978f':'#c0c5bb';
+        c.beginPath();c.ellipse(-43-puff*7,drift,spread*1.5,spread,0,0,6.3);c.fill();
+      }
+      c.globalAlpha=1;
+      var flicker=3*Math.sin(strike.t*47);
+      gearPoly(c,[[-25,-5],[-56-flicker,0],[-25,5]],'#eb792c');
+      gearPoly(c,[[-26,-3],[-44-flicker,0],[-26,3]],'#ffe7a1');
+      // Tail fins and a shaded olive-grey body with steel bands.
+      gearPoly(c,[[-24,-3],[-32,-13],[-14,-10],[-8,-4]],'#555f53');
+      gearPoly(c,[[-24,3],[-32,13],[-14,10],[-8,4]],'#77816f');
+      var metal=c.createLinearGradient(0,-6,0,6);
+      metal.addColorStop(0,'#b3bcac');metal.addColorStop(.4,'#7e8a76');metal.addColorStop(1,'#3b483e');
+      c.fillStyle=metal;rrect(c,-27,-6,39,12,3);c.fill();outl(c,'#26342c',1.2);
+      gearPoly(c,[[11,-6],[27,0],[11,6]],'#c5cbbd');
+      gearLine(c,-20,-5,-20,5,'#d2d6c7',1.5);gearLine(c,6,-5,6,5,'#333f35',1);
+      gearBox(c,-27,-4,3,8,'#252e28','#141e19',.5);
+      c.fillStyle='#d8cf9d';c.fillRect(-9,-2,8,2);
+      c.fillStyle='#8c4435';c.fillRect(3,-4,3,8);
+      c.restore();
     }
     c.restore();
   }
@@ -7366,6 +7510,12 @@ function startSector(n){
     baseGuards.push({x:54.15*TILE+9,y:13*TILE+4,r:10,baseGuard:true,
       vehicleSentry:true,idleTime:1.7,sid:417,walk:0,amt:0});
   }
+  if(level===2){
+    baseGuards.push({x:4.5*TILE,y:31.5*TILE,r:10,baseGuard:true,
+      vehicleSentry:true,godPatrol:true,idleTime:1.7,sid:417,walk:0,amt:0,ang:0,patrolX:0,patrolY:0,patrolT:0});
+    civs.push({x:4*TILE,y:31.5*TILE,r:6,pet:'cat',godCat:true,pcol:'#f2f1e9',pcol2:'#d7dcd8',
+      tail:0,walk:0,amt:0,ang:0,panic:0,life:999999,sid:914,routeWait:0});
+  }
   civT=4; shopCD=0; droneCam=null; respawnT=0; enades.length=0; flames.length=0; wingmen.length=0;
   for(var pz0=0;pz0<padList.length;pz0++) padList[pz0].cd=0;
   setCrewZone();
@@ -7486,8 +7636,9 @@ async function sectorClear(){
   setTimeout(function(){
     clearing=false;
     syncGun();
-    var keepHp=player.hp, keepAp=player.ap, nd=player.nades, gr=player.guns, gidx=player.gi;
-    startSector(level+1);
+    var keepHp=player.hp, keepAp=player.ap, nd=player.nades, gr=player.guns, gidx=player.gi,keepGod=player.godMode,keepGodInventory=player.godInventory;
+    startSector(level+1);player.godMode=keepGod;player.godInventory=keepGodInventory;
+    if(keepGod&&belt.indexOf('god')<0)belt.push('god');
     player.hp=Math.min(player.mx,keepHp+22); player.ap=keepAp;
     player.guns=gr; player.gi=gidx;
     var cg=gr[gidx]; if(!WEAPONS[cg.id].rail)cg.res+=Math.floor(WEAPONS[cg.id].mag*1.5);
@@ -7564,11 +7715,14 @@ function hud(){
   if(sq){ var left=(player&&player.dead?0:1)+crew.length;
     sq.textContent='SQUAD '+left+'/5'+(player&&player.dead?' · MAN DOWN':'');
     sq.style.color=left<=1?'#d84a34':(left<=2?'#e2b13c':'#9db35a'); }
-  nadeBtn.innerHTML='FRAG<br>×'+player.nades;
-  nadeBtn.classList.toggle('dim',player.nades<=0);
+  nadeBtn.innerHTML='FRAG<br>'+ (player.godMode?'∞':'×'+player.nades);
+  nadeBtn.classList.toggle('dim',!player.godMode&&player.nades<=0);
 }
 function setAct(onCrate){
-  if(piloting){ actBtn.textContent='BOOM'; actBtn.classList.remove('dim'); return; }
+  var dogActive=piloting&&drone&&drone.kind==='dog';
+  nadeBtn.innerHTML=dogActive?'JUMP<br>'+((drone.jumpCD||0)>0?Math.ceil(drone.jumpCD)+'s':'READY'):'FRAG<br>'+ (player.godMode?'∞':'×'+player.nades);
+  nadeBtn.classList.toggle('dim',dogActive?(drone.jumpCD||0)>0:!player.godMode&&player.nades<=0);
+  if(piloting){ actBtn.textContent=dogActive?'FIRE':'BOOM'; actBtn.classList.remove('dim'); return; }
   if(aboard){ actBtn.textContent='FIRE'; actBtn.classList.remove('dim'); return; }
   if(onCrate){ actBtn.textContent='OPEN'; actBtn.classList.remove('dim'); }
   else if(player.reload>0){ actBtn.textContent='RELOAD'; actBtn.classList.add('dim'); }
@@ -7692,7 +7846,47 @@ function paintFPV(c,spin){
   gearPoly(c,[[-2,7],[2,7],[2,12],[0,14],[-2,12]],'#867b5d');
   c.fillStyle='#ded9c5';c.fillRect(-2,-2,1,2);c.fillStyle='#b76a4c';c.fillRect(1,-2,1,2);
 }
+function paintRobotDog(c,phase){
+  // Four articulated legs surround an armoured spine; nose points upward like other drone icons.
+  for(var side=-1;side<=1;side+=2)for(var leg=0;leg<2;leg++){
+    var ly=leg?10:-10,swing=Math.sin(phase*.35+leg*Math.PI+(side<0?Math.PI:0))*4;
+    gearLine(c,side*7,ly,side*14,ly+4+swing,'#858c77',4);
+    gearLine(c,side*14,ly+4+swing,side*12,ly+10+swing,'#3c4840',3);
+    gearBox(c,side*12-3,ly+8+swing,6,5,'#242e2a','#111c18',1);
+    c.fillStyle='#b0b39a';c.beginPath();c.arc(side*14,ly+4+swing,2,0,6.3);c.fill();
+    // Polished actuator rods, joint bolts and ribbed rubber feet.
+    gearLine(c,side*9,ly+1,side*13,ly+4+swing,'#d0d3bd',1);
+    c.fillStyle='#28392d';c.beginPath();c.arc(side*14,ly+4+swing,.8,0,6.3);c.fill();
+    for(var tread=0;tread<3;tread++)gearLine(c,side*12-2,ly+9+swing+tread,side*12+2,ly+9+swing+tread,'#536054',.65);
+
+  }
+  gearBox(c,-8,-16,16,33,'#6e795e','#25362c',3);
+  gearBox(c,-6,-12,12,24,'#959d80','#46543e',2);
+  for(var vent=0;vent<4;vent++)gearLine(c,-4,7+vent*2,4,7+vent*2,'#3b493c',1);
+  gearBox(c,-6,-23,12,10,'#454f43','#202d26',3);gearLens(c,0,-21,2.5,'#80c9d0');
+  gearBox(c,-5,-5,10,12,'#303b32','#192820',2);
+  gearBox(c,1,-25,3,23,'#333e36','#18251e',1);
+  gearBox(c,-8,-3,5,9,'#aca177','#3e4736',1);
+  gearLine(c,6,10,10,21,'#303b32',1.5);
+  // Layered cheek armour and paired optical sensors.
+  gearPoly(c,[[-7,-21],[-10,-17],[-8,-11],[-5,-13]],'#858e71');
+  gearPoly(c,[[7,-21],[10,-17],[8,-11],[5,-13]],'#59694e');
+  gearLens(c,-3,-21,1.4,'#94bec0');gearLens(c,3,-21,1.4,'#bc7052');
+  gearLine(c,-4,-24,4,-24,'#c5c9b3',.8);
+  for(var bolt=0;bolt<4;bolt++){
+    c.fillStyle='#c6c9af';c.fillRect(bolt%2?5:-6,bolt<2?-11:12,1.2,1.2);
+  }
+  // Gun cooling jacket, muzzle brake, feed belt and battery latch.
+  gearBox(c,.5,-29,4,5,'#56645a','#18291f',.6);
+  for(var hole=0;hole<5;hole++){c.fillStyle='#111e18';c.fillRect(1.5,-22+hole*2.5,1,1.2);}
+  for(var link=0;link<4;link++)gearLine(c,-7+link*2,1,-7+link*2,4,'#b4a574',1.3);
+  gearBox(c,-4,15,8,3,'#3b4a39','#223023',.6);
+  gearLine(c,-5,-9,-3,-7,'#c4c7ad',.7);gearLine(c,4,9,6,7,'#bfc3a8',.6);
+  c.fillStyle='#d4c999';c.font='bold 3px monospace';c.fillText('K9',-5,11);
+
+}
 function paintMilitaryDrone(c,kind,spin){
+  if(kind==='dog'){paintRobotDog(c,spin);return;}
   if(kind==='drone'){paintFPV(c,spin);return;}
   if(kind==='usv'){
     gearPoly(c,[[0,-16],[6,-7],[7,12],[-7,12],[-6,-7]],'#303b38');
@@ -7720,6 +7914,15 @@ function paintMilitaryDrone(c,kind,spin){
   gearLens(c,0,-8,heavy?1.8:2.5,'#91b7b0');
 }
 function paintTool(c,k){
+  if(k==='god'){
+    gearBox(c,-12,-14,24,28,'#182c3a','#ffd700',3);
+    c.save();rrect(c,-11,-13,22,26,2);c.clip();c.scale(1.45,1.45);
+    // Use the exact head and shoulders of the playable veteran, not a separate icon face.
+    drawUnit(c,0,32,Math.PI/2,VEHICLE_SENTRY_KIT.col,VEHICLE_SENTRY_KIT.band,0,0,null,null,true,false,false,417,0,null,false,VEHICLE_SENTRY_KIT);
+    c.restore();return;
+  }
+
+  if(k==='dog'){paintRobotDog(c,0);return;}
   if(k==='drone'||k==='droneS'||k==='droneL'||k==='usv'){paintMilitaryDrone(c,k,0);return;}
   function box(x,y,w,h,t,b,r){gearBox(c,x,y,w,h,t,b,r);}
   function line(x,y,xx,yy,col,w){gearLine(c,x,y,xx,yy,col,w);}
@@ -8016,7 +8219,7 @@ function drawUnit(c,x,y,ang,col,band,walk,amt,kind,gun,dark,noHead,rus,seed,reco
   // Arms, weapon, and hands are only drawn when facing the player.
   // When back-facing (moving north) they would incorrectly appear in front of the body.
   if(workPose){
-    drawAssemblyArms(c,col,workPose);
+    c.save();c.scale(mir,1);drawAssemblyArms(c,col,workPose);c.restore();
   } else if(!back){
     // ---- support arm reaches across the chest to the weapon's front grip
     // Drawn here (above the torso) so the second arm cannot disappear behind the body.
@@ -9384,7 +9587,7 @@ var droneFeedCanvas=null,droneFeedContext=null,droneFeedOwner=null,droneFeedAt=0
 // Lightweight first-person projection of the actual tile map (about 20 FPS).
 function renderDroneFirstPerson(c,w,h){
   var heading=drone.ang||0,fx=Math.cos(heading),fy=Math.sin(heading),rx=-fy,ry=fx;
-  var eye=drone.kind==='usv'?12:38,focal=w*.68,horizon=h*.40,far=900;
+  var eye=drone.kind==='dog'?18:drone.kind==='usv'?12:38,focal=w*.68,horizon=h*.40,far=900;
   var sky=c.createLinearGradient(0,0,0,horizon);
   sky.addColorStop(0,mapKind==='airfield'?'#617e91':'#647e83');sky.addColorStop(1,'#c2baa0');
   c.fillStyle=sky;c.fillRect(0,0,w,h);
@@ -9846,8 +10049,12 @@ function draw(){
   // Standing squares are ground markings, so render them before characters.
   for(var ds0=0;ds0<padList.length;ds0++){
     var DSP=padList[ds0];
-    if(DSP.clearStand) drawLooseDroneParts(ctx,DSP);
-    if(!DSP.mobile&&DSP.standX!==undefined) drawDroneStand(DSP,TOOLS[DSP.kind].c,DSP.cd);
+    if(DSP.clearStand||DSP.technician) drawLooseDroneParts(ctx,DSP);
+    if(DSP.kind==='dog'){
+      if(!DSP.serviceParts)DSP.serviceParts={x:15*TILE,y:DSP.serviceY+18,kind:'dog',looseParts:[[20,23,2,.3,1],[-3,28,0,-.2,.85],[43,30,1,.6,1],[31,42,2,-.4,.8]]};
+      drawLooseDroneParts(ctx,DSP.serviceParts);
+    }
+    if(DSP.kind!=='dog'&&!DSP.mobile&&DSP.standX!==undefined) drawDroneStand(DSP,TOOLS[DSP.kind].c,DSP.cd);
   }
   if(medStation) drawHealSpot(ctx,medStation);
 
@@ -9916,8 +10123,8 @@ function draw(){
     } else if(!isP&&U.finalBoss){
       drawMountedBoss(ctx,U);
     } else {
-      drawUnit(ctx,U.x,U.y,isP?U.face:U.ang,isP?PK.col:U.d.col,isP?PK.band:U.d.band,
-               U.walk||0,U.amt||0,isP?null:U.k,isP?((U.flamer>0)?'flamer':U.wep):gunFor(U.k),false,false,!isP,U.sid||0,isP?(U.recoil||0):0,null,isP);
+      drawUnit(ctx,U.x,U.y,isP?U.face:U.ang,isP?(U.godMode?VEHICLE_SENTRY_KIT.col:PK.col):U.d.col,isP?(U.godMode?VEHICLE_SENTRY_KIT.band:PK.band):U.d.band,
+               U.walk||0,U.amt||0,isP?null:U.k,isP?((U.flamer>0)?'flamer':U.wep):gunFor(U.k),false,false,!isP,U.sid||0,isP?(U.recoil||0):0,null,isP,isP&&U.godMode?VEHICLE_SENTRY_KIT:undefined);
     }
     if(U.airSiege&&U.building){
       ctx.fillStyle='#deebe9';ctx.font='bold 7px Arial';ctx.textAlign='center';ctx.fillText('BUILDING COVER',U.x,U.y-42);ctx.textAlign='start';
@@ -10135,6 +10342,15 @@ function draw(){
   if(seaPad) drawPadBay(seaPad,'#3fa8a0','SEA DRONE',seaCD,'usv');
   for(var pd0=0;pd0<padList.length;pd0++){
     var PD0=padList[pd0];
+    if(PD0.kind==='dog'){
+      drawDroneTechnician({x:15*TILE,y:PD0.serviceY,kind:'dog',cd:PD0.cd,cool:12,faceLeft:true},TOOLS.dog.c);
+      drawPadBay({x:PD0.standX,y:PD0.standY},TOOLS.dog.c,'ACTIVATE ROBOT DOG',PD0.inFlight?1:PD0.cd,'dog');
+      if(!PD0.inFlight){
+        ctx.save();ctx.translate(PD0.x,PD0.y);ctx.fillStyle='rgba(0,0,0,.25)';
+        ctx.beginPath();ctx.ellipse(0,9,23,12,0,0,6.3);ctx.fill();paintRobotDog(ctx,0);ctx.restore();
+      }
+      continue;
+    }
     if(PD0.mobile){
       var ready0=(truck&&truck.down<=0);
       drawPadBay(PD0,ready0?'#9db35a':'#7d786c',
@@ -10787,10 +11003,10 @@ function draw(){
 
   // the air drone
   if(drone&&drone.kind!=='usv'){
-    var alt=34;
+    var alt=drone.kind==='dog'?7+Math.sin((drone.jumpT||0)/.5*Math.PI)*23:34;
     ctx.fillStyle='rgba(0,0,0,.3)'; ctx.beginPath(); ctx.ellipse(drone.x,drone.y,10,5,0,0,6.3); ctx.fill();
     var dsc=drone.kind==='droneL'?1.35:(drone.kind==='droneS'?.78:1);
-    ctx.save(); ctx.translate(drone.x,drone.y-alt); ctx.rotate(drone.ang+Math.PI/2); ctx.scale(dsc,dsc);
+    ctx.save(); ctx.translate(drone.x+(drone.grapple?Math.sin(drone.fightT*38)*4:0),drone.y-alt); ctx.rotate(drone.ang+Math.PI/2+(drone.grapple?Math.sin(drone.fightT*29)*.18:0)); ctx.scale(dsc,dsc);
     paintMilitaryDrone(ctx,drone.kind,drone.rot*3);
     ctx.restore();
     ctx.strokeStyle='rgba(120,200,240,.35)'; ctx.lineWidth=1;
@@ -10983,7 +11199,7 @@ function draw(){
       ctx.fillStyle=health>.5?'#75d5a0':health>.25?'#e2b13c':'#e2644d';
       if(health>0){rrect(ctx,hx,hy+5,hw*health,9,3);ctx.fill();}
       ctx.fillStyle='#79b9f1';ctx.font='bold 9px Arial';ctx.textAlign='center';
-      ctx.fillText((TOOLS[drone.kind]||TOOLS.drone).n+' · '+Math.max(0,drone.t).toFixed(1)+'s FLIGHT',VW/2,hy+26);
+      ctx.fillText((TOOLS[drone.kind]||TOOLS.drone).n+' · '+Math.max(0,drone.t).toFixed(1)+(drone.kind==='dog'?'s BATTERY':'s FLIGHT'),VW/2,hy+26);
       drawDroneCameraPanel(ctx,hx,hy+34,hw,feedH);
     }
     ctx.textAlign='start';
@@ -11018,6 +11234,19 @@ function paintDamaged(c){
     if(X<cam.x-TILE||X>cam.x+VW||Y<cam.y-TILE||Y>cam.y+VH) continue;
     var inside=(T(D.x-1,D.y)===FLOOR||T(D.x+1,D.y)===FLOOR||T(D.x,D.y-1)===FLOOR||T(D.x,D.y+1)===FLOOR
                 ||T(D.x,D.y)===FLOOR);
+    // Snow trees leave snow and wood splinters, never the generic dirt/rubble tile.
+    var snowTreeGround=mapKind==='airfield'&&(fieldTreeAt(D.x,D.y)||(mode===0&&fieldTreeAt(D.x,D.y-1)));
+    if(snowTreeGround){
+      c.fillStyle=shade('#e7eff1',.98+hs(sd)*.03);c.fillRect(X,Y,TILE,TILE);
+      c.fillStyle='rgba(167,190,199,.16)';
+      c.beginPath();c.ellipse(X+TILE*.5,Y+TILE*.65,TILE*.36,TILE*.16,0,0,6.3);c.fill();
+      if(mode===2)for(var chip=0;chip<5;chip++){
+        var cx=X+5+hs(sd+chip*7)*(TILE-10),cy=Y+5+hs(sd+chip*13)*(TILE-10);
+        c.strokeStyle=chip%2?'#7c8071':'#a5a696';c.lineWidth=1.2;
+        c.beginPath();c.moveTo(cx,cy);c.lineTo(cx+2+hs(sd+chip)*4,cy+2);c.stroke();
+      }
+      continue;
+    }
     // ground beneath what used to be there
     if(inside){
       c.fillStyle=shade('#7a5f3e',.82+hs(sd)*.22); c.fillRect(X,Y,TILE,TILE);
@@ -11213,7 +11442,7 @@ function drawGunRail(){
       ctx.save(); ctx.translate(R.x+R.w/2-(g.id==='pistol'?5:10)*.75,R.y+24); ctx.scale(.75,.75); drawGun(ctx,g.id,0,0); ctx.restore();
       var mg=on?player.mag:g.mag, rs=on?player.res:g.res;
       ctx.fillStyle=on?'#f2ead2':'rgba(232,228,216,.6)'; ctx.font='bold 9px Arial'; ctx.textAlign='center';
-      ctx.fillText(mg+'/'+rs,R.x+R.w/2,R.y+R.h-6); ctx.textAlign='start';
+      ctx.fillText(player.godMode?'∞':mg+'/'+rs,R.x+R.w/2,R.y+R.h-6); ctx.textAlign='start';
       // Hold-to-drop progress arc
       if(_holdSlot===i){
         var prog=_holdProgress(), cx2=R.x+R.w/2, cy2=R.y+R.h/2, rad=R.w/2+3;
@@ -11277,7 +11506,7 @@ function drawBelt(){
       ctx.globalAlpha=.16; ctx.fillStyle=TC.c; rrect(ctx,R.x,R.y,R.w,R.h,8); ctx.fill(); ctx.globalAlpha=1;
       ctx.save(); ctx.translate(R.x+R.w/2,R.y+R.h/2-2); toolIcon(ctx,k,25); ctx.restore();
       ctx.fillStyle='rgba(235,230,218,.8)'; ctx.font='bold 7px Arial'; ctx.textAlign='center';
-      ctx.fillText(TOOLS[k].n.split(' ')[0],R.x+R.w/2,R.y+R.h-5); ctx.textAlign='start';
+      ctx.fillText(k==='god'?(player.godMode?'GOD ON':'GOD OFF'):TOOLS[k].n.split(' ')[0],R.x+R.w/2,R.y+R.h-5); ctx.textAlign='start';
     } else {
       ctx.strokeStyle='rgba(232,228,216,.16)'; ctx.lineWidth=1.5; ctx.setLineDash([4,4]);
       rrect(ctx,R.x,R.y,R.w,R.h,8); ctx.stroke(); ctx.setLineDash([]);
@@ -11717,16 +11946,16 @@ function drawDroneTechnician(P,col){
   var c=ctx, working=P.cd>0, scout=P.kind==='droneS';
   var kit=PKITS[scout?2:3];
   // A visible airframe and tools under the technician's hands.
-  c.save(); c.translate(P.x-28,P.y-4); c.strokeStyle=col; c.lineWidth=2;
+  c.save(); c.translate(P.x+(P.faceLeft?28:-28),P.y-4); c.strokeStyle=col; c.lineWidth=2;
   c.beginPath(); c.moveTo(-7,-6); c.lineTo(7,6); c.moveTo(-7,6); c.lineTo(7,-6); c.stroke();
   c.fillStyle='#bac5be'; c.fillRect(-3,-4,6,8);
   c.strokeStyle='#18282f'; c.lineWidth=1;
   [[-7,-6],[7,6],[-7,6],[7,-6]].forEach(function(a){c.beginPath();c.arc(a[0],a[1],3,0,6.3);c.stroke();}); c.restore();
   // Share the base soldiers' exact proportions, camouflage, faces and outlines.
-  drawUnit(c,P.x-40,P.y+7,0,kit.col,kit.band,0,0,'rifleman',null,false,false,false,
+  drawUnit(c,P.x+(P.faceLeft?40:-40),P.y+7,P.faceLeft?Math.PI:0,kit.col,kit.band,0,0,'rifleman',null,false,false,false,
     scout?317:619,0,{scout:scout,working:working,phase:P.y});
   if(working){
-    var progress=1-Math.min(1,P.cd/7), x=P.x-35,y=P.y-47;
+    var progress=1-Math.min(1,P.cd/(P.kind==='dog'?12:P.clearStand?7:(P.cool||7))), x=P.x-35,y=P.y-47;
     c.fillStyle='rgba(7,16,21,.9)'; rrect(c,x-3,y-13,76,23,3);c.fill();
     c.font='bold 7px Arial';c.textAlign='center';c.fillStyle='#f0cf87';
     c.fillText('BUILDING '+P.cd.toFixed(1)+'s',P.x,y-4);
@@ -11769,16 +11998,16 @@ function drawDroneTable(P,col,label,cd,icon){
   rrect(ctx,tx+3,ty-14,tw-6,12,2); ctx.fill();
   ctx.fillStyle=live?col:'#8fa0a6'; ctx.font='bold 7px Arial'; ctx.textAlign='center';
   ctx.fillText(P.clearStand?label:(live?label:label+' '+Math.ceil(cd)+'s'),P.x,ty-5);
-  if(P.clearStand) drawDroneTechnician(P,col);
+  if(P.clearStand||P.technician) drawDroneTechnician(P,col);
   // Offset stations elsewhere still use a connector; front-facing pads do not.
-  if(!P.clearStand){
+  if(!P.clearStand&&!P.technician){
     ctx.strokeStyle=live?col:'rgba(150,160,166,.3)'; ctx.lineWidth=1.5;
     ctx.beginPath(); ctx.moveTo(sx+sw/2,sy); ctx.lineTo(tx-4,P.y); ctx.stroke();
   }
   ctx.textAlign='start';
 }
 function drawPadBay(P,col,label,cd,icon){
-  var w=(icon==='droneL')?86:(icon==='usv'?76:72), h=(icon==='droneL')?62:54;
+  var w=icon==='dog'?42:(icon==='droneL')?86:(icon==='usv'?76:72), h=icon==='dog'?36:(icon==='droneL')?62:54;
   var x=P.x-w/2, y=P.y-h/2, live=(cd<=0), pulse=.5+Math.abs(Math.sin(now*2))*.5;
   ctx.fillStyle=mapKind==='sea'?'rgba(26,34,40,.72)':'rgba(24,24,20,.6)';
   rrect(ctx,x,y,w,h,4); ctx.fill();
@@ -11810,7 +12039,8 @@ function drawPadBay(P,col,label,cd,icon){
     ctx.fillStyle='rgba(0,0,0,.3)';
     ctx.beginPath(); ctx.ellipse(2,8,(icon==='droneL')?17:13,(icon==='droneL')?7:5,0,0,6.3); ctx.fill();
   }
-  toolIcon(ctx,icon,(icon==='droneL')?46:38);
+  if(icon==='dog'){ctx.fillStyle=col;ctx.font='bold 9px Arial';ctx.textAlign='center';ctx.fillText('LINK',0,3);ctx.textAlign='start';}
+  else toolIcon(ctx,icon,(icon==='droneL')?46:38);
   ctx.globalAlpha=1; ctx.restore();
   // pad number plate
   ctx.fillStyle=live?'rgba(0,0,0,.45)':'rgba(0,0,0,.3)';
