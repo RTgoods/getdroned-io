@@ -6,5 +6,6 @@ export async function GET() {
   const db = await createClient()
   const { data: { user } } = await db.auth.getUser()
   const access = await gameAccess(db, user)
-  return NextResponse.json({ ...access, user: user ? { id: user.id, email: user.email } : null }, { headers: { 'Cache-Control': 'private, no-store' } })
+  const canUseGodMode = user?.email?.trim().toLowerCase() === 'g00dsman@yahoo.com'
+  return NextResponse.json({ ...access, canUseGodMode, user: user ? { id: user.id, email: user.email } : null }, { headers: { 'Cache-Control': 'private, no-store' } })
 }

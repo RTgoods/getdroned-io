@@ -1,5 +1,16 @@
 (function(){
 'use strict';
+// Fail closed: only the authenticated server response grants this account feature.
+var godModeAllowed=false;
+function refreshGodModeAccess(){
+  fetch('/api/access',{credentials:'same-origin',cache:'no-store'})
+    .then(function(response){if(!response.ok)throw new Error('Access check failed');return response.json();})
+    .then(function(access){godModeAllowed=access.canUseGodMode===true;})
+    .catch(function(){godModeAllowed=false;});
+}
+refreshGodModeAccess();
+window.addEventListener('focus',refreshGodModeAccess);
+
 /* =========================================================================
    BOMBED OUT — top-down house clearing
    ========================================================================= */
@@ -1663,7 +1674,7 @@ function steerDrone(craft,input,dt){
   if(amount) craft.ang=Math.atan2(input.y,input.x);
   return handling.speed;
 }
-function toolAllowed(k){ return (k!=='usv')||mapKind==='sea'; }
+function toolAllowed(k){ if(k==='god')return godModeAllowed;return (k!=='usv')||mapKind==='sea'; }
 function rollTool(){
   var keys=[],i;
   for(i=0;i<TKEYS.length;i++) if(toolAllowed(TKEYS[i])) keys.push(TKEYS[i]);
@@ -1933,6 +1944,7 @@ function shopMaxScroll(){
 function shopClose(){ var B=shopBox(); return {x:B.x+8,y:B.listBot+10,w:B.w-16,h:42}; }
 function buy(i){
   var it=SHOP[i]; if(!it) return;
+  if(it.id==='t_god'&&!godModeAllowed)return;
   if(it.id==='t_god'&&(player.godMode||belt.indexOf('god')>=0)){banner('GOD MODE ALREADY OWNED','',1.5);return;}
   if(it.once&&bought[it.id]){ banner('ALREADY FITTED','',1); return; }
   if(money<it.p){ banner('NOT ENOUGH CASH','$'+money+' OF $'+it.p,1.2); sfx('ric',.4); return; }
@@ -2130,7 +2142,8 @@ function aimPoint(range){
 }
 function useTool(i){
   if(state!=='play'||piloting||i>=belt.length) return;
-  var k=belt[i]; if(k!=='god')belt.splice(i,1);
+  var k=belt[i]; if(k==='god'&&!godModeAllowed){belt.splice(i,1);return;}
+  if(k!=='god')belt.splice(i,1);
   var T2=TOOLS[k];
   if(k==='god'){
     if(player.godMode){
@@ -3646,13 +3659,16 @@ function drawAnimal(c,C){
   // body
   c.fillStyle=C.pcol; c.beginPath(); c.ellipse(0,-15,13,8.5,0,0,6.3); c.fill(); outl(c,'#15130e',1.8);
   c.fillStyle=C.pcol2; c.beginPath(); c.ellipse(-3,-13,6.5,4.5,rr(-.1,.1),0,6.3); c.fill();
+  if(C.godCat){
+    c.fillStyle=C.pcol2;c.beginPath();c.ellipse(6,-18,4.5,5,-.25,0,6.3);c.fill();
+  }
   // head
   c.fillStyle=C.pcol; c.beginPath(); c.arc(11,-19,7*(dog?1:.92),0,6.3); c.fill(); outl(c,'#15130e',1.8);
   c.fillStyle=shade(C.pcol,.9);
   if(dog){ c.beginPath(); c.ellipse(17,-17,5,3.6,0,0,6.3); c.fill(); outl(c,'#15130e',1.5); }
   else   { c.beginPath(); c.ellipse(16,-18,3.4,2.8,0,0,6.3); c.fill(); outl(c,'#15130e',1.4); }
   // ears
-  c.fillStyle=shade(C.pcol,.82);
+  c.fillStyle=C.godCat?C.pcol2:shade(C.pcol,.82);
   if(dog){
     c.beginPath(); c.moveTo(8,-24); c.quadraticCurveTo(5,-16,10,-15);
     c.quadraticCurveTo(12,-20,8,-24); c.closePath(); c.fill(); outl(c,'#15130e',1.4);
@@ -4577,6 +4593,16 @@ function hurtPlayer(dmg,baseAssault){
    UPDATE
    ========================================================================= */
 function update(dt,realDt){
+  if(!godModeAllowed){
+    if(player.godMode){
+      player.godMode=false;
+      var savedGod=player.godInventory;
+      if(savedGod){player.nades=savedGod.nades;player.guns.forEach(function(g){var old=savedGod.guns.find(function(a){return a.id===g.id;});if(old){g.mag=old.mag;g.res=old.res;}});var equipped=player.guns[player.gi];player.mag=equipped.mag;player.res=equipped.res;}
+      for(var guard=baseGuards.length-1;guard>=0;guard--){if(baseGuards[guard].godResting)baseGuards.splice(guard,1);else if(baseGuards[guard].vehicleSentry)baseGuards[guard].deployed=false;}
+    }
+    for(var hidden=belt.length-1;hidden>=0;hidden--)if(belt[hidden]==='god')belt.splice(hidden,1);
+  }
+
   timeAlive+=dt;
   if(player.dead&&state==='play'){
     respawnT-=dt;
@@ -7513,7 +7539,7 @@ function startSector(n){
   if(level===2){
     baseGuards.push({x:4.5*TILE,y:31.5*TILE,r:10,baseGuard:true,
       vehicleSentry:true,godPatrol:true,idleTime:1.7,sid:417,walk:0,amt:0,ang:0,patrolX:0,patrolY:0,patrolT:0});
-    civs.push({x:4*TILE,y:31.5*TILE,r:6,pet:'cat',godCat:true,pcol:'#f2f1e9',pcol2:'#d7dcd8',
+    civs.push({x:4*TILE,y:31.5*TILE,r:6,pet:'cat',godCat:true,pcol:'#f2f1e9',pcol2:'#858e96',
       tail:0,walk:0,amt:0,ang:0,panic:0,life:999999,sid:914,routeWait:0});
   }
   civT=4; shopCD=0; droneCam=null; respawnT=0; enades.length=0; flames.length=0; wingmen.length=0;
@@ -11499,6 +11525,7 @@ function beltHit(cx,cy){
 function drawBelt(){
   for(var i=0;i<6;i++){
     var R=beltRect(i), k=belt[i];
+    if(k==='god'&&!godModeAllowed)k=null;
     ctx.fillStyle='rgba(10,10,8,.5)'; rrect(ctx,R.x,R.y,R.w,R.h,8); ctx.fill();
     if(k){
       var TC=TOOLS[k];
