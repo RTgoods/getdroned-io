@@ -112,7 +112,7 @@ export function GamePageClient({ game }: { game: Game }) {
       version: previous.version + 1,
       coins: carryCoins,
       belt: carryBelt,
-      muted: musicMuted, // snapshot at launch — live toggle uses postMessage only
+      muted: musicMuted, // saved Pilot Settings preference at launch
     }))
     setPlaying(true)
   }, [completedSectors, sectorStats, loadAccess])
@@ -153,10 +153,6 @@ export function GamePageClient({ game }: { game: Game }) {
       }}
       onReset={reset}
       avatarUrl={avatarUrl}
-      onMuteToggle={(muted) => {
-        setMusicMuted(muted)
-        frame.current?.contentWindow?.postMessage({ type: 'gd:setMute', muted }, '*')
-      }}
     />
     <div style={{ flex: 1, minWidth: 0, height: '100dvh', overflow: 'hidden', position: 'relative' }}>
       {playing && user && (allowed || isAdmin || launch.level === 1) ? (

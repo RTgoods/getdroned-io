@@ -278,8 +278,8 @@ export function ProfileContent({ game, user, hasPurchased, isAdmin, completedSec
             {hasPurchased && gameId && (
               <div style={{ padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div>
-                  <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: '2px', color: UA.dim, textTransform: 'uppercase', marginBottom: 3 }}>RESET PROGRESS</div>
-                  <div style={{ fontSize: 8, color: UA.dim, letterSpacing: '0.5px' }}>Erase all sector data and restart from Sector 1</div>
+                  <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: '2px', color: UA.yellow, textTransform: 'uppercase', marginBottom: 3 }}>RESET PROGRESS</div>
+                  <div style={{ fontSize: 8, color: UA.text, letterSpacing: '0.5px' }}>Erase all sector data and restart from Sector 1</div>
                 </div>
                 <button
                   disabled={resetting}
@@ -305,13 +305,13 @@ export function ProfileContent({ game, user, hasPurchased, isAdmin, completedSec
                   }}
                   style={{
                     padding: '7px 14px', flexShrink: 0, marginLeft: 16,
-                    background: 'transparent',
-                    border: `1px solid rgba(255,255,255,0.1)`,
+                    background: UA.blue,
+                    border: `1px solid ${UA.blueMid}`,
                     borderRadius: 3, cursor: resetting ? 'default' : 'pointer',
                     fontSize: 8, fontWeight: 900, letterSpacing: '2px',
-                    color: resetMsg === 'RESET' ? UA.green : resetMsg === 'ERROR' ? '#e04b3c' : UA.dim,
+                    color: resetMsg === 'RESET' ? UA.green : resetMsg === 'ERROR' ? '#e04b3c' : UA.yellow,
                     textTransform: 'uppercase',
-                    opacity: resetting ? 0.5 : 1,
+                    opacity: resetting ? 0.75 : 1,
                     transition: 'color 200ms',
                   }}
                 >
@@ -349,7 +349,7 @@ export function ProfileContent({ game, user, hasPurchased, isAdmin, completedSec
                       </span>
                     </div>
                     {done && stat && (
-                      <span style={{ fontSize: 8, color: UA.muted }}>{new Date(stat.completedAt).toLocaleDateString()}</span>
+                      <span style={{ fontSize: 8, color: UA.muted }}>{new Date(stat.completedAt).toLocaleDateString('en-CA', { timeZone: 'UTC', year: 'numeric', month: 'short', day: 'numeric' })}</span>
                     )}
                   </div>
 

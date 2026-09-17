@@ -20,7 +20,6 @@ interface Props {
   onBack?: () => void
   onReset?: () => void
   avatarUrl?: string | null
-  onMuteToggle?: (muted: boolean) => void
 }
 
 const W_OPEN = 232
@@ -55,12 +54,11 @@ const SECTORS = [
   { num: 6, name: 'RED SQUARE',     cover: '/get-droned/assets/images/covers/level-6.png?v=1' },
 ]
 
-export function GameSidebar({ game, user, hasPurchased, isAdmin = false, completedSectors = [], sectorStats = {}, playing = false, onPlay, onBack, onReset, avatarUrl = null, onMuteToggle }: Props) {
+export function GameSidebar({ game, user, hasPurchased, isAdmin = false, completedSectors = [], sectorStats = {}, playing = false, onPlay, onBack, onReset, avatarUrl = null }: Props) {
   const [open, setOpen] = useState(false)
   const [mobile, setMobile] = useState(false)
   const [mounted, setMounted] = useState(false)
   const [expandedSector, setExpandedSector] = useState<number | null>(null)
-  const [musicMuted, setMusicMuted] = useState(false)
   const supabase = createClient()
   const price = `$${(game.price_cents / 100).toFixed(2)}`
 
@@ -71,7 +69,6 @@ export function GameSidebar({ game, user, hasPurchased, isAdmin = false, complet
       const saved = localStorage.getItem('sidebar')
       setOpen(saved !== 'closed')
     }
-    setMusicMuted(localStorage.getItem('gd_muted') === '1')
     setMounted(true)
     const check = () => {
       const mob = window.innerWidth < 768
@@ -164,8 +161,8 @@ export function GameSidebar({ game, user, hasPurchased, isAdmin = false, complet
         {/* ── Player ───────────────────────────────────────── */}
         <SideRow
           open={open}
-          href={!user ? '/auth/login' : undefined}
-          hover={!user}
+          href={user ? '/profile' : '/auth/login'}
+          hover
           icon={
             <div style={{
               width: 26, height: 26, borderRadius: '50%',
@@ -184,7 +181,7 @@ export function GameSidebar({ game, user, hasPurchased, isAdmin = false, complet
           label={
             user ? (
               <div>
-                <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: '2px', color: UA.yellow, textTransform: 'uppercase' }}>PILOT</div>
+                <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: '2px', color: UA.yellow, textTransform: 'uppercase' }}>PILOT SETTINGS</div>
                 <div style={{ fontSize: 10, color: UA.textMuted, marginTop: 2 }}>{emailShort}</div>
               </div>
             ) : (
@@ -192,21 +189,6 @@ export function GameSidebar({ game, user, hasPurchased, isAdmin = false, complet
             )
           }
           border
-        />
-
-        {/* ── Music toggle ─────────────────────────────────── */}
-        <SideRow
-          open={open}
-          onClick={() => {
-            const next = !musicMuted
-            setMusicMuted(next)
-            localStorage.setItem('gd_muted', next ? '1' : '0')
-            onMuteToggle?.(next)
-          }}
-          icon={<span style={{ fontSize: 13, color: musicMuted ? UA.textDim : UA.textMuted, flexShrink: 0 }}>{musicMuted ? '✕' : '♪'}</span>}
-          label={<span style={{ fontSize: 9, fontWeight: 900, letterSpacing: '2px', color: musicMuted ? UA.textDim : UA.textMuted, textTransform: 'uppercase' }}>{musicMuted ? 'MUSIC OFF' : 'MUSIC ON'}</span>}
-          hover
-          indent
         />
 
         {/* ── Sectors label ────────────────────────────────── */}
@@ -318,18 +300,6 @@ export function GameSidebar({ game, user, hasPurchased, isAdmin = false, complet
             target="_blank"
             icon={<span style={{ fontSize: 13, color: UA.textMuted, flexShrink: 0 }}>↗</span>}
             label={<span style={{ fontSize: 9, fontWeight: 900, letterSpacing: '2px', color: UA.textMuted, textTransform: 'uppercase' }}>FULLSCREEN</span>}
-            hover
-            border
-          />
-        )}
-
-        {/* ── Pilot stats ──────────────────────────────────── */}
-        {user && hasPurchased && (
-          <SideRow
-            open={open}
-            href="/profile"
-            icon={<span style={{ fontSize: 11, color: UA.textMuted, flexShrink: 0 }}>◈</span>}
-            label={<span style={{ fontSize: 9, fontWeight: 900, letterSpacing: '2px', color: UA.textMuted, textTransform: 'uppercase' }}>PILOT SETTINGS</span>}
             hover
             border
           />
