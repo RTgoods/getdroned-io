@@ -105,7 +105,7 @@ function addProp(x,y,w,h,kind,cover){
 
 function buildMap(){
   // Air defenses belong to their map; never carry launchers or live SAMs into another sector.
-  sams.length=0;samShots.length=0;
+  sams.length=0;samShots.length=0;seaMines.length=0;
   aircraft.length=0;
   medStation=null;
   rescueGroups.length=0; captives.length=0;
@@ -339,6 +339,7 @@ function markDmg(tx,ty,mode){
   if(bt!==WALL&&bt!==PROP&&dmgMap[bi]===undefined){ dmgList.push({x:tx,y:ty+1,i:bi}); dmgMap[bi]=0; }
 }
 function damageWall(tx,ty,amt){
+  if(mapKind==='redSquare'&&!redArenaOpen&&ty===15&&tx>=37&&tx<=40)return false;
   var t=T(tx,ty), i=ty*MW+tx;
   if(t!==WALL&&t!==BROKEN&&t!==CRUMBLE&&t!==PROP) return false;
   var tree=t===PROP?fieldTreeAt(tx,ty):null;
@@ -463,9 +464,17 @@ function buildStatic(){
         }
       }
       if(mapKind==='redSquare'){
-        sc.strokeStyle='rgba(40,47,45,.22)';sc.lineWidth=1;
-        sc.strokeRect(px+.5,py+.5,TILE-1,TILE-1);
-        gearLine(sc,px+2,py+2,px+TILE-2,py+2,'rgba(203,207,193,.2)',1);
+        // Small staggered granite setts, rather than oversized square floor tiles.
+        sc.save();sc.beginPath();sc.rect(px,py,TILE,TILE);sc.clip();
+        sc.fillStyle='#555955';sc.fillRect(px,py,TILE,TILE);
+        for(var course=0;course<4;course++)for(var stone=-1;stone<4;stone++){
+          var bx=px+stone*12+(course%2)*6,by=py+course*8.5;
+          sc.fillStyle=shade('#929087',.78+hs(x*113+y*71+course*13+stone)*.3);
+          sc.fillRect(bx+1,by+1,10.5,7);
+          gearLine(sc,bx+2,by+1,bx+10,by+1,'rgba(230,218,192,.22)',.6);
+        }
+        if(hs(x*31+y*93)>.88){sc.strokeStyle='rgba(37,41,39,.38)';sc.lineWidth=.7;sc.beginPath();sc.moveTo(px+3,py+5);sc.lineTo(px+13,py+16);sc.lineTo(px+10,py+28);sc.stroke();}
+        sc.restore();
       }
       if(mapKind==='airfield'&&hs(x*41+y*71)>.82){
         sc.strokeStyle='rgba(255,255,255,.45)';sc.lineWidth=2;
@@ -474,7 +483,7 @@ function buildStatic(){
         sc.beginPath();sc.moveTo(px,py+25);sc.quadraticCurveTo(px+15,py+18,px+34,py+22);sc.stroke();
       }
       if(mapKind==='airfield'&&rnd()<.28){ sc.fillStyle='rgba(250,253,255,.8)'; for(var sn=0;sn<5;sn++) sc.fillRect(px+rr(2,30),py+rr(2,30),rr(2,6),rr(1,2.5)); }
-      else if(mapKind!=='airfield'&&rnd()<.13){ sc.fillStyle='rgba(96,110,58,.5)'; for(var g=0;g<4;g++) sc.fillRect(px+rr(2,30),py+rr(2,30),2,rr(3,6)); }
+      else if(mapKind!=='airfield'&&mapKind!=='redSquare'&&rnd()<.13){ sc.fillStyle='rgba(96,110,58,.5)'; for(var g=0;g<4;g++) sc.fillRect(px+rr(2,30),py+rr(2,30),2,rr(3,6)); }
     } else if(mapKind==='trench'){
       sc.fillStyle=shade('#4b4034',rr(.84,1.12)); sc.fillRect(px,py,TILE,TILE);
       for(var mp=0;mp<7;mp++){ sc.fillStyle='rgba('+ri(38,74)+','+ri(32,62)+','+ri(26,50)+','+rr(.2,.5)+')';
@@ -696,6 +705,10 @@ function buildStatic(){
 
   // ---- props
   if(mapKind==='oil')paintRefineryYards(sc);
+  if(mapKind==='sea'){
+    sc.fillStyle='#c6b58b';sc.fillRect(3*TILE,61*TILE,2*TILE,3*TILE);
+    for(var sand=0;sand<80;sand++){sc.fillStyle=sand%2?'rgba(240,222,174,.35)':'rgba(135,115,76,.2)';sc.fillRect((3+hs(sand*7)*2)*TILE,(61+hs(sand*13)*3)*TILE,2,1);}
+  }
   for(var p=0;p<props.length;p++){ var o=props[p]; if(o.kind!=='sand'&&o.kind!=='fieldTree'&&o.kind!=='snowTree'&&o.kind!=='medbed') drawProp(sc,o); }
 
   // ---- bullet pocks, cracks and soot on the walls
@@ -1050,6 +1063,9 @@ function drawBaseHumvee(c,o){
   c.restore();
 }
 function drawProp(c,o){
+  if(o.kind==='busShelter'){drawCityBusShelter(c,o);return;}
+  if(o.kind==='hotdogTruck'){drawHotdogTruck(c,o);return;}
+
   if(o.baseVehicle){drawBaseHumvee(c,o);return;}
   if(o.kind==='fallenTree'){drawTrenchTimber(c,o);return;}
   if(o.kind==='standingTrenchTree'){drawStandingTrenchTree(c,o);return;}
@@ -1472,7 +1488,7 @@ function drawProp(c,o){
   } else if(k==='pipes'){
     c.fillStyle='rgba(0,0,0,.32)'; rrect(c,x+4,y+6,w-4,h-8,3); c.fill();
     c.fillStyle='#6f757b';
-    for(var pp=0;pp<3;pp++) rrect(c,x+3,y+5+pp*8,w-6,5,2.5), c.fill();
+    for(var pp=0;pp<(ED2.mx||3);pp++) rrect(c,x+3,y+5+pp*8,w-6,5,2.5), c.fill();
     outl(c,'#1c2126',1.6);
     c.fillStyle='#4c5257'; rrect(c,x+w*.4,y+3,5,h-6,2); c.fill();
   } else if(k==='console'){
@@ -2234,10 +2250,6 @@ function useTool(i){
 /* everything a heavy warhead does to what it lands on */
 function strikeAt(x,y,bl){
   explode(x,y,bl[0],bl[1],true);
-  for(var mc0=0;mc0<motorcade.length;mc0++){
-    var MC0=motorcade[mc0],mcd0=Math.hypot(MC0.x-x,MC0.y-y);
-    if(!MC0.dead&&mcd0<bl[0]*1.15) hitMotorcadeCar(MC0,bl[1]*1.5*(1-mcd0/(bl[0]*1.4)));
-  }
   for(var ac0=0;ac0<aircraft.length;ac0++){
     var AC0=aircraft[ac0],ad0=Math.hypot(AC0.x-x,AC0.y-y);
     if(!AC0.dead&&ad0<bl[0]*1.25) hitAircraft(AC0,bl[1]*1.8*(1-ad0/(bl[0]*1.5)));
@@ -2677,6 +2689,7 @@ function buildSea(){
     if(edge<2&&Math.random()<.5) setT(cx,cy,WATER);
   }
   fill(5,56,26,70,EXT);
+  fill(3,61,4,63,EXT); // Beach towel clearing outside the west perimeter.
   // the compound itself
   fill(6,57,24,69,WALL); fill(7,58,23,68,FLOOR);
   fill(13,69,15,69,FLOOR); fill(24,62,24,63,FLOOR);         // south and east doors
@@ -2772,7 +2785,9 @@ function buildSea(){
   placeFires(); buildStatic(); initWallHP();
 }
 /* ======================= LEVEL 6 — RED SQUARE ======================= */
+var redCheckpoints=[],redArenaOpen=false,redDroneBase=null;
 function buildRedSquare(){
+  redCheckpoints=[];redArenaOpen=false;
   seed=11620; setMapSize(68,52,false); grid.fill(EXT);
   redBossSpawned=0; redBossDefeated=0;
   baseHP=baseMX=420; baseFlash=0;
@@ -2785,75 +2800,306 @@ function buildRedSquare(){
     {x:17*TILE,y:48*TILE,kind:'drone',cd:0,cool:28,n:'FPV'},
     {x:10.5*TILE,y:49*TILE,kind:'droneL',cd:0,cool:44,n:'HEAVY'}];
   addProp(3,42,4,1,'console'); addProp(8,42,3,1,'console'); addProp(3,47,3,1,'shoptable'); addProp(15,41,2,1,'console');
+  addProp(4,44,4,2,'truck');props[props.length-1].baseVehicle=true;
+  padList.push({x:12.6*TILE,y:44.3*TILE,serviceX:15*TILE,serviceY:46*TILE,standX:12.6*TILE,standY:46*TILE,kind:'dog',cd:0,cool:12,n:'ROBOT DOG'});
+  addProp(14,46,2,1,'console'); // Robot-dog workshop, clear of the east exit.
   baseFlags=[{x:2.5*TILE,y:39.5*TILE,h:60,crest:0},{x:21.5*TILE,y:39.5*TILE,h:60,crest:0}]; setupTruck(null);
-  // Broad ceremonial approaches surrounding a large red-brick plaza.
-  roads.push([27,6,65,36]); roads.push([27,37,65,40]); roads.push([24,6,27,40]);
-  var targets=[[37,16,'RED SQUARE CATHEDRAL',11,10,'cathedral'],[55,27,'KREMLIN COMPLEX',15,10,'kremlin']];
-  for(var rb=0;rb<targets.length;rb++){
-    var BT=targets[rb],cx=BT[0]*TILE,cy=BT[1]*TILE;
-    refineries.push({i:rb,cx:cx,cy:cy,name:BT[2],bw:BT[3]*TILE,bh:BT[4]*TILE,style:BT[5],hp:720,mx:720,dead:0,burn:0,msl:9999});
-    var rsam=[[cx-BT[3]*18,cy-BT[4]*18],[cx+BT[3]*18,cy+BT[4]*18]];
-    for(var rs=0;rs<rsam.length;rs++) sams.push({building:rb,x:rsam[rs][0],y:rsam[rs][1],ang:rr(0,6.28),cd:rr(2,6),hp:110,mx:110,hurt:0,rack:2});
+  // Three connected approaches: Kremlin lane, exposed plaza, and arcade courtyards.
+  roads.push([25,16,51,39]);roads.push([7,34,64,38]);roads.push([7,22,64,25]);
+  fill(25,2,52,15,WALL);fill(26,3,51,14,EXT);
+  fill(37,15,40,15,PROP); // Secure arena doors: opened by the two checkpoints.
+  for(var lane=0;lane<2;lane++){
+    var lx=lane?53:23;fill(lx,17,lx+1,33,WALL);
+    fill(lx,23,lx+1,25,EXT);fill(lx,30,lx+1,32,EXT);
   }
-  SPAWNS=[[26,16],[44,7],[64,15],[31,35],[53,38],[65,35]];
-  placeFires(); buildStatic();
-  // Red paving and pale stone lines make the central square visually distinct.
-  sc.fillStyle='#7a3932'; sc.fillRect(28*TILE,6*TILE,37*TILE,31*TILE);
-  sc.strokeStyle='rgba(226,192,170,.22)'; sc.lineWidth=1;
-  for(var pxr=28;pxr<=65;pxr+=2){ sc.beginPath(); sc.moveTo(pxr*TILE,6*TILE); sc.lineTo(pxr*TILE,37*TILE); sc.stroke(); }
-  for(var pyr=6;pyr<=37;pyr+=2){ sc.beginPath(); sc.moveTo(28*TILE,pyr*TILE); sc.lineTo(65*TILE,pyr*TILE); sc.stroke(); }
-  // Dense paving texture, stone sidewalks and formal road approaches.
-  for(var cob=0;cob<1500;cob++){
-    var cbx=rr(28*TILE,65*TILE),cby=rr(6*TILE,37*TILE);
-    sc.fillStyle='rgba('+ri(130,190)+','+ri(72,112)+','+ri(62,92)+','+rr(.08,.22)+')'; sc.fillRect(cbx,cby,rr(2,7),rr(1,3));
+  for(var court=0;court<3;court++){
+    var yy=18+court*6;
+    addProp(56,yy,3,2,'block');addProp(63,yy,2,2,'block');
+    if(court<2){fill(55,yy+3,65,yy+3,WALL);fill(court?61:56,yy+3,court?63:58,yy+3,EXT);}
+    addProp(10,yy+1,2,1,'sand',true);addProp(18,yy+3,2,1,'sand',true);
   }
-  sc.fillStyle='#4a4c4e'; sc.fillRect(24*TILE,5*TILE,4*TILE,35*TILE); sc.fillRect(24*TILE,37*TILE,42*TILE,4*TILE);
-  // Connected inner streets give the motorcade several visible routes through the district.
-  sc.fillRect(30*TILE,9*TILE,34*TILE,3*TILE); sc.fillRect(30*TILE,24*TILE,34*TILE,3*TILE);
-  sc.fillRect(31*TILE,9*TILE,3*TILE,28*TILE); sc.fillRect(62*TILE,9*TILE,3*TILE,28*TILE);
-  sc.fillStyle='#c6beb0'; sc.fillRect(27*TILE,5*TILE,TILE,35*TILE); sc.fillRect(24*TILE,37*TILE,42*TILE,TILE);
-  sc.fillStyle='#eee8d8';
-  for(var lm=0;lm<16;lm++){ sc.fillRect(25.8*TILE,(6+lm*2)*TILE,4,25); sc.fillRect((26+lm*2.45)*TILE,39*TILE,27,4); }
-  // Zebra crossings at the main entrances.
-  for(var zc=0;zc<7;zc++){ sc.fillRect((26+zc*.62)*TILE,35.8*TILE,13,2.1*TILE); sc.fillRect(26.2*TILE,(15+zc*.62)*TILE,2.1*TILE,13); }
-  // Lamps, bollards, benches and clipped trees line the ceremonial routes.
-  for(var decoR=0;decoR<14;decoR++){
-    var side=decoR%2,dxr=(side?66:27.2)*TILE,dyr=(7+Math.floor(decoR/2)*4.1)*TILE;
-    sc.fillStyle='rgba(0,0,0,.28)'; sc.beginPath(); sc.ellipse(dxr+7,dyr+7,10,5,.5,0,6.3); sc.fill();
-    sc.fillStyle='#27302c'; sc.beginPath(); sc.arc(dxr,dyr,6,0,6.3); sc.fill();
-    sc.fillStyle='#e5c56c'; sc.beginPath(); sc.arc(dxr,dyr,2.4,0,6.3); sc.fill();
-  }
-  for(var tr=0;tr<8;tr++){
-    var trx=(30+tr*4.6)*TILE,tryy=(tr%2?36.2:6.7)*TILE;
-    sc.fillStyle='rgba(0,0,0,.22)'; sc.beginPath(); sc.ellipse(trx+6,tryy+8,18,10,.4,0,6.3); sc.fill();
-    sc.fillStyle='#314e3d'; sc.beginPath(); sc.arc(trx,tryy,14,0,6.3); sc.fill();
-    sc.fillStyle='#4f7355'; sc.beginPath(); sc.arc(trx-4,tryy-5,9,0,6.3); sc.fill();
-    sc.fillStyle='#b6aa91'; sc.fillRect(trx-2,tryy+10,4,9);
-  }
-  for(var bol=0;bol<15;bol++){
-    var bxr=(29+bol*2.35)*TILE,byr=37.5*TILE;
-    sc.fillStyle='#343638'; sc.beginPath(); sc.arc(bxr,byr,4,0,6.3); sc.fill(); sc.fillStyle='#c7a94c'; sc.beginPath(); sc.arc(bxr,byr,1.4,0,6.3); sc.fill();
-  }
-  // Moving black motorcade uses the inner street loop and periodically deploys security teams.
-  var carRoute=[[31*TILE,10.5*TILE],[63*TILE,10.5*TILE],[63*TILE,25.5*TILE],[63*TILE,38.5*TILE],[31*TILE,38.5*TILE],[31*TILE,25.5*TILE]];
-  for(var car=0;car<6;car++) motorcade.push({i:car,x:(31+car*4.8)*TILE,y:38.5*TILE,ang:Math.PI,hp:180,mx:180,dead:0,route:carRoute,wp:4,stop:rr(0,3),checks:0,hurt:0});
-  // Kremlin wall and corner towers establish a separate fortified complex beside the cathedral.
-  sc.fillStyle='rgba(0,0,0,.32)'; rrect(sc,47*TILE+14,21*TILE+18,18*TILE,15*TILE,6); sc.fill();
-  sc.fillStyle='#8e3d35'; rrect(sc,47*TILE,21*TILE,18*TILE,15*TILE,5); sc.fill(); outl(sc,'#3b2723',3);
-  sc.fillStyle='#d8c9b2'; for(var kr=0;kr<12;kr++) sc.fillRect((47.3+kr*1.48)*TILE,21*TILE,18,8);
-  sc.fillStyle='#6a302c'; sc.fillRect(48*TILE,33.5*TILE,16*TILE,2.2*TILE);
-  for(var kt=0;kt<4;kt++){
-    var ktx=(kt%2?63:49)*TILE,kty=(kt<2?22.5:34)*TILE;
-    sc.fillStyle='#a94b40'; rrect(sc,ktx-16,kty-20,32,40,4); sc.fill(); outl(sc,'#3b2723',2);
-    sc.fillStyle='#1f654d'; sc.beginPath(); sc.moveTo(ktx,kty-48); sc.lineTo(ktx+22,kty-20); sc.lineTo(ktx-22,kty-20); sc.closePath(); sc.fill(); outl(sc,'#173b31',1.6);
-    sc.fillStyle='#c7a94c'; sc.beginPath(); sc.arc(ktx,kty-49,3,0,6.3); sc.fill();
-  }
-  sc.fillStyle='#f0dfc5'; sc.font='bold 10px Arial'; sc.textAlign='center'; sc.fillText('KREMLIN',56*TILE,35.5*TILE); sc.textAlign='start';
+  [[30,20],[44,27],[32,33]].forEach(function(p){addProp(p[0],p[1],3,2,'wreck');});
+  redCheckpoints=[{x:15*TILE,y:20*TILE,n:'KREMLIN CHECKPOINT',progress:0,captured:false},
+    {x:60*TILE,y:20*TILE,n:'ARCADE CHECKPOINT',progress:0,captured:false}];
+  // Landmarks are scenery, not demolition objectives.
+  refineries.push({i:0,cx:12*TILE,cy:10*TILE,bw:12*TILE,bh:8*TILE,name:'KREMLIN WALL',style:'kremlin',scenery:true,hp:720,mx:720,dead:0,burn:0,msl:9999});
+  refineries.push({i:1,cx:60*TILE,cy:9*TILE,bw:10*TILE,bh:7*TILE,name:'SAINT BASIL’S CATHEDRAL',style:'cathedral',scenery:true,hp:720,mx:720,dead:0,burn:0,msl:9999});
+  [[21,20],[51,22],[54,29]].forEach(function(p){aaGuns.push({tower:true,x:p[0]*TILE,y:p[1]*TILE,ang:1.57,cd:1,burst:0,spin:0,hp:180,mx:180,hurt:0});});
+  SPAWNS=[[13,19],[18,21],[57,19],[62,21],[31,26],[45,32]];
+  for(var car=0;car<3;car++)motorcade.push({i:car,x:(28.5+car*6)*TILE,y:37.5*TILE,ang:0,hp:420,mx:420,patrolTank:true,gunCD:2,turret:0,trackPhase:0,dead:0,route:null,wp:0,stop:car,hurt:0,checks:0});
+  // Street furniture stays beside the routes, clear of capture zones and the motorcade.
+  [[8,27],[19,29],[56,32],[63,33]].forEach(function(p){addProp(p[0],p[1],2,1,'sand',true);});
+  // Fortified drone compound replaces the southern arcade courtyard.
+  props=props.filter(function(p){return !(p.x>=56&&p.x<=66&&p.y>=29&&p.y<=38);});
+  fill(56,29,66,38,WALL);fill(57,30,65,37,FLOOR);
+  fill(56,33,56,35,EXT);fill(60,38,63,38,EXT);
+  addProp(57,30,3,1,'console');addProp(63,30,2,1,'dronerack');
+  addProp(64,36,1,1,'ammocrate');addProp(57,36,2,1,'sand',true);
+  redDroneBase={x:60.5*TILE,y:34.5*TILE,ang:0,hp:1200,mx:1200,droneHQ:true,dead:0,raidTimer:25,raidCount:0};
+  redDroneBase.workshops=[{x:59*TILE,y:32*TILE,kind:'drone',enemy:true,cool:38},
+    {x:64*TILE,y:35.5*TILE,kind:'droneL',enemy:true,cool:38}];
+  motorcade.push(redDroneBase);
+  motorcade.push({i:3,x:54*TILE,y:36.5*TILE,ang:Math.PI,patrolTank:true,parked:true,hp:420,mx:420,gunCD:2,turret:Math.PI,trackPhase:0,dead:0,hurt:0});
+  addProp(39,40,3,2,'hotdogTruck');
+  addProp(27,40,4,1,'busShelter'); // Off the road, with a solid shelter footprint.
+  [[29,25],[46,19],[39,31]].forEach(function(p){addProp(p[0],p[1],1,1,'ammocrate');});
+  // City park: destructible trees border the lawn; the central promenade stays open.
+  [[44,41],[49,41],[57,41],[62,41],[44,47],[49,48],[57,48],[62,47]].forEach(function(p,i){
+    addProp(p[0],p[1],1,1,'fieldTree');
+    var tree=props[props.length-1];tree.treeStyle=i===6?'broken':'leafy';tree.treeSeed=p[0]*37+p[1]*71;
+  });
+  buildStatic();
+  paintRedStreetDetails(sc);
+  // Pale granite bands and route signage frame the plaza without hiding cover.
+  for(var stripe=0;stripe<2;stripe++)gearLine(sc,(stripe?50:26)*TILE,16*TILE,(stripe?50:26)*TILE,38*TILE,'#c8c0aa',5);
+  sc.font='bold 13px Georgia';sc.textAlign='center';sc.fillStyle='#dbc89e';
+  [['KREMLIN APPROACH',15,35],['RED SQUARE',38,38],['SHOPPING ARCADE',60,35],['CEREMONIAL COURT',38,5]].forEach(function(t){sc.fillText(t[0],t[1]*TILE,t[2]*TILE);});sc.textAlign='start';
   initWallHP();
+}
+function drawHotdogTruck(c,o){
+  var x=o.x*TILE,y=o.y*TILE;
+  c.save();c.translate(x,y);
+  gearBox(c,4,8,104,64,'rgba(0,0,0,.3)',null,7);
+  for(var wheel=0;wheel<4;wheel++){
+    var wx=wheel<2?17:84,wy=wheel%2?59:1;
+    gearBox(c,wx-9,wy-5,18,11,'#202629','#101718',3);
+    gearBox(c,wx-4,wy-3,8,7,'#797f7c','#343c3d',2);
+  }
+  gearBox(c,0,3,100,54,'#ddd7bc','#535c59',5);
+  gearBox(c,77,7,24,46,'#b64932','#61362c',4);
+  gearBox(c,80,13,14,34,'#354f58','#c4bca4',2);
+  gearLine(c,82,15,91,24,'#a8c2c1',2);
+  gearBox(c,6,9,65,39,'#e9dfc3','#8c8c7c',2);
+  gearBox(c,12,15,17,17,'#999f96','#6b746c',2);
+  for(var vent=0;vent<4;vent++)gearLine(c,15,18+vent*3,26,18+vent*3,'#515e5a',1);
+  gearBox(c,34,13,30,23,'#ead2a0','#95774a',10);
+  gearBox(c,36,19,26,10,'#a44b2f','#733c29',5);
+  c.strokeStyle='#eccc38';c.lineWidth=2;c.beginPath();c.moveTo(39,24);c.lineTo(44,21);c.lineTo(49,26);c.lineTo(54,21);c.lineTo(59,24);c.stroke();
+  gearBox(c,5,47,69,15,'#f0e5c8','#754638',1);
+  for(var stripe=0;stripe<9;stripe++){c.fillStyle=stripe%2?'#e9d9b7':'#b94b36';c.fillRect(6+stripe*7.5,48,7.5,13);}
+  gearBox(c,9,36,60,11,'#8e3629','#643c2c',1);
+  c.font='bold 8px sans-serif';c.textAlign='center';c.fillStyle='#fff0c8';c.fillText('HOT DOGS',39,44);
+  gearBox(c,98,8,4,8,'#e4d69d','#5b5e54',1);gearBox(c,98,45,4,8,'#e4d69d','#5b5e54',1);
+  c.restore();
+}
+function drawCityBusShelter(c,o){
+  var x=o.x*TILE,y=o.y*TILE,w=o.w*TILE;
+  c.save();c.translate(x,y);
+  gearPoly(c,[[0,6],[w,6],[w+24,39],[19,39]],'rgba(20,29,27,.25)');
+  gearBox(c,0,0,w,30,'#7e857a','#555f58',2);
+  // Glass panels, metal uprights and fractured glazing.
+  for(var pane=0;pane<4;pane++){
+    var px=5+pane*32;
+    gearBox(c,px,-23,29,40,'rgba(84,120,127,.55)','#435650',1);
+    gearLine(c,px+4,-19,px+20,10,'rgba(186,215,206,.48)',1);
+    gearLine(c,px,-26,px,28,'#384a44',3);
+    if(pane===2){
+      gearPoly(c,[[px+7,-16],[px+24,-12],[px+17,8],[px+10,3]],'#263c3b');
+      [[3,-20],[25,-18],[27,10],[4,13]].forEach(function(pt){gearLine(c,px+14,-5,px+pt[0],pt[1],'#c5d7cd',1);});
+    }
+  }
+  for(var slat=0;slat<3;slat++)gearBox(c,13,13+slat*4,93,3,'#8e7553','#4c5144',.6);
+  gearLine(c,21,20,21,29,'#30433e',3);gearLine(c,99,20,99,29,'#30433e',3);
+  gearPoly(c,[[-5,-31],[w+5,-31],[w+9,-19],[-3,-19]],'#677b71','#344941',2);
+  gearLine(c,0,-30,w,-30,'#a6afa0',2);
+  gearBox(c,8,-29,90,8,'#284e65','#263c42',1);
+  c.font='bold 6px sans-serif';c.fillStyle='#dedec5';c.textAlign='center';c.fillText('АВТОБУС · 06 / 24',53,-23);
+  gearBox(c,w-24,-18,18,29,'#c2bba4','#687a6e',1);
+  for(var row=0;row<6;row++)gearLine(c,w-21,-13+row*3,w-10,-13+row*3,'#66796e',.8);
+  for(var shard=0;shard<12;shard++){
+    var sx=64+hs(shard*7)*48,sy=22+hs(shard*13)*7;
+    gearPoly(c,[[sx,sy],[sx+5,sy-2],[sx+3,sy+3]],'#a0b9b2');
+  }
+  c.restore();
+}
+function paintRedStreetDetails(c){
+  // Worn crossings identify intersections without introducing collision obstacles.
+  c.save();
+  [[35,23],[35,36],[47,23]].forEach(function(p){
+    var x=p[0]*TILE,y=p[1]*TILE;
+    for(var stripe=0;stripe<7;stripe++){
+      c.fillStyle='#bcb9a2';c.fillRect(x+stripe*13,y-31,7,62);
+      c.fillStyle='#777d71';c.fillRect(x+stripe*13+1,y-22+hs(stripe*17+x)*38,4,3);
+    }
+    gearLine(c,x-13,y-34,x-13,y+34,'#c7c0a7',3);
+    // Roadside signal heads: dark housings, lenses and angled cast shadows.
+    [-1,1].forEach(function(side){
+      var sx=x+(side<0?-26:107),sy=y+side*64;
+      gearPoly(c,[[sx-2,sy],[sx+3,sy],[sx+24,sy+18],[sx+18,sy+18]],'rgba(22,32,29,.25)');
+      gearLine(c,sx,sy,sx,sy-43,'#384a43',3);
+      gearBox(c,sx-6,sy-64,12,25,'#25332e','#708273',1);
+      ['#ae4938','#65532c','#344d3a'].forEach(function(col,i){
+        c.fillStyle=col;c.beginPath();c.arc(sx,sy-59+i*7,2.5,0,Math.PI*2);c.fill();
+        gearLine(c,sx-4,sy-63+i*7,sx+4,sy-63+i*7,'#111d19',1);
+      });
+    });
+  });
+  // A faded curbside bus bay beside the shelter.
+  c.strokeStyle='#c2b184';c.lineWidth=2;c.setLineDash([12,9]);c.strokeRect(27*TILE,38.7*TILE,4*TILE,30);c.setLineDash([]);
+  c.font='bold 14px sans-serif';c.textAlign='center';c.fillStyle='#b6af92';c.fillText('BUS',29*TILE,38.7*TILE+20);
+  c.restore();
+
+  // Landscaped city square with a cross-shaped stone promenade.
+  c.save();
+  var px=42*TILE,py=40*TILE,pw=23*TILE,ph=10*TILE;
+  c.fillStyle='#8f9280';c.fillRect(px-7,py-7,pw+14,ph+14);
+  c.fillStyle='#4c6341';c.fillRect(px,py,pw,ph);
+  for(var grass=0;grass<1700;grass++){
+    var gx=px+hs(grass*17+3)*pw,gy=py+hs(grass*31+9)*ph;
+    c.fillStyle=grass%3===0?'#71805a':grass%3===1?'#3e5539':'#5d7049';
+    c.fillRect(gx,gy,2+hs(grass+5)*6,1+hs(grass+13)*3);
+  }
+  c.fillStyle='#b3ad98';c.fillRect(px,44*TILE,pw,2*TILE);c.fillRect(53*TILE,py,2*TILE,ph);
+  c.strokeStyle='#8d8d7c';c.lineWidth=1;
+  for(var slab=0;slab<46;slab++){
+    var sx=px+slab*TILE/2;c.beginPath();c.moveTo(sx,44*TILE);c.lineTo(sx,46*TILE);c.stroke();
+  }
+  for(var slab=0;slab<20;slab++)gearLine(c,53*TILE,py+slab*TILE/2,55*TILE,py+slab*TILE/2,'#8d8d7c',1);
+  // Low curb stones give the grass edges depth without blocking movement.
+  for(var curb=0;curb<46;curb++){
+    gearBox(c,px+curb*TILE/2,py-6,TILE/2-1,5,'#c0baa5','#797e70',.5);
+    gearBox(c,px+curb*TILE/2,py+ph+1,TILE/2-1,5,'#c0baa5','#797e70',.5);
+  }
+  [[47,43],[59,43],[47,47],[59,47]].forEach(function(p){
+    var x=p[0]*TILE,y=p[1]*TILE;
+    c.fillStyle='rgba(20,30,22,.22)';c.fillRect(x-23,y+3,53,13);
+    gearLine(c,x-17,y,x-17,y+10,'#303b36',4);gearLine(c,x+17,y,x+17,y+10,'#303b36',4);
+    for(var slat=0;slat<4;slat++)gearBox(c,x-24,y-8+slat*4,48,3,'#8b7250','#4d4938',.6);
+    gearBox(c,x+34,y-5,12,17,'#3c5147','#25382f',2);
+    gearLine(c,x+34,y-4,x+46,y-4,'#a1a591',2);
+  });
+  // Bollards mark the park entrances; a small sign identifies the promenade.
+  [42,65].forEach(function(x){[43.8,46.2].forEach(function(y){gearBox(c,x*TILE-3,y*TILE-9,6,14,'#49544a','#293b33',1);gearLine(c,x*TILE-2,y*TILE-7,x*TILE+2,y*TILE-7,'#d7c895',2);});});
+  gearLine(c,51*TILE,41*TILE,51*TILE,41*TILE-27,'#3c473d',3);
+  gearBox(c,51*TILE-29,41*TILE-43,58,20,'#344c40','#aaa88b',1);
+  c.font='bold 8px sans-serif';c.textAlign='center';c.fillStyle='#e4dfc8';c.fillText('CITY GARDENS',51*TILE,41*TILE-30);
+  c.restore();
+
+  // Irregular shallow puddles, broken paving and abandoned street equipment.
+  [[31,24,43,16],[43,21,33,13],[37,29,54,18],[47,34,38,14],[28,31,25,11],[40,37,32,12]].forEach(function(p,i){
+    var x=p[0]*TILE,y=p[1]*TILE;
+    c.save();c.translate(x,y);c.fillStyle='rgba(42,54,55,.48)';c.beginPath();
+    for(var v=0;v<14;v++){var a=v/14*Math.PI*2,r=.75+hs(i*31+v*7)*.3;var xx=Math.cos(a)*p[2]*r,yy=Math.sin(a)*p[3]*r;if(v===0)c.moveTo(xx,yy);else c.lineTo(xx,yy);}
+    c.closePath();c.fill();c.strokeStyle='rgba(156,175,170,.6)';c.lineWidth=1;c.stroke();
+    gearLine(c,-p[2]*.55,-2,p[2]*.3,-4,'rgba(178,193,181,.4)',2);
+    gearLine(c,-p[2]*.2,5,p[2]*.55,3,'rgba(178,193,181,.22)',1);c.restore();
+  });
+  [[28,22],[45,30],[35,35],[48,25]].forEach(function(p,i){
+    var x=p[0]*TILE,y=p[1]*TILE;
+    for(var n=0;n<9;n++){
+      var xx=x+hs(n*19+i)*45,yy=y+hs(n*7+i*31)*24;
+      gearBox(c,xx,yy,4+hs(n)*8,3+hs(n+1)*5,n%3?'#8b8475':'#b9ad92','#645f54',.6);
+    }
+    // Discarded newspapers and a fallen traffic cone.
+    gearPoly(c,[[x-12,y+3],[x+1,y],[x+5,y+10],[x-9,y+13]],'#c2bfa9');
+    for(var row=0;row<3;row++)gearLine(c,x-8,y+4+row*2,x,y+3+row*2,'#7e8378',.6);
+    gearPoly(c,[[x+15,y-7],[x+29,y-3],[x+17,y+3]],'#b87339','#695c46',1);
+    gearLine(c,x+19,y-5,x+21,y+1,'#d8c9a2',2);
+    gearLine(c,x+14,y-9,x+16,y+5,'#464e46',3);
+  });
+  // Cached paving details: drains, repairs, scuffs and scattered masonry.
+  for(var tileY=17;tileY<39;tileY++)for(var tileX=7;tileX<65;tileX++){
+    if(T(tileX,tileY)!==EXT)continue;
+    var x=tileX*TILE,y=tileY*TILE,seed=tileX*43+tileY*79;
+    if(hs(seed)>.91){
+      c.fillStyle='rgba(33,39,37,.2)';c.beginPath();c.ellipse(x+17,y+18,12,5,hs(seed+3)*3,0,6.3);c.fill();
+      gearLine(c,x+5,y+6,x+15,y+17,'rgba(40,42,37,.4)',.8);gearLine(c,x+15,y+17,x+23,y+14,'rgba(40,42,37,.4)',.8);
+    }
+    if(hs(seed+31)>.965){
+      for(var rubble=0;rubble<4;rubble++){c.fillStyle=rubble%2?'#968777':'#665d52';c.fillRect(x+hs(seed+rubble*9)*28,y+hs(seed+rubble*13)*28,3,2);}
+    }
+  }
+  for(var side=0;side<2;side++)for(var lamp=0;lamp<5;lamp++){
+    var x=(side?51:25)*TILE,y=(18+lamp*4)*TILE;
+    // Slender double-headed lamps with projected shadows.
+    gearPoly(c,[[x-3,y],[x+2,y],[x+29,y+20],[x+23,y+20]],'rgba(24,30,29,.18)');
+    gearBox(c,x-4,y-3,8,6,'#424a42','#232c29',2);
+    gearLine(c,x,y,x,y-43,'#34433c',3);
+    gearLine(c,x-12,y-37,x+12,y-37,'#465a4c',2);
+    for(var arm=-1;arm<=1;arm+=2){
+      gearBox(c,x+arm*12-4,y-45,8,10,'#d3bc82','#4e5845',1);
+      gearPoly(c,[[x+arm*12-6,y-45],[x+arm*12,y-49],[x+arm*12+6,y-45]],'#384b40');
+    }
+    gearBox(c,x-10,y+8,20,9,'#50574e','#303b34',1);
+    for(var grate=0;grate<5;grate++)gearLine(c,x-7+grate*3,y+9,x-7+grate*3,y+15,'#232e29',1);
+  }
+  // Arcade shopfronts: striped awnings, glazed doors and stone cornices.
+  for(var shop=0;shop<2;shop++){
+    var x=56*TILE,y=(18+shop*6)*TILE;
+    gearBox(c,x,y-14,3*TILE,13,'#c4b292','#776b58',1);
+    for(var stripe=0;stripe<12;stripe++){
+      c.fillStyle=stripe%2?'#bcae8c':'#557065';c.fillRect(x+stripe*8.5,y-12,8.5,10);
+    }
+    gearLine(c,x,y-15,x+3*TILE,y-15,'#e0d1ad',2);
+    gearBox(c,x+6,y-32,90,15,shop?'#5a4840':'#344f50','#a69676',1);
+    c.save();c.font='bold 10px sans-serif';c.textAlign='center';c.fillStyle='#dbcca6';
+    c.fillText(shop?'ПРОДУКТЫ':'КАФЕ',x+51,y-21);c.restore();
+
+    for(var window=0;window<3;window++){
+      gearBox(c,x+8+window*30,y+7,22,28,'#344a49','#bba886',2);
+      gearLine(c,x+19+window*30,y+9,x+19+window*30,y+33,'#81938a',1);
+      gearLine(c,x+11+window*30,y+11,x+24+window*30,y+18,'rgba(207,222,211,.25)',1);
+      if(window===shop){
+        gearPoly(c,[[x+12+window*30,y+13],[x+25+window*30,y+16],[x+21+window*30,y+30],[x+14+window*30,y+25]],'#182d2c');
+        gearLine(c,x+18+window*30,y+21,x+10+window*30,y+9,'#b2c6b7',1);
+        gearLine(c,x+18+window*30,y+21,x+28+window*30,y+32,'#b2c6b7',1);
+      }
+      if(window===2){
+        for(var shutter=0;shutter<7;shutter++)gearBox(c,x+8+window*30,y+7+shutter*3,22,2,'#788176','#4d5d52',.5);
+      }
+
+    }
+  }
+  // Wooden benches, metal feet and planters around the outer walking lanes.
+  [[9,31],[20,33]].forEach(function(p){
+    var x=p[0]*TILE,y=p[1]*TILE;
+    gearLine(c,x-15,y+3,x-15,y+9,'#35443a',3);gearLine(c,x+15,y+3,x+15,y+9,'#35443a',3);
+    for(var slat=0;slat<3;slat++)gearBox(c,x-21,y-5+slat*4,42,3,'#8a7452','#574d3c',.5);
+    gearBox(c,x+29,y-7,16,16,'#999786','#606c61',2);
+    c.fillStyle='#4f6850';c.beginPath();c.ellipse(x+37,y-7,9,6,0,0,6.3);c.fill();
+  });
+  // Marked launch pads, service cables and hazard stripes inside the enemy compound.
+  [62,64].forEach(function(tx){
+    var x=tx*TILE,y=32*TILE;
+    gearBox(c,x-22,y-20,44,40,'#35454a','#b5ad73',2);
+    c.strokeStyle='#c4b97c';c.lineWidth=2;c.beginPath();c.arc(x,y,14,0,Math.PI*2);c.stroke();
+    gearLine(c,x-8,y,x+8,y,'#bfc2a7',2);gearLine(c,x,y-8,x,y+8,'#bfc2a7',2);
+    gearLine(c,x,y-22,x,31*TILE,'#272f30',3);
+  });
+  c.font='bold 9px sans-serif';c.textAlign='center';c.fillStyle='#ded2a0';c.fillText('UAV OPERATIONS',61*TILE,30*TILE-10);c.textAlign='start';
+  redCheckpoints.forEach(function(P){
+    // Radio cabinet and striped approach markings sit beside each capture square.
+    gearBox(c,P.x-61,P.y-16,22,28,'#566451','#273c31',2);
+    gearLine(c,P.x-56,P.y-16,P.x-56,P.y-40,'#27382f',1);
+    gearBox(c,P.x-57,P.y-10,14,8,'#a3b4a0','#34493c',1);
+    for(var stripe=0;stripe<5;stripe++)gearLine(c,P.x-25+stripe*11,P.y+53,P.x-20+stripe*11,P.y+61,'#c4b47a',3);
+  });
+}
+function drawRedCheckpoints(c){
+  if(mapKind!=='redSquare')return;
+  redCheckpoints.forEach(function(P){
+    var progress=Math.min(2,P.progress/3.3),lower=Math.min(1,progress),raise=Math.max(0,progress-1);
+    drawPole(c,P.x,P.y,68,0,now,null);
+    if(lower<1)drawWindFlag(c,P.x+2,P.y-66+42*lower,32,21,RU,now);
+    if(raise>0)drawWindFlag(c,P.x+2,P.y-27-41*raise,32,21,UA,now);
+    if(lower>=1){
+      gearPoly(c,[[P.x+13,P.y+5],[P.x+31,P.y+8],[P.x+25,P.y+17],[P.x+10,P.y+12]],'#c1b9a6');
+      gearLine(c,P.x+14,P.y+10,P.x+27,P.y+12,'#3d5782',3);gearLine(c,P.x+14,P.y+13,P.x+25,P.y+15,'#953f36',2);
+    }
+    c.strokeStyle=P.captured?'#0057b7':'#ffd700';c.lineWidth=2;c.beginPath();c.ellipse(P.x,P.y+3,31,17,0,0,Math.PI*2);c.stroke();
+    c.fillStyle='rgba(9,20,28,.85)';c.fillRect(P.x-77,P.y-99,154,19);
+    c.fillStyle='#ffd700';c.font='bold 8px Arial';c.textAlign='center';
+    c.fillText(P.captured?'UKRAINIAN FLAG RAISED':P.n,P.x,P.y-86);
+    c.fillText(P.captured?'':P.contested?'CLEAR NEARBY GUARDS':P.progress===0?'STAND AT FLAG TO CAPTURE':progress<1?'LOWERING ENEMY FLAG':'RAISING UKRAINIAN FLAG',P.x,P.y+40);
+    if(!P.captured){c.fillStyle='#102634';c.fillRect(P.x-28,P.y+24,56,5);c.fillStyle=progress<1?'#ffd700':'#0057b7';c.fillRect(P.x-27,P.y+25,54*Math.min(1,P.progress/6.6),3);}
+    c.textAlign='start';
+  });
+  if(!redArenaOpen){c.fillStyle='#ffd700';c.font='bold 11px Arial';c.textAlign='center';c.fillText('CAPTURE BOTH FLAGS · DESTROY DRONE BASE',39*TILE,15*TILE-10);c.textAlign='start';}
 }
 
 /* ======================= LEVEL 5 — MILITARY AID ======================= */
 function buildAirfield(){
+  animalFood=[];animalFeedTimer=3;
   seed=9900+level*19; setMapSize(82,58,false); grid.fill(EXT);
   siegeCover=[];airAssaultWave=0; airAssaultT=25; airfieldBossSpawned=0; airfieldBossDefeated=0; miniNukes.length=0;
   props.length=0; holes.length=0; roads.length=0; duck.length=0; wires.length=0; bunkers.length=0; bases.length=0; flags.length=0;
@@ -2947,6 +3193,10 @@ function buildOil(){
   shopPad={x:5.5*TILE,y:45.6*TILE};
   dronePad={x:21.5*TILE,y:39.5*TILE};
   seaPad=null; jetty=null; gunboat=null;
+
+  // Water beside the western perimeter, with floating naval mines.
+  fill(0,40,1,46,WATER);
+  [[.8,41],[1.1,43],[.65,45]].forEach(function(p,i){seaMines.push({x:p[0]*TILE,y:p[1]*TILE,bob:i*2,dead:0});});
 
   // operations wing, west of the partition
   addProp(3,38,4,1,'console');  addProp(3,41,4,1,'console');
@@ -3326,7 +3576,7 @@ function drawCrew(c,C){
   if(C.say>0){
     c.font='bold 9px Arial'; c.textAlign='center';
     var tw=c.measureText(C.line).width+12;
-    c.fillStyle='rgba(240,236,224,.92)'; rrect(c,C.x-tw/2,C.y-60,tw,15,4); c.fill();
+    c.fillStyle='rgba(240,236,224,.92)'; rrect(c,C.x-tw/2,C.y-72,tw,15,4); c.fill();
     c.fillStyle='#1a1814'; c.fillText(C.line,C.x,C.y-49.5); c.textAlign='start';
   }
 }
@@ -3430,6 +3680,7 @@ function updateBaseGuards(dt){
   for(var i=0;i<baseGuards.length;i++){
     var G=baseGuards[i];
     if(G.godResting||G.deployed)continue;
+    if(G.entrancePet){updateEntranceWalker(G,dt);continue;}
     if(G.vehicleSentry&&!G.godPatrol){ G.idleTime+=dt; continue; }
     // Recover from furniture overlap without clamping a valid route into a prop.
     if(hitBox(G.x,G.y,G.r)){
@@ -3488,6 +3739,66 @@ function updateBaseGuards(dt){
   }
 }
 // ─────────────────────────────────────────────────────────────────────────────
+var animalFood=[],animalFeedTimer=3;
+function updateAnimalFeeding(dt){
+  if(level!==5)return;
+  animalFeedTimer-=dt;
+  var feeder=player.godMode&&!piloting?player:baseGuards.find(function(g){return g.godPatrol&&!g.deployed;});
+  if(feeder&&animalFeedTimer<=0){
+    animalFeedTimer=rr(6,9);
+    var animals=civs.filter(function(c){return c.entrancePet&&c.pet&&!inBase(c.x,c.y)&&Math.hypot(c.x-feeder.x,c.y-feeder.y)<240;});
+    if(animals.length){
+      var animal=pick(animals),spot=freeSpot(animal.x+rr(-15,15),animal.y+rr(-12,12));
+      if(!inBase(spot.x,spot.y)){
+        animalFood.push({sx:feeder.x,sy:feeder.y-20,x:spot.x,y:spot.y,t:0,life:9,animal:animal});
+        feeder.feedPose=.6;feeder.ang=Math.atan2(spot.y-feeder.y,spot.x-feeder.x);
+      }
+    }
+  }
+  if(feeder)feeder.feedPose=Math.max(0,(feeder.feedPose||0)-dt);
+  for(var i=animalFood.length-1;i>=0;i--){
+    var food=animalFood[i];food.t+=dt;food.life-=dt;
+    if(food.life<=0){animalFood.splice(i,1);continue;}
+    if(food.t>=.7&&!food.landed){
+      food.landed=true;var C=food.animal;
+      C.food=food;C.pause=0;C.path=findPath(Math.floor(C.x/TILE),Math.floor(C.y/TILE),Math.floor(food.x/TILE),Math.floor(food.y/TILE),true);C.pi=1;
+    }
+  }
+}
+function drawAnimalFood(c){
+  if(level!==5)return;
+  for(var i=0;i<animalFood.length;i++){
+    var F=animalFood[i],p=Math.min(1,F.t/.7),x=F.sx+(F.x-F.sx)*p,y=F.sy+(F.y-F.sy)*p-Math.sin(p*Math.PI)*35;
+    c.fillStyle='rgba(32,40,35,.18)';c.beginPath();c.ellipse(F.x,F.y,8,3,0,0,6.3);c.fill();
+    for(var bit=0;bit<5;bit++){
+      c.fillStyle=bit%2?'#b89758':'#d4b87c';c.fillRect(x+(bit%3-1)*4,y+Math.floor(bit/3)*3,3,2);
+    }
+  }
+}
+function updateEntranceWalker(C,dt){
+  if(C.food){
+    if(C.food.life<=0){C.food=null;C.path=null;}
+    else if(Math.hypot(C.x-C.food.x,C.y-C.food.y)<24){
+      C.amt=0;C.ang=Math.atan2(C.food.y-C.y,C.food.x-C.x);C.food.life-=dt*3;C.eating=.2;return;
+    }
+  }
+  C.eating=Math.max(0,(C.eating||0)-dt);
+  C.tail=(C.tail||0)+dt*2;C.pause=Math.max(0,(C.pause||0)-dt);
+  if(C.pause>0){C.amt=0;return;}
+  if(!C.path||C.pi>=C.path.length){
+    var spot=freeSpot(rr(10.5,16.5)*TILE,(C.pet?rr(38.5,41.5):rr(40.5,46.5))*TILE);
+    if((C.pet&&inBase(spot.x,spot.y))||Math.hypot(spot.x-13.5*TILE,spot.y-43.5*TILE)>5*TILE){C.pause=1;return;}
+    C.path=findPath(Math.floor(C.x/TILE),Math.floor(C.y/TILE),Math.floor(spot.x/TILE),Math.floor(spot.y/TILE),!!C.pet);C.pi=1;
+    C.pause=rr(.8,2.8);C.amt=0;return;
+  }
+  var point=C.path[C.pi];if(!point){C.path=null;return;}
+  var dx=point.x-C.x,dy=point.y-C.y,d=Math.hypot(dx,dy);
+  if(d<4){C.pi++;return;}
+  var speed=C.pet==='deer'?33:C.pet==='swan'?20:C.pet?38:42,step=Math.min(d,speed*dt),ox=C.x,oy=C.y;
+  moveEnt(C,dx/d*step,dy/d*step);if(C.pet&&inBase(C.x,C.y)){C.x=ox;C.y=oy;C.path=null;}var moved=Math.hypot(C.x-ox,C.y-oy);
+  C.walk+=moved*.14;C.amt=Math.min(1,moved/Math.max(.01,step));C.ang=Math.atan2(dy,dx);
+  if(moved<step*.1){C.path=null;C.pause=.5;}
+}
 function updateGodCat(C,dt){
   var leader=player.godMode?player:baseGuards.find(function(g){return g.godPatrol;});
   if(!leader){C.amt=0;return;}
@@ -3512,7 +3823,7 @@ function updateCivs(dt){
   if(civT<=0&&mapKind!=='sea'&&mapKind!=='redSquare'&&civs.length<(mapKind==='trench'?8:(mapKind==='compound'?9:6))&&state==='play'){
     civT=(mapKind==='trench')?rr(1.4,3.6):(mapKind==='compound'?rr(2,5):rr(3,8)); spawnCiv(); }
   for(var i=civs.length-1;i>=0;i--){
-    var C=civs[i];if(C.godCat){updateGodCat(C,dt);continue;} C.life-=dt; if(C.say>0) C.say-=dt;
+    var C=civs[i];if(C.entrancePet){updateEntranceWalker(C,dt);continue;}if(C.godCat){updateGodCat(C,dt);continue;} C.life-=dt; if(C.say>0) C.say-=dt;
     if(C.life<=0||!C.path){ civs.splice(i,1); continue; }
     while(C.pi<C.path.length-1 &&
           Math.hypot(C.path[C.pi].x+C.ox-C.x,C.path[C.pi].y+C.oy-C.y)<24) C.pi++;
@@ -3629,11 +3940,40 @@ function drawCaptive(c,C){
       c.fillStyle='#f2c744'; rrect(c,G.x-29,G.y+23,58*G.p,5,2); c.fill(); }
   }
 }
+function drawEntranceAnimal(c,C){
+  var deer=C.pet==='deer',mir=Math.cos(C.ang)<0?-1:1,swing=Math.sin(C.walk)*C.amt;
+  c.save();c.translate(C.x,C.y);c.scale(mir,1);
+  c.fillStyle='rgba(24,37,42,.18)';c.beginPath();c.ellipse(0,1,deer?19:13,5,0,0,6.3);c.fill();
+  if(deer){
+    for(var leg=0;leg<4;leg++){
+      var x=leg<2?-10:10,step=(leg%2?1:-1)*swing*5;
+      gearLine(c,x,-13,x+step,-1,'#866c50',2.5);gearLine(c,x+step,-1,x+step+3,0,'#333a33',2);
+    }
+    c.fillStyle='#a78a64';c.beginPath();c.ellipse(0,-18,19,10,0,0,6.3);c.fill();outl(c,'#584e3d',1);
+    gearLine(c,12,-20,18,-34,'#b99e78',9);
+    c.fillStyle='#b99e78';c.beginPath();c.ellipse(21,-35,9,5,.2,0,6.3);c.fill();
+    gearPoly(c,[[15,-38],[13,-46],[20,-39]],'#927450');
+    gearLine(c,19,-40,21,-51,'#706149',1.5);gearLine(c,21,-46,26,-50,'#706149',1.2);
+    c.fillStyle='#222c28';c.beginPath();c.arc(24,-36,1.2,0,6.3);c.fill();
+    gearLine(c,-16,-18,-22,-23,'#ebe4cf',4);
+  }else{
+    gearLine(c,-4,-5,-4+swing*3,0,'#525b53',1.5);gearLine(c,5,-5,5-swing*3,0,'#525b53',1.5);
+    c.fillStyle='#edf1e9';c.beginPath();c.ellipse(0,-11,14,9,0,0,6.3);c.fill();outl(c,'#a3b1ac',1);
+    c.strokeStyle='#f2f4ed';c.lineWidth=6;c.beginPath();c.moveTo(8,-13);c.bezierCurveTo(19,-18,5,-29,16,-32);c.stroke();
+    c.fillStyle='#f2f4ed';c.beginPath();c.ellipse(18,-32,5,4,0,0,6.3);c.fill();
+    gearPoly(c,[[21,-33],[29,-30],[21,-29]],'#c88d49');
+    c.fillStyle='#263332';c.beginPath();c.arc(19,-33,1,0,6.3);c.fill();
+    c.strokeStyle='#bdc9c4';c.lineWidth=1;c.beginPath();c.ellipse(-2,-12,8,5,-.25,0,Math.PI);c.stroke();
+  }
+  c.restore();
+}
 function drawAnimal(c,C){
+  if(C.pet==='deer'||C.pet==='swan'){drawEntranceAnimal(c,C);return;}
+
   var mir=Math.cos(C.ang)<0?-1:1, dog=(C.pet==='dog');
   var ph=C.walk, sA=Math.sin(ph)*.9*C.amt, sB=Math.sin(ph+Math.PI)*.9*C.amt;
   var bob=-Math.abs(Math.sin(ph*2))*1.4*C.amt;
-  var S=dog?.72:.58;
+  var S=dog?.72:(C.kitten?.43:.58);
   c.save(); c.translate(C.x,C.y);
   c.fillStyle='rgba(0,0,0,.3)'; c.beginPath(); c.ellipse(0,1,13*S,5*S,0,0,6.3); c.fill();
   c.save(); c.scale(mir*S,S); c.translate(0,bob);
@@ -3722,7 +4062,36 @@ function drawBaseGuard(c,G){
   if(G.godResting){drawUnit(c,G.x,G.y,1.57,G.kit.col,G.kit.band,0,0,null,null,false,false,false,G.sid,0,null,false,G.kit);return;}
   if(G.deployed)return;
 
-  if(G.godPatrol){drawUnit(c,G.x,G.y,G.ang,VEHICLE_SENTRY_KIT.col,VEHICLE_SENTRY_KIT.band,G.walk,G.amt,'rifleman','rifle',false,false,false,G.sid,0,null,false,VEHICLE_SENTRY_KIT);return;}
+  if(G.sunbathing&&level===4){
+    c.save();c.translate(G.x,G.y);
+    c.fillStyle='rgba(0,0,0,.2)';rrect(c,-22,-39,46,81,3);c.fill();
+    c.fillStyle='#d4c49a';rrect(c,-23,-42,44,80,3);c.fill();
+    for(var stripe=0;stripe<7;stripe++){c.fillStyle=stripe%2?'#44789c':'#e5ddc4';c.fillRect(-22,-40+stripe*11,42,8);}
+    var breath=Math.sin(G.idleTime*1.5)*.5;
+    gearLine(c,-5,9,-7,30,SKIN,7);gearLine(c,5,9,8,30,SKIN,7);
+    gearBox(c,-11,1,22,14,'#79836a','#394a37',3);gearLine(c,0,5,0,14,'#43523b',1);
+    gearBox(c,-10,-22+breath,20,25,SKIN,'#946d4c',5);
+    gearLine(c,-10,-18,-17,-5,SKIN,6);gearLine(c,10,-18,17,-5,SKIN,6);
+    c.fillStyle=SKIN;c.beginPath();c.ellipse(0,-30+breath,7,8,0,0,6.3);c.fill();
+    c.fillStyle='#d8bf76';c.beginPath();c.arc(0,-33+breath,7,Math.PI,0);c.fill();
+    gearBox(c,-6,-32+breath,12,3,'#202a2b','#121c1d',1);
+    gearLine(c,-2,-25,2,-25,'#9b7250',.8);c.restore();return;
+  }
+  if(G.sunbathing){
+    c.save();c.translate(G.x,G.y);
+    c.fillStyle='#d4c49a';rrect(c,-18,-45,36,54,2);c.fill();
+    for(var stripe=0;stripe<6;stripe++){c.fillStyle=stripe%2?'#44789c':'#e5ddc4';c.fillRect(-17,-44+stripe*9,34,6);}
+    var breath=Math.sin(G.idleTime*1.5)*.25;
+    // Match the normal unit's head, torso and leg proportions without scaling.
+    gearLine(c,-4,-8,-5,1,SKIN,5);gearLine(c,4,-8,5,1,SKIN,5);
+    gearBox(c,-8,-14,16,8,'#79836a','#394a37',2);gearLine(c,0,-11,0,-6,'#43523b',1);
+    gearBox(c,-7.6,-25+breath,15.2,13,SKIN,'#946d4c',4);
+    gearLine(c,-8,-23,-12,-13,SKIN,4);gearLine(c,8,-23,12,-13,SKIN,4);
+    c.save();c.beginPath();c.rect(-12,-44,24,18);c.clip();
+    drawUnit(c,0,breath,Math.PI/2,VEHICLE_SENTRY_KIT.col,VEHICLE_SENTRY_KIT.band,0,0,null,null,true,false,false,G.sid,0,null,false,VEHICLE_SENTRY_KIT);
+    c.restore();c.restore();return;
+  }
+  if(G.godPatrol){drawUnit(c,G.x,G.y,G.ang,VEHICLE_SENTRY_KIT.col,VEHICLE_SENTRY_KIT.band,G.walk,G.amt,'rifleman',G.feedPose>0?null:'rifle',false,false,false,G.sid,0,null,false,VEHICLE_SENTRY_KIT);return;}
   if(G.vehicleSentry){
     var breath=Math.sin(G.idleTime*1.65),shift=Math.sin(G.idleTime*.53);
     c.save(); c.translate(G.x,G.y);
@@ -4182,6 +4551,11 @@ function spray(dt){
     hurtEnemy(en,58*dt,Math.atan2(dy,dx));
     if(en.hp>0) igniteEnemy(en);
   }
+  motorcade.forEach(function(V){
+    if(V.dead)return;var dx=V.x-player.x,dy=V.y-player.y;
+    var da=Math.abs(((Math.atan2(dy,dx)-ang+Math.PI*3)%(Math.PI*2))-Math.PI);
+    if(Math.hypot(dx,dy)<420&&da<.42&&los(player.x,player.y,V.x,V.y))hitMotorcadeCar(V,58*dt);
+  });
   if(Math.random()<.05&&fires.length<15){
     var fireDistance=rr(80,390);
     var fx5=player.x+Math.cos(ang)*fireDistance, fy5=player.y+Math.sin(ang)*fireDistance;
@@ -4221,7 +4595,7 @@ function fireRailgun(ang){
   }
   enemies.slice().forEach(function(e){if(e.hp>0&&hitsEnemy(e))hurtEnemy(e,Math.max(500,e.hp),ang);});
   ships.slice().forEach(function(ship){if(!ship.sink&&crosses(ship.x,ship.y,ship.wid*.6))shipHit(ship,500,ang);});
-  motorcade.slice().forEach(function(car){if(!car.dead&&crosses(car.x,car.y,26))hitMotorcadeCar(car,500);});
+  motorcade.slice().forEach(function(car){if(!car.dead&&crosses(car.x,car.y,car.droneHQ?48:car.patrolTank?50:26))hitMotorcadeCar(car,500);});
   refineries.slice().forEach(function(r){if(!r.dead&&crosses(r.cx,r.cy,Math.max(r.bw,r.bh)*.5))hitRefinery(r,500,r.cx,r.cy);});
   aircraft.slice().forEach(function(a){if(!a.dead&&crosses(a.x,a.y,45))hitAircraft(a,500);});
   [sams,aaGuns,edrones].forEach(function(list){for(var i=list.length-1;i>=0;i--){var target=list[i];if(crosses(target.x,target.y,18)){list.splice(i,1);explode(target.x,target.y,45,0,true);}}});
@@ -4305,6 +4679,11 @@ function fragExplosion(x,y,r,damage){
 function explode(x,y,r,dmg,fromPlayer,depotBlast){
   if(!depotBlast) fx.push({t:'boom',x:x,y:y,life:.5,max:.5,r:r});
   blastWalls(x,y,r,dmg);
+  if(fromPlayer&&dmg>0)for(var vehicle=0;vehicle<motorcade.length;vehicle++){
+    var V=motorcade[vehicle],distance=Math.max(0,Math.hypot(V.x-x,V.y-y)-(V.patrolTank?54:32));
+    if(!V.dead&&distance<r)hitMotorcadeCar(V,dmg*(1-.5*distance/r));
+  }
+
   if(level===5&&dmg>0)for(var cv=0;cv<siegeCover.length;cv++){
     var C=siegeCover[cv],cd=Math.hypot(C.x-x,C.y-y);
     if(C.hp>0&&cd<r)hitSiegeCover(C,dmg*2*(1-.5*cd/r));
@@ -5453,9 +5832,9 @@ function update(dt,realDt){
           var shotCar=motorcade[mcb]; if(shotCar.dead) continue;
           var crx=bu.x-shotCar.x,cry=bu.y-shotCar.y,cca=Math.cos(-shotCar.ang),csa=Math.sin(-shotCar.ang);
           var carLocalX=crx*cca-cry*csa,carLocalY=crx*csa+cry*cca;
-          if(Math.abs(carLocalX)<51&&Math.abs(carLocalY)<23){
+          if(Math.abs(carLocalX)<(shotCar.patrolTank?68:51)&&Math.abs(carLocalY)<(shotCar.droneHQ?36:shotCar.patrolTank?48:23)){
             shotCar.gunHits=(shotCar.gunHits||0)+1;
-            hitMotorcadeCar(shotCar,shotCar.mx/3+.01); banner('MOTORCADE HIT',Math.min(3,shotCar.gunHits)+'/3',.7); impact(bu.x,bu.y); bullets.splice(b,1); bu=null; break;
+            hitMotorcadeCar(shotCar,bu.dmg||24); impact(bu.x,bu.y); bullets.splice(b,1); bu=null; break;
           }
         }
       }
@@ -5671,7 +6050,7 @@ function update(dt,realDt){
     if(FL3.life<=0) flames.splice(fl2,1);
   }
   updateCivs(dt);
-  updateBaseGuards(dt);
+  updateBaseGuards(dt);updateAnimalFeeding(dt);
   updateCaptives(dt);
   updateAtmos(dt);
   if(baseFlash>0) baseFlash-=dt*1.6;
@@ -5929,6 +6308,7 @@ function update(dt,realDt){
 }
 
 function relocate(en){
+  if(mapKind==='redSquare')return; // Defenders stay where they spawned; never teleport toward the player.
   var best=null,bd=1e9;
   for(var i=0;i<400;i++){
     var x=ri(1,MW-2), y=ri(1,MH-2);
@@ -6527,6 +6907,7 @@ function updateShips(dt){
   if(mapKind==='sea'&&alive===0&&ships.length===0&&enemies.length===0&&state==='play'&&!player.dead&&!seaBossDefeated) spawnSeaBoss();
 }
 function hitRefinery(R,dmg,x,y){
+  if(R.scenery)return;
   if(R.dead) return;
   R.hp-=dmg; R.burn=Math.max(R.burn,.6);
   if(mapKind==='redSquare'){
@@ -6541,6 +6922,7 @@ function hitRefinery(R,dmg,x,y){
   if(R.hp<=0) blowRefinery(R);
 }
 function blowRedBuilding(R){
+  if(R.scenery)return;
   if(R.dead) return;
   R.dead=1; R.hp=0;
   explode(R.cx,R.cy,190,28,true); blastWalls(R.cx,R.cy,150,420);
@@ -6649,7 +7031,7 @@ function spawnLevelTwoBoss(){
 function spawnRedBoss(){
   if(redBossSpawned) return;
   redBossSpawned=1;
-  var bossSpot=freeSpot(55*TILE,27*TILE);
+  var bossSpot=freeSpot(39*TILE,8*TILE);
   spawnEnemy('heavy',bossSpot.x,bossSpot.y,false,null,true);
   var PB=enemies[enemies.length-1];
   PB.finalBoss=1; PB.boss=1; PB.elite=0; PB.r=24; PB.bossScale=1.12;
@@ -6658,39 +7040,129 @@ function spawnRedBoss(){
   PB.barrelCd=.7; PB.horsePhase=0;
   banner('FINAL BOSS','PUTIN ENTERS FROM THE KREMLIN',2.8); hud();
 }
+// A clearance-aware flood search allows patrols over any reachable ground, not a road loop.
+function tankGroundClear(x,y){
+  var radius=72;
+  if(x<radius||y<radius||x>MW*TILE-radius||y>MH*TILE-radius)return false;
+  for(var ty=Math.floor((y-radius)/TILE);ty<=Math.floor((y+radius)/TILE);ty++){
+    for(var tx=Math.floor((x-radius)/TILE);tx<=Math.floor((x+radius)/TILE);tx++){
+      if(!blocksMove(T(tx,ty))&&!inBase((tx+.5)*TILE,(ty+.5)*TILE))continue;
+      var dx=x-Math.max(tx*TILE,Math.min(x,(tx+1)*TILE));
+      var dy=y-Math.max(ty*TILE,Math.min(y,(ty+1)*TILE));
+      if(dx*dx+dy*dy<radius*radius)return false;
+    }
+  }
+  return true;
+}
+function tankRoamPath(C){
+  var sx=Math.floor(C.x/TILE),sy=Math.floor(C.y/TILE),start=sy*MW+sx;
+  var queue=[start],prev=new Int32Array(MW*MH),seen=new Uint8Array(MW*MH),choices=[];
+  seen[start]=1;prev[start]=-1;
+  for(var head=0;head<queue.length;head++){
+    var cell=queue[head],cx=cell%MW,cy=Math.floor(cell/MW);
+    if(Math.abs(cx-sx)+Math.abs(cy-sy)>=7)choices.push(cell);
+    for(var d=0;d<4;d++){
+      var nx=cx+[1,-1,0,0][d],ny=cy+[0,0,1,-1][d],ni=ny*MW+nx;
+      if(nx<0||ny<0||nx>=MW||ny>=MH||seen[ni])continue;
+      seen[ni]=1;
+      // Check the connecting edge too: the whole hull must fit between tiles.
+      if(motorcade.some(function(other){return other!==C&&other.patrolTank&&Math.hypot((nx+.5)*TILE-other.x,(ny+.5)*TILE-other.y)<146;})||
+         !tankGroundClear((nx+.5)*TILE,(ny+.5)*TILE)||
+         !tankGroundClear((nx+cx+1)*TILE/2,(ny+cy+1)*TILE/2))continue;
+      prev[ni]=cell;queue.push(ni);
+    }
+  }
+  if(!choices.length)return null;
+  var path=[],cur=choices[Math.floor(Math.random()*choices.length)];
+  while(cur!==-1){path.push({x:(cur%MW+.5)*TILE,y:(Math.floor(cur/MW)+.5)*TILE});cur=prev[cur];}
+  return path.reverse();
+}
 function updateRedSquare(dt){
   updateOil(dt);
   for(var mc=0;mc<motorcade.length;mc++){
     var C=motorcade[mc]; if(C.dead) continue;
+    if(C.droneHQ)continue;
     if(C.hurt>0) C.hurt-=dt;
-    if(C.stop>0){ C.stop-=dt; continue; }
-    var CP=C.route[C.wp],cdx=CP[0]-C.x,cdy=CP[1]-C.y,cdd=Math.hypot(cdx,cdy)||1;
-    if(cdd<12){
-      C.wp=(C.wp+1)%C.route.length; C.stop=rr(3.2,6.4);
-      if(C.checks<2){
-        C.checks++;
-        for(var cg=0;cg<2;cg++){
-          var guardSpot=freeSpot(C.x+rr(-36,36),C.y+rr(-38,38));
-          spawnEnemy(cg===0?'elite':'rifleman',guardSpot.x,guardSpot.y,false,null,false);
-          var security=enemies[enemies.length-1];
-          security.d=Object.assign({},security.d,{col:'#171a1d',band:'#2b2f33'});
-          security.redGuard=1; security.motorSecurity=1; security.patrolT=0;
-          security.home={x0:C.x/TILE-3.8,y0:C.y/TILE-3.8,x1:C.x/TILE+3.8,y1:C.y/TILE+3.8,alert:1};
-        }
-        banner('MOTORCADE CHECKPOINT','BLACK-UNIFORMED SECURITY DEPLOYING',1.8); hud();
+    C.gunCD=Math.max(0,(C.gunCD||0)-dt);C.muzzle=Math.max(0,(C.muzzle||0)-dt);
+    var target=piloting&&drone?drone:player;
+    if(target&&!player.dead&&!inBase(target.x,target.y)&&Math.hypot(target.x-C.x,target.y-C.y)<440&&los(C.x,C.y,target.x,target.y)&&!smokeBlocked(C.x,C.y,target.x,target.y)){
+      C.turret=Math.atan2(target.y-C.y,target.x-C.x);
+      if(C.gunCD<=0){
+        C.burstCount=(C.burstCount||0)+1;C.gunCD=C.burstCount%5? .18:1.8;C.muzzle=.09;
+        var aim=C.turret+rr(-.07,.07);
+        eb.push({x:C.x+Math.cos(aim)*34,y:C.y+Math.sin(aim)*34,vx:Math.cos(aim)*570,vy:Math.sin(aim)*570,dmg:8,life:1,aa:piloting?1:0,mul:1});sfx('enemy',.3);
       }
+    }
+
+    if(C.parked)continue;
+    if(C.stop>0){ C.stop-=dt; continue; }
+    if(!C.route||C.wp>=C.route.length){
+      C.route=tankRoamPath(C);C.wp=0;
+      if(!C.route){C.stop=1;continue;}
+    }
+    var CP=C.route[C.wp],cdx=CP.x-C.x,cdy=CP.y-C.y,cdd=Math.hypot(cdx,cdy);
+    if(cdd<1){C.wp++;if(C.wp>=C.route.length)C.stop=rr(.5,1.8);continue;}
+    var csp=Math.min(cdd,58*dt),nx=C.x+cdx/cdd*csp,ny=C.y+cdy/cdd*csp;
+    if(!tankGroundClear(nx,ny)){C.route=null;C.stop=.6;continue;}
+    // Hull clearance includes stationary tanks and wrecks, not just map tiles.
+    var blocked=motorcade.some(function(other){
+      if(other===C||!other.patrolTank)return false;
+      var gap=Math.hypot(nx-other.x,ny-other.y);
+      return gap<146&&gap<Math.hypot(C.x-other.x,C.y-other.y);
+    });
+    if(blocked){C.trafficWait=(C.trafficWait||0)+dt;
+      if(C.trafficWait>1.2+C.i*.25){C.route=null;C.stop=.3+C.i*.15;C.trafficWait=0;}
       continue;
     }
-    C.ang=Math.atan2(cdy,cdx); var csp=72*dt; C.x+=cdx/cdd*csp; C.y+=cdy/cdd*csp;
+    C.trafficWait=0;
+    C.ang=Math.atan2(cdy,cdx);C.x=nx;C.y=ny;C.trackPhase=(C.trackPhase||0)+csp;
   }
-  var left=0; for(var rb=0;rb<refineries.length;rb++) if(!refineries[rb].dead) left++;
-  var carsLeft=0; for(var mcl=0;mcl<motorcade.length;mcl++) if(!motorcade[mcl].dead) carsLeft++;
-  if(carsLeft===0&&!redBossSpawned&&state==='play'&&!player.dead) spawnRedBoss();
-  if(left===0&&carsLeft===0&&redBossDefeated&&enemies.length===0&&state==='play'&&!player.dead) sectorClear();
+  var P=redDroneBase;
+    if(P&&!P.dead&&state==='play'&&!player.dead){
+      P.raidTimer-=dt;
+      if(P.raidTimer<=0){
+        P.raidCount++;P.raidTimer=rr(30,38);
+        var count=2;
+        for(var raid=0;raid<count;raid++){
+          var sx=(62+raid*2)*TILE,sy=32*TILE;
+          var type=['scout','fpv','heavy'][(P.raidCount-1+raid)%3];
+          var health=type==='heavy'?5:type==='scout'?2:3;
+          edrones.push({x:sx,y:sy,hx:sx,hy:sy,vx:0,vy:0,state:'hunt',baseRaid:true,droneOutpost:true,
+            tx:(BASE.x0+3+hs(P.raidCount*31+raid)*(BASE.x1-BASE.x0-6))*TILE,
+            ty:(BASE.y0+3+hs(P.raidCount*53+raid)*(BASE.y1-BASE.y0-6))*TILE,
+            raidType:type,raidSpeed:type==='scout'?145:type==='heavy'?78:115,raidDamage:type==='heavy'?30:type==='scout'?10:20,
+            rot:0,bob:raid,hp:health,mx:health,hurt:0,warn:3+raid});
+        }
+        banner('ENEMY DRONES LAUNCHED','DEFEND HOME · DESTROY THE DRONE COMMAND UNIT',3);sfx('ric',.6);
+      }
+    }
+  redCheckpoints.forEach(function(P){
+    if(P.captured)return;
+    P.contested=enemies.some(function(e){return e.hp>0&&Math.hypot(e.x-P.x,e.y-P.y)<140;});
+    if(!player.dead&&!piloting&&!P.contested&&Math.hypot(player.x-P.x,player.y-P.y)<32){
+      P.progress+=dt;
+      if(P.progress>=6.6){P.progress=6.6;P.captured=true;money+=250;sfx('clear');banner('UKRAINIAN FLAG RAISED',P.droneBase?'DRONE BASE CAPTURED · LAUNCHES STOPPED':P.n,2);hud();}
+    }
+  });
+  if(!redArenaOpen&&redDroneBase&&redDroneBase.dead&&redCheckpoints.length===2&&redCheckpoints.every(function(P){return P.captured;})){
+    redArenaOpen=true;
+    for(var gate=37;gate<=40;gate++){setT(gate,15,EXT);wallHP[15*MW+gate]=0;markDmg(gate,15,0);}
+    flowT=0;banner('BOSS ARENA OPEN','ENTER THE CEREMONIAL COURT',3);
+  }
+  if(redArenaOpen&&!redBossSpawned&&!piloting&&!player.dead&&player.x>26*TILE&&player.x<52*TILE&&player.y<15*TILE)spawnRedBoss();
+  if(redBossDefeated&&state==='play'&&!player.dead)sectorClear();
 }
 function hitMotorcadeCar(C,dmg){
   if(C.dead) return; C.hp-=dmg; C.hurt=.22;
-  if(C.hp<=0){ C.dead=1; C.hp=0; explode(C.x,C.y,105,18,true); money+=150; banner('MOTORCADE VEHICLE DOWN','',1.3); hud(); }
+  if(C.droneHQ){
+    if(C.hp<=0){C.hp=0;C.dead=1;money+=400;
+      explode(C.x,C.y,125,0,true);
+      for(var debris=0;debris<18;debris++)launchPart(C.x,C.y,'debris',null,null,rr(0,6.283),rr(.6,1.4));
+      fires.push({x:C.x-20,y:C.y,r:20,p:0,life:90,sp:0});
+      banner('DRONE BASE DESTROYED','ENEMY LAUNCHES STOPPED',3);hud();
+    }return;
+  }
+  if(C.hp<=0){ C.dead=1; C.hp=0; explode(C.x,C.y,105,18,true); money+=150; banner('PATROL TANK DESTROYED','',1.3); hud(); }
 }
 function blowRefinery(R){
   if(R.dead) return;
@@ -6730,7 +7202,7 @@ function blowRefinery(R){
 function updateOil(dt){
   var burning=0;
   for(var i=0;i<refineries.length;i++){
-    var R=refineries[i];
+    var R=refineries[i];if(R.scenery)continue;
     if(R.dead){
       burning++;
       // a column of oily black smoke, forever
@@ -7290,9 +7762,9 @@ function updateEDrones(dt){
     D.rot+=dt*38; D.bob+=dt*2.6;
     if(D.baseRaid){
       if(D.warn>0){D.warn-=dt;continue;}
-      var rdx=D.tx-D.x,rdy=D.ty-D.y,rd=Math.hypot(rdx,rdy),rs=Math.min(rd,100*dt);
+      var rdx=D.tx-D.x,rdy=D.ty-D.y,rd=Math.hypot(rdx,rdy),rs=Math.min(rd,(D.raidSpeed||100)*dt);
       if(rd>0){D.x+=rdx/rd*rs;D.y+=rdy/rd*rs;}
-      if(rd<=rs+3){edrones.splice(i,1);explode(D.tx,D.ty,65,0,true);hurtRaidedBase(20);if(state!=='play')return;}
+      if(rd<=rs+3){edrones.splice(i,1);explode(D.tx,D.ty,65,0,true);hurtRaidedBase(D.raidDamage||20);if(state!=='play')return;}
       continue;
     }
     if(D.hurt>0) D.hurt-=dt;
@@ -7536,11 +8008,26 @@ function startSector(n){
     baseGuards.push({x:54.15*TILE+9,y:13*TILE+4,r:10,baseGuard:true,
       vehicleSentry:true,idleTime:1.7,sid:417,walk:0,amt:0});
   }
+  if(level===6){
+    baseGuards.push({x:5.15*TILE+9,y:46*TILE+4,r:10,baseGuard:true,
+      vehicleSentry:true,idleTime:1.7,sid:417,walk:0,amt:0});
+  }
   if(level===2){
     baseGuards.push({x:4.5*TILE,y:31.5*TILE,r:10,baseGuard:true,
       vehicleSentry:true,godPatrol:true,idleTime:1.7,sid:417,walk:0,amt:0,ang:0,patrolX:0,patrolY:0,patrolT:0});
     civs.push({x:4*TILE,y:31.5*TILE,r:6,pet:'cat',godCat:true,pcol:'#f2f1e9',pcol2:'#858e96',
       tail:0,walk:0,amt:0,ang:0,panic:0,life:999999,sid:914,routeWait:0});
+  }
+  if(level===5){
+    var gate=freeSpot(13.5*TILE,44.5*TILE);
+    baseGuards.push({x:gate.x,y:gate.y,r:10,baseGuard:true,vehicleSentry:true,godPatrol:true,entrancePet:true,
+      sid:417,walk:0,amt:0,ang:1.57,path:null,pi:1,pause:1});
+    ['swan','deer','deer','cat','cat','cat'].forEach(function(pet,i){
+      var sp=freeSpot((11.5+i%4)*TILE,(39.5+Math.floor(i/4))*TILE);
+      civs.push({x:sp.x,y:sp.y,r:pet==='deer'?8:5,pet:pet,kitten:pet==='cat',entrancePet:true,
+        pcol:i%2?'#e9e9df':'#c5cbd0',pcol2:'#8d969d',tail:i,walk:0,amt:0,ang:0,
+        panic:0,life:999999,sid:920+i,path:null,pi:1,pause:i*.4});
+    });
   }
   civT=4; shopCD=0; droneCam=null; respawnT=0; enades.length=0; flames.length=0; wingmen.length=0;
   for(var pz0=0;pz0<padList.length;pz0++) padList[pz0].cd=0;
@@ -7597,15 +8084,15 @@ function startSector(n){
     }
   }
   if(mapKind==='redSquare'){
-    for(var rbg=0;rbg<refineries.length;rbg++){
-      var guardedBuilding=refineries[rbg];
-      var buildingZone={x0:guardedBuilding.cx/TILE-5,y0:guardedBuilding.cy/TILE-4,x1:guardedBuilding.cx/TILE+5,y1:guardedBuilding.cy/TILE+4,alert:1};
-      for(var rgd=0;rgd<6;rgd++){
-        var rga=rgd/6*6.283,rgs=freeSpot(guardedBuilding.cx+Math.cos(rga)*155,guardedBuilding.cy+Math.sin(rga)*118);
-        spawnEnemy(rgd===0?'elite':(rgd===1?'sniper':(rgd===2?'rusher':'rifleman')),rgs.x,rgs.y,false,buildingZone,false);
-        var squareGuard=enemies[enemies.length-1]; squareGuard.redGuard=1; squareGuard.patrolT=rr(0,3);
-      }
-    }
+    [[55,33],[61,37],[58,32],[64,34]].forEach(function(p,i){
+      var workshop=i>=2?redDroneBase.workshops[i-2]:null;
+      spawnEnemy(i===0?'heavy':'rifleman',workshop?workshop.x-40:(p[0]+.5)*TILE,workshop?workshop.y+7:(p[1]+.5)*TILE,true,null,false);
+      if(workshop)enemies[enemies.length-1].workshop=workshop;
+    });
+    SPAWNS.forEach(function(pos,i){for(var guard=0;guard<3;guard++){
+      var sp=freeSpot((pos[0]+guard*.6)*TILE,(pos[1]+guard*.5)*TILE);
+      spawnEnemy(guard===0?'elite':'rifleman',sp.x,sp.y,false,{x0:pos[0]-2,y0:pos[1]-2,x1:pos[0]+3,y1:pos[1]+3,alert:0},false);
+    }});
   }
   queue=(mapKind==='trench')?trenchWave(0,n):((mapKind==='sea'||mapKind==='oil'||mapKind==='airfield'||mapKind==='redSquare')?[]:makeWave(0,n)); spawnQ=queue.length; spawnT=.6;
 
@@ -7620,9 +8107,9 @@ function startSector(n){
   }
   state='play'; focusGame(); hud(); startMusic(mapKind);
   intro=(mapKind==='redSquare')?[{t:0,a:'SECTOR '+n,b:'RED SQUARE · MOSCOW'},
-        {t:2.4,a:'RED SQUARE CATHEDRAL AND KREMLIN',b:'TWO PRIMARY OBJECTIVES'},
-        {t:4.8,a:'MOTORCADE CHECKS THE STREETS',b:'SECURITY TEAMS DEPLOY AT STOPS'},
-        {t:7.2,a:'CLEAR BUILDINGS, CARS AND GUARDS',b:'ALL TARGETS MUST BE REMOVED'}]:(mapKind==='airfield')?[{t:0,a:'SECTOR '+n,b:'MILITARY AID'},
+        {t:2.4,a:'THREE ROUTES THROUGH RED SQUARE',b:'KREMLIN LANE · CENTRAL PLAZA · SHOPPING ARCADE'},
+        {t:4.8,a:'SECURE TWO CHECKPOINTS',b:'LOWER ENEMY FLAGS · RAISE UKRAINIAN FLAGS'},
+        {t:7.2,a:'DESTROY THE DRONE BASE',b:'BOTH FLAGS + DRONE COMMAND UNIT OPEN THE BOSS COURT'}]:(mapKind==='airfield')?[{t:0,a:'SECTOR '+n,b:'MILITARY AID'},
         {t:2.4,a:'THREE CARGO PLANES UNLOADING',b:'NORTH KOREAN WEAPONS AND TROOPS'},
         {t:4.8,a:'MOBILE GUARDS AROUND EVERY PLANE',b:'BREAK THE DEFENSIVE PATROLS'},
         {t:7.2,a:'TWO ASSAULT WAVES WILL HIT BASE',b:'DEFEAT BOTH AND CLEAR MILITARY AID'}]:(mapKind==='oil')?[{t:0,a:'SECTOR '+n,b:'CRUDE INTENTIONS'},
@@ -7716,7 +8203,7 @@ function hud(){
     var rbLeft=0; for(var rbq=0;rbq<refineries.length;rbq++) if(!refineries[rbq].dead) rbLeft++;
     var mcLeft=0; for(var mcq=0;mcq<motorcade.length;mcq++) if(!motorcade[mcq].dead) mcLeft++;
     var bossState=redBossDefeated?'BOSS DOWN':(redBossSpawned?'FINAL BOSS ACTIVE':'BOSS LOCKED');
-    lbl='BUILDINGS '+(refineries.length-rbLeft)+'/'+refineries.length+' · MOTORCADE '+(motorcade.length-mcLeft)+'/'+motorcade.length+' · '+bossState+' · '+enemies.length+' GUARDS';
+    lbl='CHECKPOINTS '+redCheckpoints.filter(function(p){return p.captured;}).length+'/'+redCheckpoints.length+' · DRONE BASE '+(redDroneBase&&redDroneBase.dead?'DESTROYED':'ACTIVE')+' · '+bossState;
   }
   else if(mapKind==='airfield'){
     var planesUp=0; for(var ac5=0;ac5<aircraft.length;ac5++) if(!aircraft[ac5].dead) planesUp++;
@@ -8094,7 +8581,7 @@ function drawUnit(c,x,y,ang,col,band,walk,amt,kind,gun,dark,noHead,rus,seed,reco
   seed=seed||7;
   recoil=recoil||0;
   var PAL=rus?EMR:kit.pal;
-  if(mapKind==='airfield'){
+  if(mapKind==='airfield'&&appearance!==VEHICLE_SENTRY_KIT){
     col=rus?'#d0d8d7':'#e2e8e4';
     PAL=['#edf1eb','#c2cfce','#94a5aa','#dce4df'];
     kit=Object.assign({},kit,{rig:'#909f9b',mask:true,scarf:true,gog:true});
@@ -9216,7 +9703,71 @@ function drawMountedBoss(c,U){
   gearLine(c,-5,-39,-4,-37,'#a37455',.8);gearLine(c,5,-39,4,-37,'#a37455',.8);
   c.restore();
 }
+function drawPatrolTank(c,C){
+  if(C.x<cam.x-100||C.x>cam.x+VW+100||C.y<cam.y-100||C.y>cam.y+VH+100)return;
+  c.save();c.translate(C.x,C.y);c.rotate(C.ang);c.scale(1.56,1.56);
+  c.fillStyle='rgba(13,21,18,.35)';c.beginPath();c.ellipse(4,6,49,29,0,0,6.3);c.fill();
+  for(var side=-1;side<=1;side+=2){
+    gearBox(c,-43,side*23-7,86,14,'#303932','#17211c',4);
+    for(var tread=0;tread<15;tread++){
+      var x=-41+((tread*6+(C.trackPhase||0)*.6)%84);
+      gearLine(c,x,side*23-5,x,side*23+5,C.dead?'#3c3d35':'#8a8b76',2);
+    }
+    for(var wheel=0;wheel<6;wheel++){c.fillStyle='#4b5547';c.beginPath();c.arc(-32+wheel*13,side*24,4,0,6.3);c.fill();}
+  }
+  gearPoly(c,[[-40,-19],[28,-19],[43,-12],[43,12],[28,19],[-40,19]],C.dead?'#44443a':'#657451','#253627',2);
+  gearPoly(c,[[-34,-15],[21,-15],[34,-9],[12,-4],[-34,-5]],C.dead?'#4a493c':'#899271');
+  for(var vent=0;vent<7;vent++)gearLine(c,-33+vent*3,-11,-33+vent*3,11,'#303f31',1.5);
+  for(var side=-1;side<=1;side+=2){
+    for(var armor=0;armor<4;armor++)gearBox(c,-19+armor*12,side*16-3,10,6,C.dead?'#49483c':'#7d8564','#34432f',1);
+    gearBox(c,-38,side*15-3,10,6,'#a19367','#424a34',1);
+  }
+  for(var chip=0;chip<12;chip++){c.fillStyle=chip%2?'#b5b391':'#414d38';c.fillRect(-28+hs(chip+C.i*9)*60,-15+hs(chip*13)*30,3,1);}
+  // Worn, hand-painted identification on the rear armor, clear of the hatch.
+  c.save();c.strokeStyle=C.dead?'#98958a':'#eeeade';c.lineWidth=3;c.lineJoin='round';
+  c.beginPath();c.moveTo(-36,-9);c.lineTo(-23,-9);c.lineTo(-36,9);c.lineTo(-23,9);c.stroke();
+  c.fillStyle=C.dead?'#44443a':'#657451';c.fillRect(-30,-10,2,2);c.fillRect(-33,3,1.5,2);c.restore();
+  c.rotate((C.turret||C.ang)-C.ang);
+  gearPoly(c,[[-19,-13],[10,-15],[24,-8],[24,8],[10,15],[-19,13]],C.dead?'#383d33':'#73845e','#293b2c',2);
+  gearBox(c,12,-4,45,8,'#596c4c','#25382b',2);gearBox(c,51,-5,10,10,'#475943','#22332a',1);
+  gearLine(c,25,-2,50,-2,'#a2aa87',1);gearBox(c,32,-5,4,10,'#7d8969','#34482f',1);
+  c.fillStyle='#223127';c.beginPath();c.ellipse(-7,0,11,9,0,0,6.3);c.fill();outl(c,'#abb28d',1.4);
+  if(!C.dead){
+    gearBox(c,-16,-5,12,10,'#929b7e','#43523c',3);
+    gearLine(c,-8,-5,7,-7,'#818e70',3);gearLine(c,-8,5,7,4,'#818e70',3);
+    c.fillStyle='#ae7b56';c.beginPath();c.arc(-9,0,4.5,0,6.3);c.fill();
+    c.fillStyle='#4c6044';c.beginPath();c.arc(-11,0,5,0,6.3);c.fill();outl(c,'#263b2b',1);
+    gearBox(c,3,-9,23,3,'#25362b','#13241a',1);gearBox(c,2,-7,6,6,'#555f42','#243523',1);
+    if(C.muzzle>0)gearPoly(c,[[26,-9],[39,-7],[29,-4],[34,-11]],'#ffe3a0');
+  }
+  c.restore();
+  if(C.hp<C.mx&&!C.dead){c.fillStyle='#17251e';c.fillRect(C.x-28,C.y-73,56,5);c.fillStyle='#d9bf6b';c.fillRect(C.x-27,C.y-72,54*Math.max(0,C.hp/C.mx),3);}
+}
+function drawDroneCommand(c,C){
+  if(C.workshops)C.workshops.forEach(function(P){
+    drawLooseDroneParts(c,P);
+    gearBox(c,P.x-34,P.y-17,68,32,C.dead?'#3b3c34':'#5b6252','#26322c',2);
+    gearBox(c,P.x+12,P.y-25,20,14,C.dead?'#262a25':'#30494a','#899480',1);
+    if(!C.dead){c.fillStyle='#8eb09b';c.fillRect(P.x+15,P.y-22,12,2);}
+  });
+  c.save();c.translate(C.x,C.y);
+  gearBox(c,-49,-29,104,68,'rgba(0,0,0,.3)',null,3);
+  gearBox(c,-48,-34,96,68,C.dead?'#3d3931':'#59624c','#202d28',3);
+  for(var panel=0;panel<8;panel++)gearLine(c,-42+panel*12,-29,-42+panel*12,28,C.dead?'#272922':'#858773',2);
+  gearBox(c,-30,-19,35,28,C.dead?'#262a28':'#314e51','#a0a48b',2);
+  if(!C.dead){
+    gearLine(c,17,-15,17,-60,'#b7b6a0',3);gearLine(c,2,-46,32,-46,'#849382',2);
+    c.fillStyle='#59b7b0';c.fillRect(-25,-14,23,4);c.fillRect(-25,-6,15,3);
+    c.fillStyle=Math.sin(now*5)>0?'#dfb644':'#654c29';c.fillRect(31,16,5,5);
+  }
+  c.fillStyle='#131f29';c.fillRect(-65,-87,130,29);c.font='bold 9px Arial';c.textAlign='center';c.fillStyle='#ffd700';
+  c.fillText(C.dead?'DRONE BASE DESTROYED':'DRONE BASE · '+Math.ceil(C.hp/C.mx*100)+'%',0,-76);
+  c.fillStyle='#293943';c.fillRect(-59,-70,118,7);c.fillStyle='#0057b7';c.fillRect(-59,-70,118*Math.max(0,C.hp/C.mx),7);
+  c.restore();
+}
 function drawMotorcadeCar(c,C){
+  if(C.droneHQ){drawDroneCommand(c,C);return;}
+  if(C.patrolTank){drawPatrolTank(c,C);return;}
   var carScale=1.5;
   c.save(); c.translate(C.x,C.y); c.rotate(C.ang); c.scale(carScale,carScale);
   c.fillStyle='rgba(0,0,0,.34)'; c.beginPath(); c.ellipse(7,8,37,13,0,0,6.3); c.fill();
@@ -9287,6 +9838,18 @@ function drawUprightLandmark(c,R){
     }
     gearLine(c,left,wy+35,right,wy+35,'#d7bea0',4);
   }
+  // Ornamental stone bands, recessed arches and worn masonry.
+  for(var detail=0;detail<12;detail++){
+    var ax=left+12+detail*(right-left-24)/11;
+    gearBox(c,ax-3,top+12,6,10,'#dfc9a5','#775440',1);
+    c.fillStyle='rgba(49,34,27,.17)';c.fillRect(ax,base-24-hs(detail+R.cx)*25,3,24);
+  }
+  for(var lamp=0;lamp<2;lamp++){
+    var lx=R.cx+(lamp?39:-39);
+    gearLine(c,lx,base-12,lx,base-47,'#343c36',2);
+    gearBox(c,lx-4,base-51,8,11,'#e8bd75','#554b35',1);
+    gearPoly(c,[[lx-6,base-51],[lx,base-56],[lx+6,base-51]],'#3e5245');
+  }
   // Deep entrance and stone steps anchor the building to the pavement.
   gearBox(c,R.cx-24,base-56,48,56,'#d5c5a8','#77533d',3);
   gearBox(c,R.cx-17,base-49,34,49,'#28312d','#634a37',5);
@@ -9302,6 +9865,11 @@ function drawUprightLandmark(c,R){
     var domes=[[-.31,34,48,'#268052','#d2b551','diamond'],[-.16,45,62,'#ba4035','#ead6a1','wide'],[0,61,90,'#d5af49','#f7df8d','wide'],[.18,43,58,'#397ca6','#e9e3c5','wide'],[.34,34,45,'#b64a37','#43845d','diamond']];
     domes.forEach(function(d){var x=R.cx+dx*.5+d[0]*R.bw,y=skyline+12+Math.abs(d[0])*45;
       gearBox(c,x-13,y-30,26,40,'#b96748','#714b35',2);gearBox(c,x-15,y-28,30,5,'#e3d0ad','#9d7954',1);
+      // Tall drum windows and scalloped arches support each patterned dome.
+      for(var arch=-1;arch<=1;arch++){
+        c.strokeStyle='#f1dbb2';c.lineWidth=2;c.beginPath();c.arc(x+arch*9,y-15,4,Math.PI,0);c.stroke();
+        gearBox(c,x+arch*9-2,y-14,4,12,'#394c43','#c49b73',.5);
+      }
       drawOnionDome(c,x,y-29,d[1],d[2],d[3],d[4],d[5]);
     });
   }
@@ -9320,12 +9888,22 @@ function drawKremlinTower(c,R){
   gearLine(c,x,y-151,x-19,y-96,'#64916b',1.5);
   gearLine(c,x,y-160,x,y-176,'#cab67c',2);
   var star=[];for(var n=0;n<10;n++){var a=-Math.PI/2+n*Math.PI/5,r=n%2?3:7;star.push([x+Math.cos(a)*r,y-177+Math.sin(a)*r]);}gearPoly(c,star,'#ba4435','#e0b273',1);
+  // A continuous brick curtain wall connects the towers.
+  var wl=R.cx-R.bw/2,ww=R.bw;
+  gearBox(c,wl,y+4,ww,38,'#984c3c','#542f29',1);
+  for(var row=0;row<5;row++){
+    gearLine(c,wl,y+7+row*7,wl+ww,y+7+row*7,'rgba(220,153,116,.28)',.8);
+    for(var brick=0;brick<ww/18;brick++)gearLine(c,wl+brick*18+(row%2)*9,y+7+row*7,wl+brick*18+(row%2)*9,y+14+row*7,'rgba(67,36,30,.35)',.6);
+  }
+  for(var slit=0;slit<8;slit++)gearBox(c,wl+20+slit*(ww-40)/8,y+16,4,15,'#382c27','#bd7156',.8);
+  gearLine(c,wl,y+4,wl+ww,y+4,'#d99873',2);
   for(var merlon=0;merlon<16;merlon++)gearBox(c,R.cx-R.bw/2+merlon*R.bw/16,y-6,12,12,'#c16049','#643b30',1);
   for(var side=-1;side<=1;side+=2){var tx=x+side*R.bw*.35;gearBox(c,tx-13,y-39,26,44,'#a94b3a','#603d30',2);gearPoly(c,[[tx-19,y-40],[tx,y-78],[tx+19,y-40]],'#346b50','#264b3e',1.5);}
 }
 
 function drawOnionDome(c,x,y,w,h,base,accent,pattern){
   c.save();
+  gearLine(c,x,y-h-22,x,y-h-7,'#d3b66a',1.8);gearLine(c,x-5,y-h-17,x+5,y-h-17,'#e2c980',1.5);
   c.fillStyle='#b9a16b'; c.fillRect(x-2,y-h-9,4,10); c.beginPath(); c.arc(x,y-h-10,3,0,6.3); c.fill();
   var domeGrad=c.createLinearGradient(x-w*.55,y-h*.5,x+w*.55,y-h*.35); domeGrad.addColorStop(0,shade(base,.55)); domeGrad.addColorStop(.28,base); domeGrad.addColorStop(.52,shade(base,1.28)); domeGrad.addColorStop(1,shade(base,.68));
   c.fillStyle=domeGrad; c.beginPath(); c.moveTo(x,y-h); c.bezierCurveTo(x-w*.16,y-h*.82,x-w*.62,y-h*.56,x-w*.48,y-h*.25); c.bezierCurveTo(x-w*.3,y+2,x+w*.3,y+2,x+w*.48,y-h*.25); c.bezierCurveTo(x+w*.62,y-h*.56,x+w*.16,y-h*.82,x,y-h); c.closePath(); c.fill(); outl(c,'#3a2926',1.6);
@@ -9738,13 +10316,13 @@ function baseDamageStage(){
   var health=baseHP/baseMX;
   return health<=.25?3:health<=.5?2:health<=.75?1:0;
 }
-function drawBaseDamage(c){
-  var stage=baseDamageStage();if(!stage)return;
+function drawBaseDamage(c,damage){
+  var stage=damage?damage.stage:baseDamageStage();if(!stage)return;
   c.save();
   // Fixed damage sites accumulate as integrity drops; no random flicker per frame.
   var sites=[[8,57],[24,59],[6,65],[18,69],[15,58],[24,67],
              [12,58],[8,64],[21,64],[17,62],[27,66],[23,58],[6,59],[10,69],[24,65],[15,62],[20,57],[6,62],[22,69],[16,58],[27,59],[9,64],[21,58],[25,65]];
-  if(level!==3){
+  if(damage){sites=damage.sites;}else if(level!==3){
     if(!BASE.damageSites){
       var walls=[],equipment=[];
       for(var dy=Math.ceil(BASE.y0);dy<=Math.floor(BASE.y1);dy++)for(var dx=Math.ceil(BASE.x0);dx<=Math.floor(BASE.x1);dx++){
@@ -9812,7 +10390,7 @@ function drawBaseDamage(c){
   }
   // Short, staggered electrical arcs from damaged console banks.
   var electrics=[[12,58],[8,64],[21,64],[17,58],[23,58],[26,66]];
-  if(level!==3)electrics=props.filter(function(p){return p.kind==='console'&&inBase((p.x+.5)*TILE,(p.y+.5)*TILE);}).map(function(p){return [p.x,p.y];});
+  if(damage)electrics=damage.electrics;else if(level!==3)electrics=props.filter(function(p){return p.kind==='console'&&inBase((p.x+.5)*TILE,(p.y+.5)*TILE);}).map(function(p){return [p.x,p.y];});
   for(var wire=0;wire<Math.min(electrics.length,stage+2);wire++){
     var ex=(electrics[wire][0]+.5)*TILE,ey=(electrics[wire][1]+.5)*TILE;
     gearLine(c,ex-7,ey-8,ex+3,ey+4,'#171f22',2);
@@ -10077,7 +10655,7 @@ function draw(){
     var DSP=padList[ds0];
     if(DSP.clearStand||DSP.technician) drawLooseDroneParts(ctx,DSP);
     if(DSP.kind==='dog'){
-      if(!DSP.serviceParts)DSP.serviceParts={x:15*TILE,y:DSP.serviceY+18,kind:'dog',looseParts:[[20,23,2,.3,1],[-3,28,0,-.2,.85],[43,30,1,.6,1],[31,42,2,-.4,.8]]};
+      if(!DSP.serviceParts)DSP.serviceParts={x:DSP.serviceX===undefined?15*TILE:DSP.serviceX,y:DSP.serviceY+18,kind:'dog',looseParts:[[20,23,2,.3,1],[-3,28,0,-.2,.85],[43,30,1,.6,1],[31,42,2,-.4,.8]]};
       drawLooseDroneParts(ctx,DSP.serviceParts);
     }
     if(DSP.kind!=='dog'&&!DSP.mobile&&DSP.standX!==undefined) drawDroneStand(DSP,TOOLS[DSP.kind].c,DSP.cd);
@@ -10085,6 +10663,13 @@ function draw(){
   if(medStation) drawHealSpot(ctx,medStation);
 
   if(mapKind==='redSquare') for(var mcd=0;mcd<motorcade.length;mcd++) drawMotorcadeCar(ctx,motorcade[mcd]);
+  if(mapKind==='redSquare'&&redDroneBase){
+    var integrity=redDroneBase.hp/redDroneBase.mx;
+    drawBaseDamage(ctx,{stage:integrity<=.25?3:integrity<=.5?2:integrity<=.75?1:0,
+      sites:[[56,30],[66,32],[58,29],[65,38],[57,30],[64,35],[60,29],[66,36],[56,37],[63,29],[58,38],[66,30],[57,32],[64,34],[59,29],[56,32],[62,38],[65,29],[60,34],[64,30],[61,29],[66,34],[57,36],[60,38]],
+      electrics:[[57,30],[59,32],[64,35]]});
+  }
+
 
   // falling corpses and wounded crawlers drawn below live units
   drawCorpses(ctx);
@@ -10107,6 +10692,10 @@ function draw(){
   units.sort(function(A,B){ return A.y-B.y; });
   for(var u=0;u<units.length;u++){
     var U=units[u], isP=(U===player);
+    if(U.workshop&&redDroneBase&&!redDroneBase.dead&&U.hurt<=0&&Math.hypot(player.x-U.x,player.y-U.y)>260){
+      U.workshop.cd=Math.max(.1,redDroneBase.raidTimer);
+      drawDroneTechnician(U.workshop,'#a49668');continue;
+    }
     if(U.treeProp){if(U.treeProp.kind==='snowTree')drawSnowTree(ctx,U.treeProp);else drawFieldTree(ctx,U.treeProp);continue;}
     if(U.nurse){ drawNurse(ctx,U); continue; }
     if(U.captive){ drawCaptive(ctx,U); continue; }
@@ -10369,7 +10958,7 @@ function draw(){
   for(var pd0=0;pd0<padList.length;pd0++){
     var PD0=padList[pd0];
     if(PD0.kind==='dog'){
-      drawDroneTechnician({x:15*TILE,y:PD0.serviceY,kind:'dog',cd:PD0.cd,cool:12,faceLeft:true},TOOLS.dog.c);
+      drawDroneTechnician({x:PD0.serviceX===undefined?15*TILE:PD0.serviceX,y:PD0.serviceY,kind:'dog',cd:PD0.cd,cool:12,faceLeft:true},TOOLS.dog.c);
       drawPadBay({x:PD0.standX,y:PD0.standY},TOOLS.dog.c,'ACTIVATE ROBOT DOG',PD0.inFlight?1:PD0.cd,'dog');
       if(!PD0.inFlight){
         ctx.save();ctx.translate(PD0.x,PD0.y);ctx.fillStyle='rgba(0,0,0,.25)';
@@ -10405,6 +10994,7 @@ function draw(){
       } else {
         drawUprightLandmark(ctx,RW);
       }
+      if(RW.scenery)continue;
       var redLabelY=RW.dead?RW.cy-RW.bh/2-47:RW.cy-RW.bh*.65-(RW.style==='kremlin'?192:120);
       ctx.fillStyle='rgba(0,0,0,.7)'; rrect(ctx,RW.cx-70,redLabelY,140,9,3); ctx.fill();
       ctx.fillStyle=RW.dead?'#555':(RW.hp>RW.mx*.45?'#e2b13c':'#d84a34'); rrect(ctx,RW.cx-68,redLabelY+2,136*(RW.hp/RW.mx),5,2); ctx.fill();
@@ -10452,6 +11042,8 @@ function draw(){
     ctx.restore();
   }
 
+  drawRedCheckpoints(ctx);
+  drawAnimalFood(ctx);
   drawSiegeCover(ctx);
   drawTruck(ctx);
   for(var dtw=0;dtw<depots.length;dtw++) drawDepotTruck(ctx,depots[dtw]);
@@ -10731,7 +11323,7 @@ function draw(){
   }
 
   // Sea mines: dark floating spheres with warning horns and a red marker light.
-  for(var smd=0;mapKind==='sea'&&smd<seaMines.length;smd++){
+  for(var smd=0;(mapKind==='sea'||mapKind==='oil')&&smd<seaMines.length;smd++){
     var SM=seaMines[smd],mb=Math.sin(now*2.4+SM.bob)*2;
     if(SM.x<cam.x-50||SM.x>cam.x+VW+50||SM.y<cam.y-50||SM.y>cam.y+VH+50) continue;
     ctx.save(); ctx.translate(SM.x,SM.y+mb);
@@ -10860,6 +11452,9 @@ function draw(){
       ctx.beginPath(); ctx.arc(ED2.x,ED2.y-ealt,16,0,6.3); ctx.stroke(); ctx.globalAlpha=1;
     }
     ctx.save(); ctx.translate(ED2.x,ED2.y-ealt); ctx.rotate(Math.atan2(ED2.vy,ED2.vx)+Math.PI/2);
+    var raidScale=ED2.raidType==='heavy'?1.65:ED2.raidType==='scout'?.8:1;ctx.scale(raidScale,raidScale);
+    if(ED2.raidType==='heavy')gearBox(ctx,-7,-5,14,14,'#343b30','#151b16',2);
+    if(ED2.raidType==='fpv')gearBox(ctx,-3,8,6,12,'#867a50','#343b30',2);
     // Enemy drone — same structure as shop icon, enemy palette (red rotors, gold sensor)
     var emp2=[[-8,-8],[8,-8],[-8,8],[8,8]];
     for(var rq2=0;rq2<4;rq2++){
@@ -10887,7 +11482,7 @@ function draw(){
     var barA=(ED2.state==='hunt')?1:(ED2.hp<ED2.mx?0.8:0);
     if(barA>0){
       ctx.globalAlpha=barA;
-      var bx0=ED2.x-11, by0=ED2.y-ealt-21, pw=6, ph=5, gap=2;
+      var bx0=ED2.x-((ED2.mx||3)*8-2)/2, by0=ED2.y-ealt-21, pw=6, ph=5, gap=2;
       for(var pp=0;pp<3;pp++){
         ctx.fillStyle='rgba(0,0,0,.65)';
         ctx.fillRect(bx0+pp*(pw+gap),by0,pw,ph);
@@ -11340,8 +11935,7 @@ function drawObjectives(){
   } else if(mapKind==='redSquare'){
     var rbL=0; for(var rbq2=0;rbq2<refineries.length;rbq2++) if(!refineries[rbq2].dead) rbL++;
     var mcL=0; for(var mcq2=0;mcq2<motorcade.length;mcq2++) if(!motorcade[mcq2].dead) mcL++;
-    objs.push({t:'DESTROY BUILDINGS ('+( refineries.length-rbL)+'/'+refineries.length+')', done:rbL===0&&refineries.length>0});
-    objs.push({t:'DESTROY THE MOTORCADE ('+( motorcade.length-mcL)+'/'+motorcade.length+')', done:mcL===0&&motorcade.length>0});
+    objs.push({t:'CAPTURE BOTH FLAGS · DESTROY DRONE BASE',done:redArenaOpen});
     objs.push({t:'DEFEAT THE FINAL BOSS',                            done:!!redBossDefeated});
   } else {
     // compound / default
@@ -11979,7 +12573,7 @@ function drawDroneTechnician(P,col){
   c.strokeStyle='#18282f'; c.lineWidth=1;
   [[-7,-6],[7,6],[-7,6],[7,-6]].forEach(function(a){c.beginPath();c.arc(a[0],a[1],3,0,6.3);c.stroke();}); c.restore();
   // Share the base soldiers' exact proportions, camouflage, faces and outlines.
-  drawUnit(c,P.x+(P.faceLeft?40:-40),P.y+7,P.faceLeft?Math.PI:0,kit.col,kit.band,0,0,'rifleman',null,false,false,false,
+  drawUnit(c,P.x+(P.faceLeft?40:-40),P.y+7,P.faceLeft?Math.PI:0,P.enemy?'#62604c':kit.col,P.enemy?'#963e32':kit.band,0,0,'rifleman',null,false,false,false,
     scout?317:619,0,{scout:scout,working:working,phase:P.y});
   if(working){
     var progress=1-Math.min(1,P.cd/(P.kind==='dog'?12:P.clearStand?7:(P.cool||7))), x=P.x-35,y=P.y-47;
