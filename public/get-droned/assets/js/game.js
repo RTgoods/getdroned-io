@@ -2720,7 +2720,7 @@ function buildSea(){
   // Wide, continuous launch basin and exit channel. The old one-tile gap
   // could trap the USV against the port wall, especially on touch controls.
   fill(30,57,44,70,WATER); fill(25,58,29,68,EXT);
-  var berth=waterNear(31*TILE,jetty.y);gunboat.x=berth.x;gunboat.y=berth.y;
+  var berth=waterNear(32*TILE,jetty.y);gunboat.x=berth.x;gunboat.y=berth.y;
   addProp(7,58,3,1,'shoptable');  addProp(23,58,1,2,'shelf');
   addProp(8,61,1,1,'barrel');
   addProp(10,58,4,1,'console');   addProp(16,58,4,1,'console');
@@ -2729,11 +2729,14 @@ function buildSea(){
   addProp(7,66,1,2,'usvrack');    addProp(25,64,1,2,'usvrack');
   addProp(13,67,3,1,'ammocrate'); addProp(26,59,2,2,'ammocrate');
   addProp(17,62,2,1,'ammocrate'); addProp(26,66,3,1,'usvrack');
+  addProp(27,63,2,1,'console');
+  seaPad.workshop={x:28*TILE,y:63.5*TILE,kind:'usv',cool:16,cd:0};
+  jetty.boardX=29*TILE;jetty.boardY=65.5*TILE;
   addProp(4,39,3,1,'sand',true); addProp(14,39,3,1,'sand',true);
   addProp(3,44,1,3,'sand',true); addProp(17,43,1,3,'sand',true);
   addProp(5,49,2,1,'block');    addProp(14,49,2,1,'block');
   baseFlags=[{x:6.4*TILE,y:56.4*TILE,h:64,crest:0},{x:24.4*TILE,y:56.4*TILE,h:64,crest:0},
-             {x:15.5*TILE,y:71.4*TILE,h:58,crest:0},{x:30.4*TILE,y:62.5*TILE,h:64,crest:2}];
+             {x:15.5*TILE,y:71.4*TILE,h:58,crest:0},{x:29*TILE,y:60.8*TILE,h:64,crest:2}];
 
   // ---- a couple of rocky islets to break up the water
   var ROCK=[[42,28,4],[34,48,4],[68,12,3],[36,36,3],[58,58,4],[80,40,3],[62,20,2],[76,64,3]];
@@ -3280,8 +3283,38 @@ function buildOil(){
   }
 
   SPAWNS=[[22,12],[46,10],[60,18],[20,30],[52,34],[34,46],[40,20],[30,20]];
+  prepareOilAccess();
   seedOilPatrolTanks();
   placeFires(); buildStatic(); initWallHP();
+}
+function prepareOilAccess(){
+  // Broad service causeways join both base exits, the northwest truck and all yards.
+  var links=[[13,5,15,35],[5,5,15,7],[5,17,66,19],[13,33,66,35],[39,3,43,46],[54,17,56,45],[27,42,43,44]];
+  links.forEach(function(r){
+    roads.push(r);
+    for(var y=r[1];y<=r[3];y++)for(var x=r[0];x<=r[2];x++){
+      if(T(x,y)===WATER||fieldTreeAt(x,y)){setT(x,y,EXT);}
+    }
+    props=props.filter(function(p){return !(p.kind==='fieldTree'&&p.x>=r[0]&&p.x<=r[2]&&p.y>=r[1]&&p.y<=r[3]);});
+  });
+  // Keep the complete tower footprint clear of storage vessels and other defenses.
+  aaGuns.forEach(function(g){
+    var site=refineries[g.ref],spots=[];
+    for(var y=Math.max(2,site.y0-3);y<=Math.min(MH-3,site.y1+3);y++)for(var x=Math.max(2,site.x0-3);x<=Math.min(MW-3,site.x1+3);x++){
+      var wx=(x+.5)*TILE,wy=(y+.5)*TILE;
+      if(inBase(wx,wy)||hitBox(wx,wy,42))continue;
+      if(aaGuns.some(function(other){return other!==g&&Math.hypot(other.x-wx,other.y-wy)<100;}))continue;
+      if(sams.some(function(other){return Math.hypot(other.x-wx,other.y-wy)<60;}))continue;
+      spots.push({x:wx,y:wy,d:Math.hypot(wx-g.x,wy-g.y)});
+    }
+    spots.sort(function(a,b){return a.d-b.d;});
+    if(spots.length){g.x=spots[0].x;g.y=spots[0].y;}
+  });
+  // Destructible trees obstruct side service paths, leaving the main causeways usable.
+  [[40,24],[41,24],[42,24],[54,38],[55,38],[56,38]].forEach(function(p,i){
+    if(T(p[0],p[1])!==EXT||aaGuns.some(function(g){return Math.hypot(g.x-(p[0]+.5)*TILE,g.y-(p[1]+.5)*TILE)<85;})||sams.some(function(g){return Math.hypot(g.x-(p[0]+.5)*TILE,g.y-(p[1]+.5)*TILE)<60;}))return;
+    addProp(p[0],p[1],1,1,'fieldTree');var tree=props[props.length-1];tree.treeStyle=i%3===0?'broken':'leafy';tree.treeSeed=p[0]*37+p[1]*71;
+  });
 }
 function seedOilPatrolTanks(){
   refineries.forEach(function(site){
@@ -5893,7 +5926,7 @@ function update(dt,realDt){
       if(!bu) break;
       for(var ag=0;ag<aaGuns.length;ag++){
         var AG=aaGuns[ag];
-        if(Math.hypot(AG.x-bu.x,AG.y-bu.y)<15){
+        if(Math.hypot(AG.x-bu.x,AG.y-bu.y)<(AG.tower?30:15)){
           AG.hp-=bu.dmg; AG.hurt=.12; impact(bu.x,bu.y);
           if(AG.hp<=0){
             explode(AG.x,AG.y,70,20,true);
@@ -6057,7 +6090,8 @@ function update(dt,realDt){
   for(var fq6=floaters.length-1;fq6>=0;fq6--){
     var FLo=floaters[fq6];
     FLo.t+=dt; FLo.bob+=dt*1.7; FLo.rot+=FLo.spin*dt;
-    FLo.x+=(FLo.vx+wind*.12)*dt; FLo.y+=FLo.vy*dt;
+    var driftX=FLo.x+(FLo.vx+wind*.12)*dt,driftY=FLo.y+FLo.vy*dt;
+    if(isWater(driftX,driftY)){FLo.x=driftX;FLo.y=driftY;}else{FLo.vx*=-.3;FLo.vy*=-.3;}
     FLo.vx*=.985; FLo.vy*=.985; FLo.spin*=.99;
     if(FLo.t>120) floaters.splice(fq6,1);
   }
@@ -6141,7 +6175,7 @@ function update(dt,realDt){
   // --- the gunboat
   if(gunboat&&!player.dead){
     if(!aboard){
-      if(!piloting&&Math.hypot(player.x-gunboat.x,player.y-gunboat.y)<40){
+      if(!piloting&&((jetty&&Math.hypot(player.x-jetty.boardX,player.y-jetty.boardY)<27&&Math.hypot(gunboat.x-jetty.x,gunboat.y-jetty.y)<120)||Math.hypot(player.x-gunboat.x,player.y-gunboat.y)<40)){
         player.bHold=(player.bHold||0)+dt/(firing?.4:.9);
         if(player.bHold>=1){
           player.bHold=0; aboard=true; firing=false; actBtn.classList.remove('on');
@@ -6151,15 +6185,15 @@ function update(dt,realDt){
     } else {
       var G=gunboat, kv3=keyVec(), gm=kv3||mv;
       if(gm.m>0.05){
-        G.vx+=gm.x*430*dt*gm.m; G.vy+=gm.y*430*dt*gm.m;
+        G.vx+=gm.x*650*dt*gm.m; G.vy+=gm.y*650*dt*gm.m;
         G.ang=Math.atan2(G.vy,G.vx);
       }
-      G.vx*=.94; G.vy*=.94;
-      var gs=Math.hypot(G.vx,G.vy), gmax=165;
+      var boatDrag=Math.exp(-2.4*dt);G.vx*=boatDrag; G.vy*=boatDrag;
+      var gs=Math.hypot(G.vx,G.vy), gmax=230;
       if(gs>gmax){ G.vx=G.vx/gs*gmax; G.vy=G.vy/gs*gmax; }
       var gnx=G.x+G.vx*dt, gny=G.y+G.vy*dt;
-      if(seaRoom({len:58,wid:26},gnx,G.y,G.ang)) G.x=gnx; else G.vx*=-.3;
-      if(seaRoom({len:58,wid:26},G.x,gny,G.ang)) G.y=gny; else G.vy*=-.3;
+      if(seaRoom({len:102,wid:39},gnx,G.y,G.ang)) G.x=gnx; else G.vx*=-.3;
+      if(seaRoom({len:102,wid:39},G.x,gny,G.ang)) G.y=gny; else G.vy*=-.3;
       player.x=G.x; player.y=G.y;
       for(var gm0=seaMines.length-1;gm0>=0;gm0--){
         if(!seaMines[gm0].dead&&Math.hypot(G.x-seaMines[gm0].x,G.y-seaMines[gm0].y)<28){
@@ -6187,14 +6221,14 @@ function update(dt,realDt){
       if(firing&&G.cd<=0){
         G.cd=.55;
         var ga=G.turret+rr(-.03,.03);
-        bullets.push({x:G.x+Math.cos(G.turret)*30,y:G.y+Math.sin(G.turret)*30,
+        bullets.push({x:G.x+Math.cos(G.ang)*27+Math.cos(G.turret)*36,y:G.y+Math.sin(G.ang)*27+Math.sin(G.turret)*36,
           vx:Math.cos(ga)*620,vy:Math.sin(ga)*620,dmg:12,life:1.6,pierce:0,trail:20,navy:52});
         fx.push({t:'flash',x:G.x,y:G.y,a:G.turret,life:.07,max:.07,s:1.7});
         shake=Math.min(9,shake+2.4); sfx('r',.9);
         dustPuff(G.x+Math.cos(G.turret)*36,G.y+Math.sin(G.turret)*36,2,.7);
       }
       // step off at the jetty
-      if(jetty&&Math.hypot(G.x-jetty.x,G.y-jetty.y)<70&&gs<18){
+      if(jetty&&Math.hypot(G.x-jetty.x,G.y-jetty.y)<120&&gs<18){
         player.oHold=(player.oHold||0)+dt/1.1;
         if(player.oHold>=1){
           player.oHold=0; aboard=false;
@@ -6347,7 +6381,7 @@ function update(dt,realDt){
 }
 
 function relocate(en){
-  if(mapKind==='redSquare')return; // Defenders stay where they spawned; never teleport toward the player.
+  if(mapKind==='redSquare'||mapKind==='oil')return; // Defenders stay where they spawned; never teleport toward the player.
   var best=null,bd=1e9;
   for(var i=0;i<400;i++){
     var x=ri(1,MW-2), y=ri(1,MH-2);
@@ -6766,7 +6800,7 @@ function updateShips(dt){
             vx:Math.cos(fa)*rr(6,26),vy:Math.sin(fa)*rr(4,18),
             rot:rr(0,6.283),spin:rr(-.5,.5),bob:rr(0,6.283),
             col:pick(['#5b6146','#6b6d4c','#4c563f','#565a4a']),
-            face:Math.random()<.5, t:0});
+            face:fl%2===0,pose:fl%4, t:0});
         }
       }
       if(S.sink<=0){
@@ -7227,6 +7261,21 @@ function updateTankWreck(C,dt){
   if(C.burnTime>0&&C.smokeTimer<=0){
     C.smokeTimer=.18;
     if(plume.length<300)plume.push({x:C.x+rr(-20,20),y:C.y-10,vx:rr(-8,18),vy:-rr(24,48),life:3,max:3,s:rr(13,23),hot:0,oil:1});
+  }
+}
+function drawSeagulls(c){
+  for(var bird=0;bird<15;bird++){
+    var phase=now*(.13+hs(bird*7)*.08)+bird*2.4;
+    var cx=(34+hs(bird*31)*56)*TILE,cy=(8+hs(bird*53)*58)*TILE;
+    var x=cx+Math.cos(phase)*(80+hs(bird)*100),y=cy+Math.sin(phase)*65;
+    if(!isWater(x,y)||x<cam.x-50||x>cam.x+VW+50||y<cam.y-50||y>cam.y+VH+130)continue;
+    c.save();c.translate(x,y);c.fillStyle='rgba(15,30,35,.15)';c.beginPath();c.ellipse(9,12,9,3,phase,0,6.3);c.fill();
+    c.translate(0,-65);c.rotate(Math.atan2(Math.cos(phase)*65,-Math.sin(phase)*130));
+    var flap=Math.sin(now*(4+hs(bird)*2)+bird)*5;
+    c.lineCap='round';c.strokeStyle='#e2e8df';c.lineWidth=3;
+    c.beginPath();c.moveTo(0,-2);c.quadraticCurveTo(-4,-9,-10,flap-12);c.moveTo(0,2);c.quadraticCurveTo(-4,9,-10,12-flap);c.stroke();
+    gearLine(c,-10,flap-12,-13,flap-10,'#596467',1.5);gearLine(c,-10,12-flap,-13,10-flap,'#596467',1.5);
+    gearLine(c,-7,0,5,0,'#f0eee2',3);gearLine(c,5,0,8,0,'#c9aa5b',1.5);c.restore();
   }
 }
 function drawTossedTurret(c,W){
@@ -8150,6 +8199,14 @@ function startSector(n){
       var depotGuard=enemies[enemies.length-1];
       depotGuard.depotPatrol=1; depotGuard.patrolT=0;
     }
+  }
+  if(mapKind==='oil'){
+    refineries.forEach(function(site){
+      for(var guard=0;guard<3;guard++){
+        var sp=freeSpot(site.cx+(guard-1)*100,site.cy+105);
+        spawnEnemy(guard===0?'heavy':'rifleman',sp.x,sp.y,true,site,false);
+      }
+    });
   }
   if(mapKind==='airfield'){
     // A standing defensive team starts at every plane and remains on that aircraft apron.
@@ -11058,12 +11115,23 @@ function draw(){
       ctx.fillStyle='#8fe0d8'; ctx.font='bold 9px Arial'; ctx.textAlign='center';
       ctx.fillText('HOLD TO BOARD',gunboat.x,gunboat.y-38); ctx.textAlign='start';
     }
-    if(aboard&&gunboat&&Math.hypot(gunboat.x-jetty.x,gunboat.y-jetty.y)<70){
+    if(aboard&&gunboat&&Math.hypot(gunboat.x-jetty.x,gunboat.y-jetty.y)<120){
       ctx.fillStyle='#e2b13c'; ctx.font='bold 9px Arial'; ctx.textAlign='center';
       ctx.fillText('STOP TO STEP ASHORE',gunboat.x,gunboat.y-38); ctx.textAlign='start';
     }
   }
-  if(seaPad) drawPadBay(seaPad,'#3fa8a0','SEA DRONE',seaCD,'usv');
+  if(jetty&&gunboat&&!aboard){
+    var docked=Math.hypot(gunboat.x-jetty.x,gunboat.y-jetty.y)<120;
+    drawPadBay({x:jetty.boardX,y:jetty.boardY},'#ffd700',docked?'STAND HERE TO BOARD':'GUNBOAT AWAY',docked?0:1,'usv');
+  }
+  if(seaPad){
+    drawPadBay(seaPad,'#3fa8a0','ACTIVATE SEA DRONE',seaCD,'usv');
+    if(seaPad.workshop){
+      seaPad.workshop.cd=seaCD;
+      drawLooseDroneParts(ctx,seaPad.workshop);
+      drawDroneTechnician(seaPad.workshop,TOOLS.usv.c);
+    }
+  }
   for(var pd0=0;pd0<padList.length;pd0++){
     var PD0=padList[pd0];
     if(PD0.kind==='dog'){
@@ -11406,28 +11474,30 @@ function draw(){
     var lift=Math.sin(FO.bob)*1.6, fade=Math.min(1,(120-FO.t)/12);
     ctx.save(); ctx.translate(FO.x,FO.y+lift); ctx.rotate(FO.rot);
     ctx.globalAlpha=.9*fade;
-    ctx.fillStyle='rgba(10,26,34,.45)';                       // the hull of the body under water
-    ctx.beginPath(); ctx.ellipse(0,2,15,7,0,0,6.3); ctx.fill();
-    ctx.fillStyle=shade(FO.col,.72);                          // legs trailing
-    rrect(ctx,-13,-3.4,10,3.2,1.6); ctx.fill();
-    rrect(ctx,-13,.4,10,3.2,1.6); ctx.fill();
-    ctx.fillStyle=FO.col;                                     // torso, low in the water
-    rrect(ctx,-5,-5,15,10,4); ctx.fill(); outl(ctx,'#15130e',1.5);
-    ctx.fillStyle=shade(FO.col,.86); rrect(ctx,-2,-3.4,8,6.8,2.5); ctx.fill();
-    ctx.fillStyle='#e2b13c'; rrect(ctx,-4.5,-4.6,3,9.2,1.4); ctx.fill();   // life vest strap
-    if(FO.face){                                              // face down
-      ctx.fillStyle=shade(FO.col,1.1); ctx.beginPath(); ctx.arc(11.5,0,4.6,0,6.3); ctx.fill();
-      outl(ctx,'#15130e',1.4);
-    } else {                                                  // face up
-      ctx.fillStyle=SKIN; ctx.beginPath(); ctx.arc(11.5,0,4.4,0,6.3); ctx.fill(); outl(ctx,'#15130e',1.4);
-      ctx.fillStyle='#15130e'; ctx.beginPath(); ctx.arc(12.6,-1.4,.9,0,6.3); ctx.fill();
-      ctx.beginPath(); ctx.arc(12.6,1.4,.9,0,6.3); ctx.fill();
+    var pose=FO.pose||0;
+    ctx.fillStyle='rgba(10,26,34,.3)';ctx.beginPath();ctx.ellipse(-2,2,26,12,0,0,6.3);ctx.fill();
+    // Normal infantry proportions: boots, separate legs, armored torso and helmet.
+    for(var side=-1;side<=1;side+=2){
+      var kneeX=pose===2?-14:-17,kneeY=side*(pose===1?11:5);
+      gearLine(ctx,-7,side*4,kneeX,kneeY,shade(FO.col,.8),7);
+      gearLine(ctx,kneeX,kneeY,-25+(pose===2?5:0),side*(pose===3?10:6),FO.col,6);
+      gearBox(ctx,-28+(pose===2?5:0),side*(pose===3?10:6)-3,7,6,'#28302b','#141d19',2);
+      var elbowX=pose===3?15:3,elbowY=side*(pose===0?15:10);
+      gearLine(ctx,6,side*7,elbowX,elbowY,FO.col,6);
+      gearLine(ctx,elbowX,elbowY,pose===1?-5:14,side*(pose===0?19:pose===3?6:13),shade(FO.col,.9),5);
+      ctx.fillStyle=SKIN;ctx.beginPath();ctx.arc(pose===1?-5:14,side*(pose===0?19:pose===3?6:13),2.5,0,6.3);ctx.fill();
     }
-    ctx.fillStyle=shade(FO.col,.8); rrect(ctx,2,-8.5,7,3.4,1.6); ctx.fill();   // an arm out
+    gearBox(ctx,-9,-9,23,18,FO.col,shade(FO.col,.7),4);
+    gearBox(ctx,-5,-7,14,14,shade(FO.col,.75),'#303b2b',2);
+    for(var pouch=0;pouch<3;pouch++)gearBox(ctx,-4+pouch*4,-5,3,10,'#72765a','#394532',1);
+    ctx.fillStyle=FO.face?shade(FO.col,1.1):SKIN;ctx.beginPath();ctx.arc(19,0,7.2,0,6.3);ctx.fill();outl(ctx,'#20281d',1.8);
+    if(!FO.face){
+      ctx.fillStyle=FO.col;ctx.beginPath();ctx.arc(19,0,8,Math.PI*.5,Math.PI*1.5);ctx.fill();
+      gearLine(ctx,21,-3,23,-1,'#342c23',1);gearLine(ctx,21,3,23,1,'#342c23',1);
+    }
     ctx.restore();
-    ctx.globalAlpha=.22*fade;                                  // the slick around him
-    ctx.fillStyle='#e8f2f6';
-    ctx.beginPath(); ctx.ellipse(FO.x,FO.y+lift+1,19,9,FO.rot,0,6.3); ctx.stroke?0:0; ctx.fill();
+    ctx.strokeStyle='rgba(205,229,233,'+(.22*fade)+')';ctx.lineWidth=1;
+    ctx.beginPath();ctx.ellipse(FO.x,FO.y+lift+2,32+Math.sin(FO.bob)*2,16,FO.rot,0,6.3);ctx.stroke();
     ctx.globalAlpha=1;
   }
 
@@ -11476,6 +11546,10 @@ function draw(){
     ctx.fillStyle='#3c434b'; ctx.beginPath(); ctx.arc(-L2*.36,0,6,0,6.3); ctx.fill(); outl(ctx,'#12181e',1.6);
     ctx.fillStyle='#c0392b'; rrect(ctx,-L2*.46,-2,6,4,1.4); ctx.fill();
     detailShipDeck(ctx,L2,W2,SP2);
+    // Weathered white deck identification, kept clear of the bridge.
+    ctx.save();ctx.translate(-L2*.32,0);ctx.strokeStyle='#e3e1ce';ctx.lineWidth=3;
+    ctx.beginPath();ctx.moveTo(-9,-10);ctx.lineTo(9,-10);ctx.lineTo(-9,10);ctx.lineTo(9,10);ctx.stroke();
+    ctx.fillStyle='#535f62';ctx.fillRect(-2,-11,2,3);ctx.fillRect(2,-3,2,2);ctx.restore();
     if(SP2.boss3&&SP2.sink<=0){
       var deckAim=(drone&&piloting)?Math.atan2(drone.y-SP2.y,drone.x-SP2.x)-SP2.ang:now*.55;
       var gunPos=[[L2*.18,-W2*.31],[L2*.18,W2*.31],[-L2*.25,-W2*.3],[-L2*.25,W2*.3]];
@@ -11627,12 +11701,12 @@ function draw(){
       ctx.strokeStyle='rgba(232,244,250,'+(.12+Math.min(.28,gsp/500))+')'; ctx.lineWidth=3;
       for(var gv=-1;gv<=1;gv+=2){
         ctx.beginPath();
-        ctx.moveTo(G2.x+Math.cos(G2.ang)*30,G2.y+Math.sin(G2.ang)*30);
-        ctx.lineTo(G2.x+Math.cos(G2.ang+gv*.85)*(-34),G2.y+Math.sin(G2.ang+gv*.85)*(-34));
+        ctx.moveTo(G2.x+Math.cos(G2.ang)*45,G2.y+Math.sin(G2.ang)*45);
+        ctx.lineTo(G2.x+Math.cos(G2.ang+gv*.85)*(-51),G2.y+Math.sin(G2.ang+gv*.85)*(-51));
         ctx.stroke();
       }
     }
-    ctx.save(); ctx.translate(G2.x,G2.y); ctx.rotate(G2.ang);
+    ctx.save(); ctx.translate(G2.x,G2.y); ctx.rotate(G2.ang);ctx.scale(1.5,1.5);
     ctx.fillStyle='rgba(6,22,30,.45)';
     ctx.beginPath(); ctx.ellipse(-2,4,34,13,0,0,6.3); ctx.fill();
     ctx.fillStyle='#5a6470';                                    // hull
@@ -11656,19 +11730,27 @@ function draw(){
     ctx.fillStyle='#f2c744'; rrect(ctx,-24,-10.5,9,4.5,1.4); ctx.fill();
     ctx.restore();
     // bow gun, tracking independently
-    ctx.save(); ctx.translate(G2.x+Math.cos(G2.ang)*18,G2.y+Math.sin(G2.ang)*18); ctx.rotate(G2.turret);
+    ctx.save(); ctx.translate(G2.x+Math.cos(G2.ang)*27,G2.y+Math.sin(G2.ang)*27); ctx.rotate(G2.turret);ctx.scale(1.5,1.5);
     ctx.fillStyle='#3d454e'; ctx.beginPath(); ctx.arc(0,0,8,0,6.3); ctx.fill(); outl(ctx,'#0d161d',2);
     ctx.fillStyle='#2a3138'; rrect(ctx,4,-2.6,20,5.2,2); ctx.fill(); outl(ctx,'#0d161d',1.6);
     ctx.fillStyle='#8fa2ae'; rrect(ctx,-6,-3,5,6,1.6); ctx.fill();
     ctx.restore();
     if(aboard){                                                   // the man at the helm
-      ctx.save(); ctx.translate(G2.x-Math.cos(G2.ang)*6,G2.y-Math.sin(G2.ang)*6-4);
-      ctx.scale(.82,.82);
-      drawUnit(ctx,0,0,G2.turret,PK.col,PK.band,0,0,null,'pistol',false,false,false,3);
+      var helmX=G2.x-Math.cos(G2.ang)*9,helmY=G2.y-Math.sin(G2.ang)*9;
+      var driverKit=player.godMode?VEHICLE_SENTRY_KIT:PK;
+      ctx.save();ctx.translate(helmX,helmY);
+      // Lower body sits inside the cockpit; face follows travel, not the gun turret.
+      ctx.beginPath();ctx.rect(-20,-32,40,34);ctx.clip();
+      drawUnit(ctx,0,14,G2.ang,driverKit.col,driverKit.band,0,0,null,null,true,false,false,player.sid||3,0,{scout:false,working:false,phase:0},false,driverKit);
+      ctx.restore();
+      ctx.save();ctx.translate(helmX,helmY);ctx.rotate(G2.ang);
+      gearBox(ctx,0,-10,8,20,'#33474b','#182b30',2);
+      ctx.strokeStyle='#b1b8aa';ctx.lineWidth=2;ctx.beginPath();ctx.ellipse(2,0,3,7,0,0,6.3);ctx.stroke();
+      gearLine(ctx,-7,-7,1,-6,'#d9a97c',3);gearLine(ctx,-7,7,1,6,'#d9a97c',3);
       ctx.restore();
     }
     if(G2.hurt>0){ ctx.globalAlpha=Math.min(.6,G2.hurt*4); ctx.fillStyle='#fff';
-      ctx.beginPath(); ctx.ellipse(G2.x,G2.y,34,13,G2.ang,0,6.3); ctx.fill(); ctx.globalAlpha=1; }
+      ctx.beginPath(); ctx.ellipse(G2.x,G2.y,51,19.5,G2.ang,0,6.3); ctx.fill(); ctx.globalAlpha=1; }
     if(G2.hp<G2.mx){
       ctx.fillStyle='rgba(0,0,0,.65)'; rrect(ctx,G2.x-26,G2.y-30,52,6,3); ctx.fill();
       ctx.fillStyle=G2.hp>G2.mx*.5?'#4fd08a':(G2.hp>G2.mx*.25?'#e2b13c':'#d84a34');
@@ -11763,17 +11845,6 @@ function draw(){
     ctx.fillRect(MQ.x,MQ.y,MQ.s,MQ.s);
   }
 
-  // the squad, one pip per man
-  var alive5=(player&&player.dead?0:1)+crew.length;
-  var px5=VW/2-(5*13)/2;
-  for(var sq6=0;sq6<5;sq6++){
-    var on5=sq6<alive5, hy5=(mapKind==='sea')?42:14;
-    ctx.fillStyle=on5?'#9db35a':'rgba(255,255,255,.14)';
-    ctx.beginPath(); ctx.arc(px5+sq6*13+5,hy5,4.2,Math.PI,0); ctx.fill();
-    ctx.fillRect(px5+sq6*13+.8,hy5,8.4,2.4);
-    if(!on5){ ctx.strokeStyle='rgba(216,74,52,.55)'; ctx.lineWidth=1.4;
-      ctx.beginPath(); ctx.moveTo(px5+sq6*13,hy5+4); ctx.lineTo(px5+sq6*13+10,hy5-6); ctx.stroke(); }
-  }
   if(player.bHold>0||player.oHold>0){
     var hb=player.bHold>0?player.bHold:player.oHold;
     var hbx=player.x-26, hby=player.y-54;
@@ -11808,6 +11879,7 @@ function draw(){
     ctx.fillStyle='#5fa8d3'; rrect(ctx,rx+1.5,ry+1.5,49*p2,5,3); ctx.fill();
   }
 
+  if(mapKind==='sea')drawSeagulls(ctx);
   drawCombatLighting(ctx);
   ctx.restore();
 
@@ -12669,10 +12741,11 @@ function drawDroneTechnician(P,col){
   var kit=PKITS[scout?2:3];
   // A visible airframe and tools under the technician's hands.
   c.save(); c.translate(P.x+(P.faceLeft?28:-28),P.y-4); c.strokeStyle=col; c.lineWidth=2;
+  if(P.kind==='usv'){c.save();c.scale(.55,.55);paintMilitaryDrone(c,'usv',0);c.restore();}else{
   c.beginPath(); c.moveTo(-7,-6); c.lineTo(7,6); c.moveTo(-7,6); c.lineTo(7,-6); c.stroke();
   c.fillStyle='#bac5be'; c.fillRect(-3,-4,6,8);
   c.strokeStyle='#18282f'; c.lineWidth=1;
-  [[-7,-6],[7,6],[-7,6],[7,-6]].forEach(function(a){c.beginPath();c.arc(a[0],a[1],3,0,6.3);c.stroke();}); c.restore();
+  [[-7,-6],[7,6],[-7,6],[7,-6]].forEach(function(a){c.beginPath();c.arc(a[0],a[1],3,0,6.3);c.stroke();}); } c.restore();
   // Share the base soldiers' exact proportions, camouflage, faces and outlines.
   drawUnit(c,P.x+(P.faceLeft?40:-40),P.y+7,P.faceLeft?Math.PI:0,P.enemy?'#62604c':kit.col,P.enemy?'#963e32':kit.band,0,0,'rifleman',null,false,false,false,
     scout?317:619,0,{scout:scout,working:working,phase:P.y});
