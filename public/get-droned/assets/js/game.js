@@ -1004,6 +1004,16 @@ function paintRefineryYards(c){
     for(var valve=0;valve<3;valve++){
       var vy=y+40+valve*(h-80)/2;c.strokeStyle='#9b4534';c.lineWidth=2;c.beginPath();c.arc(r.cx+36,vy,6,0,6.3);c.stroke();gearLine(c,r.cx+31,vy,r.cx+41,vy,'#9b4534',1);
     }
+    // Weathered inspection covers, rust streaks and industrial hazard markings.
+    for(var grate=0;grate<4;grate++){
+      var gx=x+20+grate*(w-50)/4,gy=y+h-35;
+      gearBox(c,gx,gy,22,10,'#3d4741','#242f2a',1);
+      for(var slit=0;slit<5;slit++)gearLine(c,gx+3+slit*4,gy+2,gx+3+slit*4,gy+8,'#7b8374',1);
+    }
+    for(var stain=0;stain<22;stain++){
+      c.fillStyle=stain%2?'rgba(65,49,31,.23)':'rgba(29,38,33,.22)';
+      c.fillRect(x+hs(stain+r.i*31)*w,y+hs(stain*7+r.i)*h,3+hs(stain*13)*18,2+hs(stain*17)*7);
+    }
     c.fillStyle='#ded5a7';c.font='bold 11px Arial';c.fillText('PROCESS UNIT 0'+(r.i+1),x+16,y+h-16);
     c.fillStyle='#3f4943';c.font='bold 8px Arial';c.fillText('HIGH PRESSURE',x+16,y+23);
     c.restore();
@@ -3145,6 +3155,7 @@ function buildOil(){
   grid.fill(EXT); props.length=0; holes.length=0; roads.length=0;
   duck.length=0; wires.length=0; bunkers.length=0; bases.length=0; flags.length=0;
   edrones.length=0; emps.length=0; depots.length=0; depotWorkers.length=0; aaGuns.length=0;
+  motorcade.length=0;
   refineries.length=0; sams.length=0; samShots.length=0; smog=0;
   ships.length=0; missiles.length=0; wakes.length=0; floaters.length=0;
   baseHP=baseMX=460;
@@ -3175,7 +3186,7 @@ function buildOil(){
       if(tx<1||ty<1||tx>MW-2||ty>MH-2) continue;
       if(tx>=1&&tx<=27&&ty>=35&&ty<=51)continue;
       if(T(tx,ty)!==EXT) continue;
-      addProp(tx,ty,1,1,'tree');
+      addProp(tx,ty,1,1,'fieldTree');var tree=props[props.length-1];tree.treeStyle=i%7===0?'burnt':i%9===0?'broken':'leafy';tree.treeSeed=tx*37+ty*71;
     }
   }
   wood(16,14,9,50); wood(30,10,7,34); wood(54,18,8,42); wood(24,38,8,40);
@@ -3219,7 +3230,11 @@ function buildOil(){
     for(var yy=Math.floor((pad.y-26)/TILE);yy<=Math.floor((pad.y+18)/TILE);yy++)
       for(var xx=Math.floor((pad.x-32)/TILE);xx<=Math.floor((pad.x+32)/TILE);xx++)setT(xx,yy,PROP);
   });
-  setupTruck([[41,24],[41,36],[30,30],[52,28]]);
+  fill(3,3,9,8,EXT);
+  props=props.filter(function(p){return !(p.x>=3&&p.x<=9&&p.y>=3&&p.y<=8);});
+  setupTruck([[6,5],[6,5]]);
+  if(truck){truck.parked=true;truck.ang=0;}
+  var mobile=padList.find(function(p){return p.mobile;});mobile.x=6.5*TILE;mobile.y=7.5*TILE;
   dronePad=padList[0];
   // defences
   addProp(2,34,3,1,'sand',true);  addProp(23,34,3,1,'sand',true);
@@ -3235,13 +3250,13 @@ function buildOil(){
   for(var ri2=0;ri2<RF.length;ri2++){
     var rx=RF[ri2][0], ry=RF[ri2][1];
     props=props.filter(function(p){
-      if(p.kind==='tree'&&p.x>=rx-5&&p.x<=rx+5&&p.y>=ry-4&&p.y<=ry+4){setT(p.x,p.y,EXT);return false;}return true;
+      if(p.kind==='fieldTree'&&p.x>=rx-9&&p.x<=rx+9&&p.y>=ry-8&&p.y<=ry+8){setT(p.x,p.y,EXT);return false;}return true;
     });
     for(var cy2=ry-3;cy2<=ry+3;cy2++) for(var cx2=rx-4;cx2<=rx+4;cx2++)
       if(T(cx2,cy2)===WATER) setT(cx2,cy2,EXT);
-    addProp(rx-4,ry-2,2,2,'oiltank');  addProp(rx-1,ry-3,2,2,'oiltank');
+    addProp(rx-4,ry-3,3,3,'oiltank');  addProp(rx-1,ry-3,2,2,'oiltank');
     addProp(rx+2,ry-1,2,2,'oiltank');  addProp(rx-3,ry+1,2,2,'oiltank');
-    addProp(rx+1,ry+2,2,2,'oiltank');
+    addProp(rx+1,ry+2,3,3,'oiltank');
     addProp(rx,ry,1,2,'stack');        addProp(rx-2,ry-1,1,1,'pipes');
     addProp(rx+3,ry+2,1,1,'pipes');
     refineries.push({i:ri2,cx:(rx+.5)*TILE,cy:(ry+.5)*TILE,x0:rx-5,y0:ry-4,x1:rx+5,y1:ry+4,
@@ -3265,7 +3280,31 @@ function buildOil(){
   }
 
   SPAWNS=[[22,12],[46,10],[60,18],[20,30],[52,34],[34,46],[40,20],[30,20]];
+  seedOilPatrolTanks();
   placeFires(); buildStatic(); initWallHP();
+}
+function seedOilPatrolTanks(){
+  refineries.forEach(function(site){
+    var candidates=[];
+    for(var y=2;y<MH-2;y++)for(var x=2;x<MW-2;x++){
+      var wx=(x+.5)*TILE,wy=(y+.5)*TILE,d=Math.hypot(wx-site.cx,wy-site.cy);
+      if(d>12*TILE||d<5*TILE||!tankGroundClear(wx,wy))continue;
+      candidates.push({x:wx,y:wy,d:d});
+    }
+    candidates.sort(function(a,b){return a.d-b.d;});
+    for(var n=0;n<1;n++){
+      var added=false;
+      for(var ci=0;ci<candidates.length;ci++){
+        var point=candidates[ci];
+        if(motorcade.some(function(t){return Math.hypot(t.x-point.x,t.y-point.y)<190;}))continue;
+        var trial={i:motorcade.length,x:point.x,y:point.y,ang:0,hp:420,mx:420,patrolTank:true,site:site,gunCD:2,turret:0,trackPhase:0,dead:0,route:null,wp:0,stop:n*.4,hurt:0};
+        motorcade.push(trial);
+        if(motorcade.every(function(t){return !!tankRoamPath(t,true);})){added=true;break;}
+        motorcade.pop();
+      }
+      if(!added)throw new Error('No clear patrol spawn for refinery '+site.i);
+    }
+  });
 }
 function openTile(tx,ty){
   for(var r=0;r<20;r++) for(var a=0;a<14;a++){
@@ -5827,7 +5866,7 @@ function update(dt,realDt){
         shootTree(bu.x,bu.y,bu.dmg||24); impact(bu.x,bu.y); bullets.splice(b,1); bu=null; break;
       }
       var hitAny=false;
-      if(mapKind==='redSquare'){
+      if(mapKind==='redSquare'||mapKind==='oil'){
         for(var mcb=0;mcb<motorcade.length;mcb++){
           var shotCar=motorcade[mcb]; if(shotCar.dead) continue;
           var crx=bu.x-shotCar.x,cry=bu.y-shotCar.y,cca=Math.cos(-shotCar.ang),csa=Math.sin(-shotCar.ang);
@@ -6973,6 +7012,9 @@ function spawnAirfieldBoss(){
   KB.d=Object.assign({},KB.d,{col:'#17191d',band:'#751f26',dmg:0,range:0,rof:9,pref:245,spd:64});
   banner('LEVEL 5 BOSS','KIM JONG UN ENTERS MILITARY AID',2.8); hud();
 }
+function checkOilObjectives(){
+  if(state==='play'&&!oilBossSpawned&&refineries.length===6&&refineries.every(function(r){return r.dead;})&&motorcade.filter(function(t){return t.patrolTank;}).length===6&&motorcade.every(function(t){return t.dead;}))spawnOilBoss();
+}
 function spawnOilBoss(){
   if(oilBossSpawned) return;
   oilBossSpawned=1;
@@ -7054,16 +7096,17 @@ function tankGroundClear(x,y){
   }
   return true;
 }
-function tankRoamPath(C){
+function tankRoamPath(C,quick){
   var sx=Math.floor(C.x/TILE),sy=Math.floor(C.y/TILE),start=sy*MW+sx;
   var queue=[start],prev=new Int32Array(MW*MH),seen=new Uint8Array(MW*MH),choices=[];
   seen[start]=1;prev[start]=-1;
   for(var head=0;head<queue.length;head++){
     var cell=queue[head],cx=cell%MW,cy=Math.floor(cell/MW);
-    if(Math.abs(cx-sx)+Math.abs(cy-sy)>=7)choices.push(cell);
+    if(Math.abs(cx-sx)+Math.abs(cy-sy)>=(C.site?2:7)){choices.push(cell);if(quick)break;}
     for(var d=0;d<4;d++){
       var nx=cx+[1,-1,0,0][d],ny=cy+[0,0,1,-1][d],ni=ny*MW+nx;
       if(nx<0||ny<0||nx>=MW||ny>=MH||seen[ni])continue;
+      if(C.site&&Math.hypot((nx+.5)*TILE-C.site.cx,(ny+.5)*TILE-C.site.cy)>12*TILE)continue;
       seen[ni]=1;
       // Check the connecting edge too: the whole hull must fit between tiles.
       if(motorcade.some(function(other){return other!==C&&other.patrolTank&&Math.hypot((nx+.5)*TILE-other.x,(ny+.5)*TILE-other.y)<146;})||
@@ -7077,8 +7120,7 @@ function tankRoamPath(C){
   while(cur!==-1){path.push({x:(cur%MW+.5)*TILE,y:(Math.floor(cur/MW)+.5)*TILE});cur=prev[cur];}
   return path.reverse();
 }
-function updateRedSquare(dt){
-  updateOil(dt);
+function updatePatrolTanks(dt){
   for(var mc=0;mc<motorcade.length;mc++){
     var C=motorcade[mc]; if(C.dead){updateTankWreck(C,dt);continue;}
     if(C.droneHQ)continue;
@@ -7117,6 +7159,10 @@ function updateRedSquare(dt){
     C.trafficWait=0;
     C.ang=Math.atan2(cdy,cdx);C.x=nx;C.y=ny;C.trackPhase=(C.trackPhase||0)+csp;
   }
+}
+function updateRedSquare(dt){
+  updateOil(dt);
+  updatePatrolTanks(dt);
   var P=redDroneBase;
     if(P&&!P.dead&&state==='play'&&!player.dead){
       P.raidTimer-=dt;
@@ -7239,9 +7285,10 @@ function blowRefinery(R){
   var left=0; for(var q=0;q<refineries.length;q++) if(!refineries[q].dead) left++;
   banner('REFINERY DOWN', left? left+' STILL PUMPING':'THE FIELD IS BURNING',2.6);
   hud();
-  if(mapKind==='oil'&&left===0&&state==='play'&&!oilBossSpawned) spawnOilBoss();
+  if(mapKind==='oil')checkOilObjectives();
 }
 function updateOil(dt){
+  if(mapKind==='oil'){updatePatrolTanks(dt);checkOilObjectives();}
   var burning=0;
   for(var i=0;i<refineries.length;i++){
     var R=refineries[i];if(R.scenery)continue;
@@ -8155,8 +8202,8 @@ function startSector(n){
         {t:2.4,a:'THREE CARGO PLANES UNLOADING',b:'NORTH KOREAN WEAPONS AND TROOPS'},
         {t:4.8,a:'MOBILE GUARDS AROUND EVERY PLANE',b:'BREAK THE DEFENSIVE PATROLS'},
         {t:7.2,a:'TWO ASSAULT WAVES WILL HIT BASE',b:'DEFEAT BOTH AND CLEAR MILITARY AID'}]:(mapKind==='oil')?[{t:0,a:'SECTOR '+n,b:'CRUDE INTENTIONS'},
-        {t:2.4,a:'SIX REFINERIES',b:'BURN THEM ALL'},
-        {t:4.8,a:'FLY FROM THE PAD',b:'OVER THE TREES AND THE RIVERS'},
+        {t:2.4,a:'SIX REFINERIES · 6 PATROL TANKS',b:'DESTROY ALL PLANTS AND TANKS TO REVEAL THE BOSS'},
+        {t:4.8,a:'MOBILE LAUNCH: NORTHWEST',b:'PARKED TRUCK · HEAVY DRONE FORMATION'},
         {t:7.2,a:'SAM SITES ON EVERY PLANT',b:'BREAK WHEN THEY LAUNCH'},
         {t:9.6,a:'THEY ARE SHELLING THE BASE',b:'WORK FAST'}]:(mapKind==='sea')?[{t:0,a:'SECTOR '+n,b:'BLACK SEA FLEET'},
         {t:2.4,a:'SEVEN SHIPS OFFSHORE',b:'SINK THEM ALL'},
@@ -8239,7 +8286,7 @@ function hud(){
   for(var dq2=0;dq2<flags.length;dq2++) if(flags[dq2].state==='done') taken++;
   if(mapKind==='oil'){
     var rl=0; for(var rq5=0;rq5<refineries.length;rq5++) if(!refineries[rq5].dead) rl++;
-    lbl=(refineries.length-rl)+'/'+refineries.length+' REFINERIES DOWN · '+sams.length+' SAM';
+    lbl=(refineries.length-rl)+'/'+refineries.length+' REFINERIES DOWN · '+motorcade.filter(function(t){return t.patrolTank&&!t.dead;}).length+' TANKS LEFT · '+sams.length+' SAM';
   }
   else if(mapKind==='redSquare'){
     var rbLeft=0; for(var rbq=0;rbq<refineries.length;rbq++) if(!refineries[rbq].dead) rbLeft++;
@@ -10724,7 +10771,7 @@ function draw(){
   }
   if(medStation) drawHealSpot(ctx,medStation);
 
-  if(mapKind==='redSquare') for(var mcd=0;mcd<motorcade.length;mcd++) drawMotorcadeCar(ctx,motorcade[mcd]);
+  if(mapKind==='redSquare'||mapKind==='oil') for(var mcd=0;mcd<motorcade.length;mcd++) drawMotorcadeCar(ctx,motorcade[mcd]);
   if(mapKind==='redSquare'&&redDroneBase){
     var integrity=redDroneBase.hp/redDroneBase.mx;
     drawBaseDamage(ctx,{stage:integrity<=.25?3:integrity<=.5?2:integrity<=.75?1:0,
@@ -11657,16 +11704,7 @@ function draw(){
     ctx.fillStyle='rgba(0,0,0,.3)'; ctx.beginPath(); ctx.ellipse(WD.x,WD.y,10,5,0,0,6.3); ctx.fill();
     ctx.save(); ctx.translate(WD.x,WD.y-walt);
     ctx.rotate(Math.atan2(WD.vy,WD.vx)+Math.PI/2); ctx.scale(1.35,1.35);
-    ctx.strokeStyle='#3b4249'; ctx.lineWidth=3;
-    ctx.beginPath(); ctx.moveTo(-9,-9); ctx.lineTo(9,9); ctx.moveTo(9,-9); ctx.lineTo(-9,9); ctx.stroke();
-    var rpw=[[-9,-9],[9,-9],[-9,9],[9,9]];
-    for(var rw=0;rw<4;rw++){
-      ctx.strokeStyle='rgba(180,206,220,'+(.3+Math.sin(WD.rot*3+rw)*.18)+')'; ctx.lineWidth=1.6;
-      ctx.beginPath(); ctx.arc(rpw[rw][0],rpw[rw][1],6.2,0,6.3); ctx.stroke();
-    }
-    ctx.fillStyle='#4f86b8'; rrect(ctx,-6,-7,12,14,3); ctx.fill(); outl(ctx,'#0d1418',2);
-    ctx.fillStyle='#d8402c'; rrect(ctx,-4,-11,8,5,2); ctx.fill(); outl(ctx,'#0d1418',1.6);
-    ctx.fillStyle='#8fd4f0'; ctx.beginPath(); ctx.arc(0,4,2.6,0,6.3); ctx.fill();
+    paintMilitaryDrone(ctx,'droneL',WD.rot*3);
     ctx.restore();
     ctx.strokeStyle='rgba(120,200,240,.3)'; ctx.lineWidth=1;
     ctx.beginPath(); ctx.moveTo(WD.x,WD.y); ctx.lineTo(WD.x,WD.y-walt); ctx.stroke();
@@ -11988,6 +12026,7 @@ function drawObjectives(){
     var rl=0; for(var rq6=0;rq6<refineries.length;rq6++) if(!refineries[rq6].dead) rl++;
     objs.push({t:'DESTROY REFINERIES ('+( refineries.length-rl)+'/'+refineries.length+')', done:rl===0&&refineries.length>0});
     objs.push({t:'NEUTRALISE SAM SITES',                             done:sams.length===0});
+    objs.push({t:'DESTROY PATROL TANKS ('+motorcade.filter(function(t){return t.dead;}).length+'/6)',done:motorcade.length===6&&motorcade.every(function(t){return t.dead;})});
     objs.push({t:'DEFEAT THE OIL BARON',                             done:!!oilBossDefeated});
   } else if(mapKind==='sea'){
     var afloat=0; for(var sq6=0;sq6<ships.length;sq6++) if(ships[sq6].hp>0) afloat++;
