@@ -1638,7 +1638,7 @@ var CARDS=[
   {k:'t',id:'flamer', rar:2,wt:8, name:'FLAMETHROWER',  desc:'15s of fire · to belt'},
   {k:'t',id:'emp',    rar:1,wt:9, name:'DRONE JAMMER',  desc:'electronic burst · to belt'},
   {k:'t',id:'stim',   rar:1,wt:7, name:'COMBAT STIM',   desc:'to belt'},
-  {k:'t',id:'repair', rar:1,wt:6, name:'REPAIR KIT',    desc:'patch nearby wall · to belt'},
+  {k:'t',id:'repair', rar:1,wt:6, name:'REPAIR KIT',    desc:'+25% base integrity · use inside base'},
   {k:'p',id:'vest',   rar:2,wt:8, name:'BODY ARMOUR',   desc:'+45 armour'}
 ];
 function rollCard(){
@@ -1929,7 +1929,7 @@ var SHOP=[
   {id:'t_stim', n:'COMBAT STIM',  p:150, d:'to belt'},
   {id:'t_flamer',n:'FLAMETHROWER', p:280, d:'15s of fire'},
   {id:'t_emp',  n:'DRONE JAMMER',  p:190, d:'burst kills drones'},
-  {id:'t_repair',n:'REPAIR KIT',  p:130, d:'patch wall damage'},
+  {id:'t_repair',n:'REPAIR KIT',  p:130, d:'+25% integrity · anywhere inside base'},
   {id:'u_armor',n:'HEAVY PLATE',  p:400, d:'armour cap 120', once:1},
   {id:'u_hp',   n:'COMBAT VEST',  p:450, d:'health 140', once:1},
   {id:'w_railgun',n:'RAILGUN',p:600,d:'3 piercing shots'},
@@ -2085,7 +2085,7 @@ function drawShop(){
     ctx.fillText(it.n,R.x+48,R.y+16);
     // Description
     ctx.fillStyle=own?'#86b4de':(can?'#b1c1d0':'#8a9caf'); ctx.font='9px Arial';
-    ctx.fillText(it.id==='t_repair'&&[1,3,5].indexOf(level)!==-1?'+25% integrity · use inside base':it.d,R.x+48,R.y+29);
+    ctx.fillText(it.id==='t_repair'?'+25% integrity · use inside base':it.d,R.x+48,R.y+29);
     // Price / status (right-aligned, 4 px gap left of arrow column)
     ctx.textAlign='right';
     if(own){
@@ -2186,7 +2186,7 @@ function useTool(i){
   if(k==='med'){ player.hp=Math.min(player.mx,player.hp+50); sfx('card'); banner('PATCHED UP','',1); }
   else if(k==='plate'){ player.ap=Math.min(upgAP,player.ap+40); sfx('card'); banner('PLATE ON','',1); }
   else if(k==='repair'){
-    if([1,3,5].indexOf(level)!==-1&&inBase(player.x,player.y)){
+    if(inBase(player.x,player.y)){
       if(baseHP>=baseMX){belt.push('repair');banner('BASE AT FULL INTEGRITY','REPAIR KIT SAVED',1.5);}
       else{
         baseHP=Math.min(baseMX,baseHP+baseMX*.25);baseFlash=0;
@@ -7080,7 +7080,7 @@ function tankRoamPath(C){
 function updateRedSquare(dt){
   updateOil(dt);
   for(var mc=0;mc<motorcade.length;mc++){
-    var C=motorcade[mc]; if(C.dead) continue;
+    var C=motorcade[mc]; if(C.dead){updateTankWreck(C,dt);continue;}
     if(C.droneHQ)continue;
     if(C.hurt>0) C.hurt-=dt;
     C.gunCD=Math.max(0,(C.gunCD||0)-dt);C.muzzle=Math.max(0,(C.muzzle||0)-dt);
@@ -7152,6 +7152,48 @@ function updateRedSquare(dt){
   if(redArenaOpen&&!redBossSpawned&&!piloting&&!player.dead&&player.x>26*TILE&&player.x<52*TILE&&player.y<15*TILE)spawnRedBoss();
   if(redBossDefeated&&state==='play'&&!player.dead)sectorClear();
 }
+function destroyPatrolTank(C){
+  var angle=rr(0,Math.PI*2),landX=C.x,landY=C.y;
+  // Find a clear landing patch away from the hull and home base.
+  for(var attempt=0;attempt<48;attempt++){
+    var a=angle+attempt*2.39996,d=170+(attempt%5)*18;
+    var x=C.x+Math.cos(a)*d,y=C.y+Math.sin(a)*d;
+    if(x<70||y<70||x>WW-70||y>WH-70||inBase(x,y)||hitBox(x,y,38))continue;
+    landX=x;landY=y;break;
+  }
+  // Airborne debris may land on rubble if the tank is boxed in.
+  if(landX===C.x&&landY===C.y){landX=Math.max(70,Math.min(WW-70,C.x+Math.cos(angle)*180));landY=Math.max(70,Math.min(WH-70,C.y+Math.sin(angle)*180));}
+  C.wreckTurret={x:C.x,y:C.y,sx:C.x,sy:C.y,tx:landX,ty:landY,t:0,dur:1.65,z:0,angle:C.turret||C.ang,spin:rr(3,6)*(Math.random()<.5?-1:1),landed:false};
+  C.burnTime=32;C.smokeTimer=0;
+  for(var part=0;part<24;part++)launchPart(C.x+rr(-35,35),C.y+rr(-20,20),'debris',null,null,rr(0,6.283),rr(1.1,2.3));
+  for(var ember=0;ember<24;ember++)embers.push({x:C.x+rr(-20,20),y:C.y+rr(-12,12),vx:rr(-130,130),vy:rr(-170,30),life:1.8,max:1.8});
+  dustPuff(C.x,C.y,18,2);shake=Math.min(24,shake+12);sfx('boom',.9);
+}
+function updateTankWreck(C,dt){
+  var W=C.wreckTurret;if(!W)return;
+  if(!W.landed){
+    W.t=Math.min(W.dur,W.t+dt);var p=W.t/W.dur;
+    W.x=W.sx+(W.tx-W.sx)*p;W.y=W.sy+(W.ty-W.sy)*p;
+    W.z=Math.sin(p*Math.PI)*165;W.angle+=W.spin*dt;
+    if(p>=1){W.z=0;W.landed=true;dustPuff(W.x,W.y,12,1.6);sfx('boom',.35);}
+  }
+  C.burnTime=Math.max(0,C.burnTime-dt);C.smokeTimer-=dt;
+  if(C.burnTime>0&&C.smokeTimer<=0){
+    C.smokeTimer=.18;
+    if(plume.length<300)plume.push({x:C.x+rr(-20,20),y:C.y-10,vx:rr(-8,18),vy:-rr(24,48),life:3,max:3,s:rr(13,23),hot:0,oil:1});
+  }
+}
+function drawTossedTurret(c,W){
+  if(!W||W.x<cam.x-130||W.x>cam.x+VW+130||W.y-W.z<cam.y-130||W.y-W.z>cam.y+VH+180)return;
+  c.save();c.fillStyle='rgba(0,0,0,'+(W.landed?.3:.15)+')';c.beginPath();c.ellipse(W.x,W.y,40,19,W.angle,0,Math.PI*2);c.fill();
+  c.translate(W.x,W.y-W.z);c.rotate(W.angle);c.scale(1.56,1.56);
+  gearPoly(c,[[-19,-13],[10,-15],[24,-8],[24,8],[10,15],[-19,13]],'#34342e');
+  gearBox(c,12,-4,43,8,'#45443a','#171c1a',2);gearBox(c,51,-5,10,10,'#393b33','#1c211e',1);
+  c.fillStyle='#111917';c.beginPath();c.ellipse(-7,0,10,8,0,0,6.3);c.fill();outl(c,'#716753',2);
+  gearLine(c,-16,-10,4,-9,'#8c8066',1);gearLine(c,3,-5,14,8,'#171d18',3);
+  for(var mark=0;mark<7;mark++){c.fillStyle=mark%2?'#694d35':'#171e19';c.fillRect(-16+hs(mark*13)*35,-11+hs(mark*17)*20,5,3);}
+  c.restore();
+}
 function hitMotorcadeCar(C,dmg){
   if(C.dead) return; C.hp-=dmg; C.hurt=.22;
   if(C.droneHQ){
@@ -7162,7 +7204,7 @@ function hitMotorcadeCar(C,dmg){
       banner('DRONE BASE DESTROYED','ENEMY LAUNCHES STOPPED',3);hud();
     }return;
   }
-  if(C.hp<=0){ C.dead=1; C.hp=0; explode(C.x,C.y,105,18,true); money+=150; banner('PATROL TANK DESTROYED','',1.3); hud(); }
+  if(C.hp<=0){ C.dead=1; C.hp=0; if(C.patrolTank)destroyPatrolTank(C); explode(C.x,C.y,105,18,true); money+=150; banner('PATROL TANK DESTROYED','',1.3); hud(); }
 }
 function blowRefinery(R){
   if(R.dead) return;
@@ -9704,6 +9746,7 @@ function drawMountedBoss(c,U){
   c.restore();
 }
 function drawPatrolTank(c,C){
+  if(C.wreckTurret)drawTossedTurret(c,C.wreckTurret);
   if(C.x<cam.x-100||C.x>cam.x+VW+100||C.y<cam.y-100||C.y>cam.y+VH+100)return;
   c.save();c.translate(C.x,C.y);c.rotate(C.ang);c.scale(1.56,1.56);
   c.fillStyle='rgba(13,21,18,.35)';c.beginPath();c.ellipse(4,6,49,29,0,0,6.3);c.fill();
@@ -9727,6 +9770,25 @@ function drawPatrolTank(c,C){
   c.save();c.strokeStyle=C.dead?'#98958a':'#eeeade';c.lineWidth=3;c.lineJoin='round';
   c.beginPath();c.moveTo(-36,-9);c.lineTo(-23,-9);c.lineTo(-36,9);c.lineTo(-23,9);c.stroke();
   c.fillStyle=C.dead?'#44443a':'#657451';c.fillRect(-30,-10,2,2);c.fillRect(-33,3,1.5,2);c.restore();
+  if(C.dead){
+    // The turret is gone: exposed turret ring, ripped deck plates and scorched armor.
+    gearPoly(c,[[-37,-16],[21,-18],[39,-8],[34,16],[-30,18]],'#292b25');
+    c.fillStyle='#0e1512';c.beginPath();c.ellipse(-1,0,17,13,0,0,6.3);c.fill();outl(c,'#7e725a',3);
+    for(var tear=0;tear<8;tear++){
+      var a=tear*Math.PI/4,x=Math.cos(a)*18,y=Math.sin(a)*14;
+      gearPoly(c,[[x,y],[x+Math.cos(a)*8,y+Math.sin(a)*6],[x-3,y-4]],tear%2?'#575546':'#84745a');
+    }
+    for(var char=0;char<17;char++){c.fillStyle=char%3?'#151d17':'#6b4a30';c.fillRect(-37+hs(char*11)*74,-18+hs(char*29)*36,4+hs(char)*7,3);}
+    gearLine(c,-38,26,-16,35,'#202620',6);gearLine(c,-16,35,8,31,'#414437',4);
+    if(C.burnTime>0){
+      for(var flame=0;flame<3;flame++){
+        var fx=-15+flame*13,fy=5+flame%2*5,h=(10+Math.sin(now*11+flame*3)*5)*Math.min(1,C.burnTime/6);
+        gearPoly(c,[[fx-5,fy],[fx-2,fy-h-9],[fx+1,fy-h/2],[fx+5,fy-h-4],[fx+5,fy]],'#d8792b');
+        gearPoly(c,[[fx-2,fy],[fx+1,fy-h],[fx+3,fy]],'#f3c46a');
+      }
+    }
+    c.restore();return;
+  }
   c.rotate((C.turret||C.ang)-C.ang);
   gearPoly(c,[[-19,-13],[10,-15],[24,-8],[24,8],[10,15],[-19,13]],C.dead?'#383d33':'#73845e','#293b2c',2);
   gearBox(c,12,-4,45,8,'#596c4c','#25382b',2);gearBox(c,51,-5,10,10,'#475943','#22332a',1);

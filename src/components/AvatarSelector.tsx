@@ -1,11 +1,10 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { drawPortrait } from './pilot-portrait.generated'
 
 /* ─── Kit definitions matching game.js PKITS + airfield (snow) overrides ─── */
 
-const SKIN  = '#e8c99a'
-const SKIN2 = '#d4b388'
 
 interface Kit {
   id: string
@@ -34,172 +33,7 @@ const BASE_KITS: Kit[] = [
     pal:['#44484e','#2e3136','#53585f','#1f2226'], mask:true, gog:true },
 ]
 
-export const ALL_KITS: Kit[] = BASE_KITS
-
-/* ─── Portrait renderer ──────────────────────────────────────────────────── */
-
-function hs(n: number) {
-  const v = Math.sin(n * 127.1) * 43758.5453
-  return v - Math.floor(v)
-}
-
-function shade(hex: string, f: number) {
-  const n = parseInt(hex.replace('#',''), 16)
-  const r = Math.min(255, Math.round(((n>>16)&255)*f))
-  const g = Math.min(255, Math.round(((n>>8)&255)*f))
-  const b = Math.min(255, Math.round((n&255)*f))
-  return `rgb(${r},${g},${b})`
-}
-
-function outl(c: CanvasRenderingContext2D, color: string, w: number) {
-  c.strokeStyle = color; c.lineWidth = w; c.stroke()
-}
-
-function camoFleck(c: CanvasRenderingContext2D, seed: number, x0: number, y0: number, w: number, h: number, n: number, pal: string[]) {
-  for (let i = 0; i < n; i++) {
-    c.fillStyle = pal[Math.floor(hs(seed + i * 11.3) * 4)]
-    c.fillRect(x0 + hs(seed + i * 1.7) * w, y0 + hs(seed + i * 3.9) * h,
-               1.4 + hs(seed + i * 5.1) * 2.8, 1.4 + hs(seed + i * 2.3) * 2.4)
-  }
-}
-
-function rrect(c: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
-  c.beginPath()
-  if (typeof c.roundRect === 'function') {
-    c.roundRect(x, y, w, h, r)
-  } else {
-    // Fallback for older browsers
-    c.moveTo(x + r, y)
-    c.lineTo(x + w - r, y); c.arcTo(x + w, y, x + w, y + r, r)
-    c.lineTo(x + w, y + h - r); c.arcTo(x + w, y + h, x + w - r, y + h, r)
-    c.lineTo(x + r, y + h); c.arcTo(x, y + h, x, y + h - r, r)
-    c.lineTo(x, y + r); c.arcTo(x, y, x + r, y, r)
-    c.closePath()
-  }
-}
-
-function drawPortrait(canvas: HTMLCanvasElement, kit: Kit, seed = 31) {
-  const SIZE = canvas.width  // square
-  const c = canvas.getContext('2d')!
-  c.clearRect(0, 0, SIZE, SIZE)
-
-  // Background: circular clip
-  c.save()
-  c.beginPath()
-  c.arc(SIZE/2, SIZE/2, SIZE/2 - 1, 0, Math.PI*2)
-  c.clip()
-
-  // BG fill
-  c.fillStyle = '#0f1828'
-  c.fillRect(0, 0, SIZE, SIZE)
-
-  // ── draw in portrait space: face centre (y≈-30) maps to canvas centre ───
-  // SC chosen so ~30 game units fill the circle radius
-  const SC = SIZE / 38
-  c.translate(SIZE * 0.50, SIZE / 2 + 30 * SC)
-  c.scale(SC, SC)
-
-  // ── Shoulders / torso (partial) ──────────────────────────────────────────
-  const col = kit.col
-  const PAL = kit.pal
-  c.fillStyle = col
-  rrect(c, -10, -15, 20, 10, 4); c.fill()
-  c.save(); rrect(c, -10, -15, 20, 10, 4); c.clip()
-  camoFleck(c, seed, -10, -15.5, 20, 10, 12, PAL)
-  c.restore()
-  rrect(c, -10, -15, 20, 10, 4); outl(c, '#15130e', 1.8)
-
-  // ── Tactical rig (MOLLE) ─────────────────────────────────────────────────
-  c.fillStyle = shade(col, 0.88)
-  rrect(c, -7, -14, 14, 8, 2.5); c.fill(); outl(c, '#15130e', 1.4)
-  c.fillStyle = shade(col, 0.74)
-  rrect(c, -6, -13, 4.5, 5.5, 1.2); c.fill()
-  rrect(c, -0.5, -13, 4.5, 5.5, 1.2); c.fill()
-
-  // ── Armband (Ukraine blue) ───────────────────────────────────────────────
-  c.fillStyle = kit.band
-  rrect(c, -13, -13, 4.5, 6, 1.5); c.fill(); outl(c, '#15130e', 1)
-  c.fillStyle = 'rgba(255,255,255,.55)'; c.fillRect(-13, -11.2, 4.5, 1.2)
-
-  // ── Neck / scarf ─────────────────────────────────────────────────────────
-  if (kit.scarf) {
-    c.fillStyle = shade(col, 0.72)
-    rrect(c, -5.5, -19, 11, 5, 1.5); c.fill(); outl(c, '#15130e', 1)
-  } else {
-    c.fillStyle = kit.mask ? shade(col, 0.85) : SKIN
-    rrect(c, -4, -19.5, 8, 4, 1.2); c.fill()
-  }
-
-  // ── Face / head circle ───────────────────────────────────────────────────
-  c.fillStyle = kit.mask ? shade(col, 0.82) : SKIN
-  c.beginPath(); c.arc(0, -28, 8.5, 0, Math.PI*2); c.fill(); outl(c, '#15130e', 1.8)
-
-  // ── Helmet ───────────────────────────────────────────────────────────────
-  c.fillStyle = shade(col, 1.1)
-  c.beginPath()
-  c.arc(0, -29, 9.5, Math.PI, 0)
-  c.lineTo(9.5, -27.5); c.lineTo(-9.5, -27.5); c.closePath()
-  c.fill()
-  c.save()
-  c.beginPath()
-  c.arc(0, -29, 9.5, Math.PI, 0)
-  c.lineTo(9.5, -27.5); c.lineTo(-9.5, -27.5); c.closePath()
-  c.clip()
-  camoFleck(c, seed + 40, -9, -38, 18, 12, 10, PAL)
-  c.restore()
-  c.beginPath()
-  c.arc(0, -29, 9.5, Math.PI, 0)
-  c.lineTo(9.5, -27.5); c.lineTo(-9.5, -27.5); c.closePath()
-  outl(c, '#15130e', 1.8)
-  // Helmet brim
-  c.fillStyle = shade(col, 0.88)
-  rrect(c, 4, -28.8, 7.5, 3, 1.2); c.fill(); outl(c, '#15130e', 1.2)
-  // Helmet inner curve shadow line
-  c.strokeStyle = 'rgba(20,18,13,.65)'; c.lineWidth = 1
-  c.beginPath(); c.arc(0, -28, 7, Math.PI * 0.1, Math.PI * 0.9); c.stroke()
-
-  // ── Goggles bar ──────────────────────────────────────────────────────────
-  if (kit.gog) {
-    c.fillStyle = 'rgba(40,52,58,.75)'
-    rrect(c, -7.5, -33, 12, 3.5, 1.2); c.fill(); outl(c, '#15130e', 1)
-  }
-
-  // ── Face gear: balaclava eye slit or shades or bare eyes ─────────────────
-  if (kit.shades) {
-    // Sunglasses
-    c.fillStyle = '#15130e'
-    rrect(c, -6.5, -29.5, 13, 4.5, 1.5); c.fill()
-    c.fillStyle = 'rgba(126,196,224,.45)'
-    rrect(c, -5.8, -29, 5.5, 3.2, 1); c.fill()
-    rrect(c, 1.2, -29, 5.5, 3.2, 1); c.fill()
-    c.fillStyle = 'rgba(255,255,255,.5)'
-    c.fillRect(-5, -28.8, 2, 1); c.fillRect(2, -28.8, 2, 1)
-    c.strokeStyle = '#0c0a07'; c.lineWidth = 1.2
-    rrect(c, -6.5, -29.5, 13, 4.5, 1.5); c.stroke()
-  } else if (kit.mask) {
-    // Balaclava eye slit
-    c.fillStyle = SKIN
-    rrect(c, -5, -29.2, 10, 3.5, 1.2); c.fill()
-    // Eyes
-    c.fillStyle = '#15130e'
-    c.beginPath(); c.arc(-2, -27.8, 1.2, 0, Math.PI*2); c.fill()
-    c.beginPath(); c.arc(3.5, -27.8, 1.2, 0, Math.PI*2); c.fill()
-  } else {
-    // Bare face eyes
-    c.fillStyle = '#15130e'
-    c.beginPath(); c.arc(-2, -27.5, 1.2, 0, Math.PI*2); c.fill()
-    c.beginPath(); c.arc(3.5, -27.5, 1.2, 0, Math.PI*2); c.fill()
-    // Nose shadow
-    c.fillStyle = SKIN2
-    c.beginPath(); c.arc(0.8, -25, 1, 0, Math.PI*2); c.fill()
-  }
-
-  // ── Chin strap ───────────────────────────────────────────────────────────
-  c.strokeStyle = shade(col, 0.7); c.lineWidth = 1
-  c.beginPath(); c.arc(0, -28, 9, Math.PI * 0.15, Math.PI * 0.85); c.stroke()
-
-  c.restore()  // clip restore (portrait circle)
-}
+export const ALL_KITS: Kit[] = [...BASE_KITS, { id: 'god', label: 'GOD', col: '#b9b9a0', band: '#f2c744', pal: ['#dedbc5','#bfc4ad','#939c83','#c9c7b1'], bareHead: true, hair: '#d5b65f' }]
 
 /* ─── Selector component ─────────────────────────────────────────────────── */
 
@@ -229,7 +63,7 @@ export function AvatarSelector({ current, onSave, saving }: Props) {
   useEffect(() => {
     ALL_KITS.forEach((kit, i) => {
       const canvas = canvasRefs.current[kit.id]
-      if (canvas) drawPortrait(canvas, kit, 31 + i * 17)
+      if (canvas) drawPortrait(canvas, kit)
     })
   }, [])
 
@@ -323,7 +157,7 @@ export function AvatarBadge({ kitId, size = 40 }: { kitId: string | null; size?:
   useEffect(() => {
     if (!canvasRef.current) return
     if (kit) {
-      drawPortrait(canvasRef.current, kit, 31)
+      drawPortrait(canvasRef.current, kit)
     } else {
       // Default: initials placeholder — draw empty (caller renders initials on top)
       const c = canvasRef.current.getContext('2d')!

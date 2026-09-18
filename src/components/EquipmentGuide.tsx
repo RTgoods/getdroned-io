@@ -15,7 +15,7 @@ const tools = [
   ['flamer', 'Flamethrower', 'Fire', 'Hold fire to project a long stream of flames and set enemies alight.'],
   ['emp', 'Drone Jammer', 'Anti-drone', 'Releases an electronic burst to take down nearby enemy drones.'],
   ['med', 'Field Kit', 'Recovery', 'Stored in your tool belt when purchased. Activate it when needed to restore 50 health.'],
-  ['repair', 'Repair Kit', 'Fortifications', 'In Sectors 1, 3 and 5, use anywhere inside your base to restore 25 percentage points of integrity and repair its appearance. Elsewhere, repairs a nearby damaged wall by one stage. Kept if no repair is needed.'],
+  ['repair', 'Repair Kit', 'Fortifications', 'On every level, use anywhere inside your base to restore 25 percentage points of integrity and repair its appearance. Elsewhere, repairs a nearby damaged wall by one stage. Kept if no repair is needed.'],
   ['plate', 'Armour Plate', 'Protection', 'Replenishes armour to absorb more incoming damage.'],
 ]
 const weapons = [

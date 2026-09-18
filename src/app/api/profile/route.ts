@@ -5,7 +5,7 @@ import type { Database } from '@/types/database'
 type ProfileUpdate = Database['public']['Tables']['profiles']['Update']
 
 const VALID_KIT_IDS = [
-  'woodland','urban','ranger','desert','night',
+  'woodland','urban','ranger','desert','night','god',
   'woodland-snow','urban-snow','ranger-snow','desert-snow','night-snow',
 ]
 

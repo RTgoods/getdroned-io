@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "node scripts/obfuscate-game.mjs && next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "predev": "node scripts/generate-pilot-portraits.cjs",
+    "prebuild": "node scripts/generate-pilot-portraits.cjs"
   },
   "dependencies": {
     "@stripe/stripe-js": "^4.0.0",
