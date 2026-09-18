@@ -8,7 +8,7 @@ function setup(){
  for(const k of 'placeFires buildStatic initWallHP setupTruck hud banner sfx launchPart updatePatrolTanks dustPuff rebuildDroneBay explode'.split(' '))c[k]=()=>{};
  c.setMapSize=(w,h)=>{c.MW=w;c.MH=h;c.WW=w*34;c.WH=h*34;c.grid=new Uint8Array(w*h);};c.downPlayer=()=>{c.player.dead=true;};
  vm.createContext(c);
- for(const name of ['T','setT','fill','addProp','isWater','inBase','hs','waterNear','buildSea','buildSeaExpansion','seaRoom','prepareSeaRoute','planSeaRoute','moveSeaShip','seaHullDistance','damageSeaBridge','sinkPlayerGunboat','updateSeaExpansion'])vm.runInContext(functions[name],c);
+ for(const name of ['T','setT','fill','addProp','isWater','inBase','hs','waterNear','buildSea','buildSeaExpansion','seaRoom','prepareSeaRoute','planSeaRoute','moveSeaShip','seaHullDistance','damageSeaBridge','sinkPlayerGunboat','updateSeaExpansion','detonateSeaMine'])vm.runInContext(functions[name],c);
  c.buildSea();return c;
 }
 test('enlarged fleet and both landing ships follow navigable water routes',()=>{
@@ -48,4 +48,23 @@ test('both landing beaches connect to the home compound on foot',()=>{
  const c=setup(),q=[Math.floor(c.homeSpawn.y)*c.MW+Math.floor(c.homeSpawn.x)],seen=new Set(q);
  for(let i=0;i<q.length;i++){const x=q[i]%c.MW,y=Math.floor(q[i]/c.MW);for(const [dx,dy]of [[1,0],[-1,0],[0,1],[0,-1]]){const nx=x+dx,ny=y+dy,n=ny*c.MW+nx;if(nx<0||ny<0||nx>=c.MW||ny>=c.MH||seen.has(n)||[c.WALL,c.PROP,c.BROKEN,c.WATER].includes(c.T(nx,ny)))continue;seen.add(n);q.push(n);}}
  for(const S of c.ships.filter(s=>s.lander))assert(seen.has(Math.floor(S.shoreY/34)*c.MW+Math.floor(S.shoreX/34)),S.name+' beach disconnected');
+});
+
+test('retry preserves the current sector',()=>{
+ const start=source.indexOf("bindTap(document.getElementById('retry'),function(){");
+ const end=source.indexOf('\n});',start)+4;
+ const c={level:3,startCoins:100,document:{getElementById(){return {classList:{add(){}}};}},bindTap(element,callback){callback();},startSector(n){assert.equal(n,3);}};
+ vm.runInNewContext(source.slice(start,end),c);
+});
+test('bridge spans the full map and the west access path is water',()=>{
+ const c=setup();assert.equal(c.seaBridge.x0,0);assert.equal(c.seaBridge.x1,c.WW);
+ for(let y=14;y<38;y++)assert.equal(c.T(4,y),c.WATER);
+});
+test('grenades and ordinary bullets remove sea mines',()=>{
+ const c=setup();c.ships=[];c.seaMines=[{x:1000,y:1000,dead:0}];vm.runInContext(functions.fragExplosion,c);
+ c.fragExplosion(1000,1000,80,100);assert.equal(c.seaMines.length,0);
+ c.seaMines=[{x:1000,y:1000,dead:0}];c.bu={x:1000,y:1000,dmg:24};c.b=0;c.bullets=[c.bu];
+ const start=source.indexOf('      for(var mi=seaMines.length-1;mi>=0;mi--){');
+ const end=source.indexOf('      if(!bu)break;',start);
+ vm.runInContext(source.slice(start,end),c);assert.equal(c.seaMines.length,0);assert.equal(c.bullets.length,0);
 });
