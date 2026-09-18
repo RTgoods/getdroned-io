@@ -1488,7 +1488,7 @@ function drawProp(c,o){
   } else if(k==='pipes'){
     c.fillStyle='rgba(0,0,0,.32)'; rrect(c,x+4,y+6,w-4,h-8,3); c.fill();
     c.fillStyle='#6f757b';
-    for(var pp=0;pp<(ED2.mx||3);pp++) rrect(c,x+3,y+5+pp*8,w-6,5,2.5), c.fill();
+    for(var pp=0;pp<(o.mx||3);pp++) rrect(c,x+3,y+5+pp*8,w-6,5,2.5), c.fill();
     outl(c,'#1c2126',1.6);
     c.fillStyle='#4c5257'; rrect(c,x+w*.4,y+3,5,h-6,2); c.fill();
   } else if(k==='console'){
