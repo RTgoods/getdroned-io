@@ -71,6 +71,191 @@ var corpses=[], crawlers=[];
 var medStation=null;
 var spawnQ=0, spawnT=0, aliveTarget=0, killed=0, totalKills=0, timeAlive=0;
 
+// === COMMANDER-AI START ===
+const COMMANDER_ENABLED = false;
+
+/* -------------------------------------------------------------------------
+   COMMANDER AI
+   All state, logic, and rendering for the LLM squad commander lives here.
+   Set COMMANDER_ENABLED = true to activate. When false every hook is a
+   single branch that costs ~1 comparison and returns immediately.
+   ------------------------------------------------------------------------- */
+
+// --- persistent commander state ---
+var CMD = {
+  squads:        [],       // [{id, members[], order, rallyX, rallyY, aggression}]
+  lastCall:      -999,     // game-time of last fetch (seconds via timeAlive)
+  callsUsed:     0,
+  budgetMax:     15,
+  cooldown:      20,       // seconds between calls
+  pending:       false,    // fetch in-flight
+  lastResponse:  '',       // raw text shown in debug overlay
+  lastTrigger:   '',       // reason for last call
+  debugVisible:  false,    // toggled by backslash key
+  ENDPOINT:      'https://your-proxy-here/commander'   // point at your own proxy
+};
+
+// --- assign enemies to squads, called after buildMap + enemy population ---
+function cmdBuildSquads(){
+  CMD.squads=[];
+  // Skip bosses, civilians-adjacent specials — only regular field enemies
+  var field=enemies.filter(function(e){ return !e.boss&&!e.compoundBoss&&!e.levelTwoBoss&&!e.oilBoss&&!e.airfieldBoss&&!e.finalBoss&&!e.baseAssault&&!e.airWorker&&!e.dug; });
+  var squadSize=3;
+  for(var i=0;i<field.length;i+=squadSize){
+    var members=field.slice(i,i+squadSize);
+    var sq={id:CMD.squads.length,members:members,order:'rush',rallyX:0,rallyY:0,aggression:1.0};
+    CMD.squads.push(sq);
+    for(var m=0;m<members.length;m++) members[m].squadId=sq.id;
+  }
+}
+
+// --- world-state serializer, stays under ~400 tokens ---
+function cmdWorldState(trigger){
+  var sqSnap=CMD.squads.map(function(sq){
+    var alive=sq.members.filter(function(e){ return e.hp>0; });
+    var cx=0,cy=0;
+    for(var i=0;i<alive.length;i++){ cx+=alive[i].x; cy+=alive[i].y; }
+    if(alive.length){ cx=Math.round(cx/alive.length/TILE); cy=Math.round(cy/alive.length/TILE); }
+    return {id:sq.id,order:sq.order,count:alive.length,cx:cx,cy:cy,aggression:sq.aggression};
+  });
+  var wpName=(player&&player.wep)?player.wep:'unknown';
+  var apTier=upgAP>=100?2:(upgAP>=60?1:0);
+  var flagSt=flag?flag.state:'none';
+  var dmgDir='none';
+  if(CMD._lastDmgX!==undefined){
+    var ddx=CMD._lastDmgX-player.x, ddy=CMD._lastDmgY-player.y;
+    var ang8=Math.round(Math.atan2(ddy,ddx)/(Math.PI/4));
+    dmgDir=['E','NE','N','NW','W','SW','S','SE'][((ang8%8)+8)%8];
+  }
+  return {
+    level:level, sector:mapKind,
+    playerPos:[Math.round(player.x/TILE),Math.round(player.y/TILE)],
+    playerHP:Math.round(player.hp), playerAP:Math.round(player.ap||0),
+    playerWeapon:wpName, armourTier:apTier,
+    flagState:flagSt, baseHP:Math.round(baseHP/baseMX*100),
+    recentDamageDir:dmgDir,
+    squads:sqSnap,
+    callsUsed:CMD.callsUsed, budgetMax:CMD.budgetMax,
+    trigger:trigger
+  };
+}
+
+// --- scripted fallback: runs when fetch fails, times out, or budget spent ---
+function cmdFallback(ws){
+  var orders=[];
+  for(var i=0;i<CMD.squads.length;i++){
+    var sq=CMD.squads[i];
+    var alive=sq.members.filter(function(e){ return e.hp>0; });
+    if(!alive.length) continue;
+    var order,agg=1.0,rx=player.x,ry=player.y;
+    if(ws.flagState==='lower'||ws.flagState==='raise'){ order='rush'; agg=1.3; }
+    else if(alive.length<2){ order='fallback'; agg=0.7; rx=homeSpawn.x*TILE; ry=homeSpawn.y*TILE; }
+    else if(ws.playerHP<30){ order='rush'; agg=1.4; }
+    else if(i%2===0){ order='flank'; agg=1.1; }
+    else { order='hold'; agg=0.9; }
+    orders.push({squadId:sq.id,order:order,rallyX:Math.round(rx/TILE),rallyY:Math.round(ry/TILE),aggression:agg});
+  }
+  return {orders:orders,source:'fallback'};
+}
+
+// --- apply a parsed response to squad objects ---
+function cmdApplyOrders(resp){
+  if(!resp||!Array.isArray(resp.orders)) return;
+  CMD.lastResponse=(resp.source||'llm')+': '+resp.orders.map(function(o){ return 'sq'+o.squadId+'→'+o.order; }).join(', ');
+  for(var i=0;i<resp.orders.length;i++){
+    var o=resp.orders[i];
+    var sq=CMD.squads[o.squadId];
+    if(!sq) continue;
+    sq.order=o.order||'rush';
+    sq.aggression=Math.max(0.5,Math.min(2.0,o.aggression||1.0));
+    sq.rallyX=(o.rallyX||0)*TILE;
+    sq.rallyY=(o.rallyY||0)*TILE;
+  }
+}
+
+// --- fire the commander: fetch or fallback ---
+function cmdFire(trigger){
+  if(!COMMANDER_ENABLED) return;
+  if(CMD.pending) return;
+  if(CMD.callsUsed>=CMD.budgetMax){ cmdApplyOrders(cmdFallback(cmdWorldState(trigger))); return; }
+  var gap=timeAlive-CMD.lastCall;
+  if(gap<CMD.cooldown){ cmdApplyOrders(cmdFallback(cmdWorldState(trigger))); return; }
+  CMD.lastCall=timeAlive; CMD.callsUsed++; CMD.lastTrigger=trigger; CMD.pending=true;
+  var ws=cmdWorldState(trigger);
+  var ctrl=new AbortController();
+  setTimeout(function(){ ctrl.abort(); },2000);
+  fetch(CMD.ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(ws),signal:ctrl.signal})
+    .then(function(r){ return r.ok?r.json():Promise.reject(r.status); })
+    .then(function(data){ CMD.pending=false; cmdApplyOrders(data); })
+    .catch(function(){ CMD.pending=false; cmdApplyOrders(cmdFallback(ws)); });
+}
+
+// --- react to a squad reaching zero members ---
+function cmdCheckSquadWipe(squadId){
+  if(!COMMANDER_ENABLED) return;
+  var sq=CMD.squads[squadId];
+  if(!sq) return;
+  var alive=sq.members.filter(function(e){ return e.hp>0; });
+  if(alive.length===0) cmdFire('squad_wiped_sq'+squadId);
+}
+
+// --- apply squad order to movement vector in enemy update loop ---
+// called after the rush/see/flowDir block sets mvx/mvy
+function cmdModifyMove(en,mvxIn,mvyIn,pd){
+  if(!COMMANDER_ENABLED||en.squadId===undefined) return {x:mvxIn,y:mvyIn,spd:1};
+  var sq=CMD.squads[en.squadId];
+  if(!sq) return {x:mvxIn,y:mvyIn,spd:1};
+  var order=sq.order, agg=sq.aggression;
+  var rx=mvxIn,ry=mvyIn;
+  if(order==='hold'){
+    rx=0; ry=0;
+  } else if(order==='fallback'){
+    var fdx=sq.rallyX-en.x, fdy=sq.rallyY-en.y, fl=Math.hypot(fdx,fdy)||1;
+    rx=fdx/fl; ry=fdy/fl;
+  } else if(order==='flank'){
+    // rotate movement vector 75° toward player's exposed flank
+    var fa=Math.atan2(mvyIn,mvxIn)+(Math.sin(en.sid||0)>0?1.3:-1.3);
+    rx=Math.cos(fa); ry=Math.sin(fa);
+  } else if(order==='rush'){
+    // head straight at player regardless of prefer-range
+    if(pd>0.01){ rx=(player.x-en.x)/pd; ry=(player.y-en.y)/pd; }
+    agg=Math.max(agg,1.25);
+  }
+  return {x:rx,y:ry,spd:agg};
+}
+
+// --- debug overlay ---
+function cmdDrawDebug(){
+  if(!COMMANDER_ENABLED||!CMD.debugVisible) return;
+  var lines=['COMMANDER-AI  calls '+CMD.callsUsed+'/'+CMD.budgetMax+(CMD.pending?' [...]':'')];
+  lines.push('trigger: '+CMD.lastTrigger);
+  lines.push('resp: '+CMD.lastResponse);
+  for(var i=0;i<CMD.squads.length;i++){
+    var sq=CMD.squads[i];
+    var alive=sq.members.filter(function(e){ return e.hp>0; }).length;
+    lines.push('SQ'+sq.id+' '+sq.order+' x'+alive+' agg'+sq.aggression.toFixed(1));
+  }
+  var pw=340,ph=14*lines.length+10,px=8,py=VH-ph-8;
+  ctx.save();
+  ctx.globalAlpha=0.82;
+  ctx.fillStyle='#050e12';
+  ctx.fillRect(px,py,pw,ph);
+  ctx.globalAlpha=1;
+  ctx.fillStyle='#7effa0';
+  ctx.font='bold 11px monospace';
+  ctx.textAlign='left';
+  for(var li=0;li<lines.length;li++) ctx.fillText(lines[li],px+6,py+13+li*14);
+  ctx.restore();
+}
+
+// --- keyboard toggle for debug overlay ---
+window.addEventListener('keydown',function(e){
+  if(!COMMANDER_ENABLED) return;
+  if(e.key==='\\'||e.code==='Backslash') CMD.debugVisible=!CMD.debugVisible;
+});
+
+// === COMMANDER-AI END ===
+
 function inBase(x,y){
   var tx=x/TILE, ty=y/TILE;
   return tx>=BASE.x0&&tx<=BASE.x1&&ty>=BASE.y0&&ty<=BASE.y1;
@@ -4940,6 +5125,7 @@ function showOilBossClear(x,y){
 }
 function killEnemy(e,ang,gib){
   var idx=enemies.indexOf(e); if(idx>=0) enemies.splice(idx,1);
+  if(COMMANDER_ENABLED&&e.squadId!==undefined) cmdCheckSquadWipe(e.squadId);
   if(e.finalBoss){ redBossDefeated=1; bossBarrels.length=0; banner('FINAL BOSS DEFEATED','RED SQUARE SECURED',2.5);
     try{ window.parent.postMessage({type:'gd:sectorComplete',sector:6,kills:totalKills,squadLost:squadLost,moneyEnd:money,timeAlive:Math.floor(timeAlive),belt:belt.slice()},'*'); }catch(ex){} }
   if(e.airfieldBoss){
@@ -5828,6 +6014,7 @@ function update(dt,realDt){
       if(fd){ var l=Math.hypot(fd.x,fd.y)||1; mvx=fd.x/l; mvy=fd.y/l; }
       else { mvx=(player.x-en.x)/pd; mvy=(player.y-en.y)/pd; }
     }
+    if(COMMANDER_ENABLED){ var _cm=cmdModifyMove(en,mvx,mvy,pd); mvx=_cm.x; mvy=_cm.y; }
     // separation
     for(var o=0;o<enemies.length;o++){ if(o===e) continue; var ot=enemies[o];
       var od=Math.hypot(ot.x-en.x,ot.y-en.y);
@@ -6272,7 +6459,7 @@ function update(dt,realDt){
   if(shopCD>0) shopCD-=dt;
   if(shopPad&&!piloting&&!player.dead&&shopCD<=0&&Math.hypot(player.x-shopPad.x,player.y-shopPad.y)<30){
     player.shopHold=(player.shopHold||0)+dt/(firing?.4:.8);
-    if(player.shopHold>=1){ player.shopHold=0; state='shop'; shopScroll=0; shopDrag=null; sfx('crate'); }
+    if(player.shopHold>=1){ player.shopHold=0; state='shop'; shopScroll=0; shopDrag=null; sfx('crate'); if(COMMANDER_ENABLED) cmdFire('player_entered_store'); }
   } else player.shopHold=0;
 
   if(mapKind==='trench'){
@@ -6349,7 +6536,7 @@ function update(dt,realDt){
           dustPuff(hspot.x,hspot.y,4,.8);
         }
         if(F2.p>=2){
-          F2.p=2; F2.state='done'; F2.assault=0; sfx('clear');
+          F2.p=2; F2.state='done'; F2.assault=0; sfx('clear'); if(COMMANDER_ENABLED) cmdFire('player_captured_flag');
           var done=0; for(var dq3=0;dq3<flags.length;dq3++) if(flags[dq3].state==='done') done++;
           var depLeft=0; for(var dq8=0;dq8<depots.length;dq8++) if(!depots[dq8].blown) depLeft++;
           banner('BASE '+(fi2+1)+' TAKEN',
@@ -6464,6 +6651,7 @@ function enemyNade(en,pw){
   sfx('reload',.5);
 }
 function enemyShot(en,d,spreadOverride,dmgMul){
+  if(COMMANDER_ENABLED){ CMD._lastDmgX=en.x; CMD._lastDmgY=en.y; }
   var pel=d.pel||1, spr=(spreadOverride===undefined)?d.spread:spreadOverride;
   for(var i=0;i<pel;i++){
     var a=en.ang+rr(-spr,spr);
@@ -8398,6 +8586,7 @@ function startSector(n){
          {t:4.8,a:'NEUTRALIZE ENEMY FORCES',b:'CLEAR ALL HOSTILES'},
          {t:7.2,a:'ELIMINATE LEVEL ONE BOSS',b:'TAKE DOWN THE ENEMY COMMANDER'}];
   introT=0;
+  if(COMMANDER_ENABLED){ cmdBuildSquads(); cmdFire('sector_start'); }
 }
 var clearing=false;
 async function sectorClear(){
@@ -12158,6 +12347,7 @@ function draw(){
     ctx.restore(); ctx.globalAlpha=1;
   }
   REC.drawOverlay(ctx);
+  if(COMMANDER_ENABLED) cmdDrawDebug();
 }
 
 function paintDamaged(c){
