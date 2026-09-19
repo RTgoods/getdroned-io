@@ -95,28 +95,41 @@ var CMD = {
   ENDPOINT:      'https://your-proxy-here/commander'   // point at your own proxy
 };
 
-// --- assign enemies to squads, called after buildMap + enemy population ---
+// --- assign enemies (and ships on sea level) to squads ---
 function cmdBuildSquads(){
   CMD.squads=[];
-  // Skip bosses, civilians-adjacent specials — only regular field enemies
+  // Regular field enemies — skip bosses and special roles
   var field=enemies.filter(function(e){ return !e.boss&&!e.compoundBoss&&!e.levelTwoBoss&&!e.oilBoss&&!e.airfieldBoss&&!e.finalBoss&&!e.baseAssault&&!e.airWorker&&!e.dug; });
   var squadSize=3;
   for(var i=0;i<field.length;i+=squadSize){
     var members=field.slice(i,i+squadSize);
-    var sq={id:CMD.squads.length,members:members,order:'rush',rallyX:0,rallyY:0,aggression:1.0};
+    var sq={id:CMD.squads.length,members:members,order:'rush',rallyX:0,rallyY:0,aggression:1.0,naval:false};
     CMD.squads.push(sq);
     for(var m=0;m<members.length;m++) members[m].squadId=sq.id;
+  }
+  // Naval squads: pair up active warships on the sea level (exclude boss and landers)
+  if(mapKind==='sea'){
+    var warships=ships.filter(function(S){ return !S.boss3&&!S.lander&&S.sink===0&&S.hp>0; });
+    var navSize=2;
+    for(var j=0;j<warships.length;j+=navSize){
+      var naval=warships.slice(j,j+navSize);
+      var nsq={id:CMD.squads.length,members:naval,order:'rush',rallyX:0,rallyY:0,aggression:1.0,naval:true};
+      CMD.squads.push(nsq);
+      for(var n=0;n<naval.length;n++){ naval[n].squadId=nsq.id; naval[n]._basespd=naval[n].spd; }
+    }
   }
 }
 
 // --- world-state serializer, stays under ~400 tokens ---
 function cmdWorldState(trigger){
   var sqSnap=CMD.squads.map(function(sq){
-    var alive=sq.members.filter(function(e){ return e.hp>0; });
+    var alive=sq.naval
+      ? sq.members.filter(function(S){ return S.hp>0&&S.sink===0; })
+      : sq.members.filter(function(e){ return e.hp>0; });
     var cx=0,cy=0;
     for(var i=0;i<alive.length;i++){ cx+=alive[i].x; cy+=alive[i].y; }
     if(alive.length){ cx=Math.round(cx/alive.length/TILE); cy=Math.round(cy/alive.length/TILE); }
-    return {id:sq.id,order:sq.order,count:alive.length,cx:cx,cy:cy,aggression:sq.aggression};
+    return {id:sq.id,order:sq.order,count:alive.length,cx:cx,cy:cy,aggression:sq.aggression,naval:!!sq.naval};
   });
   var wpName=(player&&player.wep)?player.wep:'unknown';
   var apTier=upgAP>=100?2:(upgAP>=60?1:0);
@@ -145,14 +158,24 @@ function cmdFallback(ws){
   var orders=[];
   for(var i=0;i<CMD.squads.length;i++){
     var sq=CMD.squads[i];
-    var alive=sq.members.filter(function(e){ return e.hp>0; });
+    var alive=sq.naval
+      ? sq.members.filter(function(S){ return S.hp>0&&S.sink===0; })
+      : sq.members.filter(function(e){ return e.hp>0; });
     if(!alive.length) continue;
     var order,agg=1.0,rx=player.x,ry=player.y;
-    if(ws.flagState==='lower'||ws.flagState==='raise'){ order='rush'; agg=1.3; }
-    else if(alive.length<2){ order='fallback'; agg=0.7; rx=homeSpawn.x*TILE; ry=homeSpawn.y*TILE; }
-    else if(ws.playerHP<30){ order='rush'; agg=1.4; }
-    else if(i%2===0){ order='flank'; agg=1.1; }
-    else { order='hold'; agg=0.9; }
+    if(sq.naval){
+      // Naval fallback: rush when bridge is up and player is in range; hold when battered
+      if(alive.length<2){ order='hold'; agg=0.7; }
+      else if(ws.playerHP<40){ order='rush'; agg=1.35; }
+      else if(i%2===0){ order='flank'; agg=1.1; }
+      else { order='rush'; agg=1.0; }
+    } else {
+      if(ws.flagState==='lower'||ws.flagState==='raise'){ order='rush'; agg=1.3; }
+      else if(alive.length<2){ order='fallback'; agg=0.7; rx=homeSpawn.x*TILE; ry=homeSpawn.y*TILE; }
+      else if(ws.playerHP<30){ order='rush'; agg=1.4; }
+      else if(i%2===0){ order='flank'; agg=1.1; }
+      else { order='hold'; agg=0.9; }
+    }
     orders.push({squadId:sq.id,order:order,rallyX:Math.round(rx/TILE),rallyY:Math.round(ry/TILE),aggression:agg});
   }
   return {orders:orders,source:'fallback'};
@@ -224,6 +247,38 @@ function cmdModifyMove(en,mvxIn,mvyIn,pd){
   return {x:rx,y:ry,spd:agg};
 }
 
+// --- apply squad order to a warship each frame ---
+// Scales S.spd and accelerates fire cooldowns; no waypoint rewriting needed.
+function cmdApplyShipOrder(S,dt){
+  if(!COMMANDER_ENABLED||S.squadId===undefined) return;
+  var sq=CMD.squads[S.squadId];
+  if(!sq||!sq.naval) return;
+  var order=sq.order, agg=sq.aggression;
+  // Restore base speed then apply commanded scalar
+  if(S._basespd===undefined) S._basespd=S.spd;
+  if(order==='hold'){
+    S.spd=0;
+  } else if(order==='fallback'){
+    S.spd=S._basespd*0.55;
+  } else if(order==='rush'||order==='flank'){
+    S.spd=S._basespd*Math.min(2.2,agg);
+    // Burn down fire cooldowns faster proportional to aggression
+    S.gun=Math.max(0,S.gun-dt*(agg-1)*0.9);
+    S.aa =Math.max(0,S.aa -dt*(agg-1)*0.9);
+  } else {
+    S.spd=S._basespd;
+  }
+}
+
+// --- fire commander when a naval squad's last ship sinks ---
+function cmdCheckShipWipe(squadId){
+  if(!COMMANDER_ENABLED) return;
+  var sq=CMD.squads[squadId];
+  if(!sq||!sq.naval) return;
+  var afloat=sq.members.filter(function(S){ return S.hp>0&&S.sink===0; });
+  if(afloat.length===0) cmdFire('naval_squad_sunk_sq'+squadId);
+}
+
 // --- debug overlay ---
 function cmdDrawDebug(){
   if(!COMMANDER_ENABLED||!CMD.debugVisible) return;
@@ -232,8 +287,10 @@ function cmdDrawDebug(){
   lines.push('resp: '+CMD.lastResponse);
   for(var i=0;i<CMD.squads.length;i++){
     var sq=CMD.squads[i];
-    var alive=sq.members.filter(function(e){ return e.hp>0; }).length;
-    lines.push('SQ'+sq.id+' '+sq.order+' x'+alive+' agg'+sq.aggression.toFixed(1));
+    var alive=sq.naval
+      ? sq.members.filter(function(S){ return S.hp>0&&S.sink===0; }).length
+      : sq.members.filter(function(e){ return e.hp>0; }).length;
+    lines.push((sq.naval?'⚓':'👥')+'SQ'+sq.id+' '+sq.order+' x'+alive+' agg'+sq.aggression.toFixed(1));
   }
   var pw=340,ph=14*lines.length+10,px=8,py=VH-ph-8;
   ctx.save();
@@ -7079,7 +7136,7 @@ function shipHit(S,dmg,ang){
         vx:rr(-20,20),vy:-rr(20,60),life:rr(2,4),max:4,s:rr(8,18),hot:.8});
   }
   if(S.hp<=0&&!S.sink){
-    S.sink=6; S.hp=0;
+    S.sink=6; S.hp=0; if(COMMANDER_ENABLED&&S.squadId!==undefined) cmdCheckShipWipe(S.squadId);
     if(seaBridge&&!S.boss3)seaBridge.fleetSunk++;
     seaWrecks.push({x:S.x,y:S.y,a:S.ang,len:S.len,wid:S.wid,t:0});
     seaSharks.push({x:S.x,y:S.y,a:0,t:0}); S.blast=0; S.pops=ri(5,8);
@@ -7211,6 +7268,7 @@ function updateShips(dt){
       }
       continue;
     }
+    if(COMMANDER_ENABLED) cmdApplyShipOrder(S,dt);
     var wp=S.lane[S.wp];
     if(moveSeaShip(S,dt,wp[0]*TILE,wp[1]*TILE))S.wp=(S.wp+1)%S.lane.length;
     S.wake+=dt;
