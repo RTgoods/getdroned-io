@@ -107,6 +107,15 @@ function cmdBuildSquads(){
     CMD.squads.push(sq);
     for(var m=0;m<members.length;m++) members[m].squadId=sq.id;
   }
+  // Tank squads: group non-dead, non-bridge patrol tanks (oil, red square, trench)
+  var tanks=motorcade.filter(function(C){ return C.patrolTank&&!C.dead&&!C.bridgeTank&&!C.parked; });
+  var tankSize=2;
+  for(var k=0;k<tanks.length;k+=tankSize){
+    var tgroup=tanks.slice(k,k+tankSize);
+    var tsq={id:CMD.squads.length,members:tgroup,order:'rush',rallyX:0,rallyY:0,aggression:1.0,tank:true};
+    CMD.squads.push(tsq);
+    for(var t=0;t<tgroup.length;t++) tgroup[t].squadId=tsq.id;
+  }
   // Naval squads: pair up active warships on the sea level (exclude boss and landers)
   if(mapKind==='sea'){
     var warships=ships.filter(function(S){ return !S.boss3&&!S.lander&&S.sink===0&&S.hp>0; });
@@ -125,11 +134,11 @@ function cmdWorldState(trigger){
   var sqSnap=CMD.squads.map(function(sq){
     var alive=sq.naval
       ? sq.members.filter(function(S){ return S.hp>0&&S.sink===0; })
-      : sq.members.filter(function(e){ return e.hp>0; });
+      : sq.members.filter(function(e){ return e.hp>0&&!e.dead; });
     var cx=0,cy=0;
     for(var i=0;i<alive.length;i++){ cx+=alive[i].x; cy+=alive[i].y; }
     if(alive.length){ cx=Math.round(cx/alive.length/TILE); cy=Math.round(cy/alive.length/TILE); }
-    return {id:sq.id,order:sq.order,count:alive.length,cx:cx,cy:cy,aggression:sq.aggression,naval:!!sq.naval};
+    return {id:sq.id,order:sq.order,count:alive.length,cx:cx,cy:cy,aggression:sq.aggression,naval:!!sq.naval,tank:!!sq.tank};
   });
   var wpName=(player&&player.wep)?player.wep:'unknown';
   var apTier=upgAP>=100?2:(upgAP>=60?1:0);
@@ -160,10 +169,15 @@ function cmdFallback(ws){
     var sq=CMD.squads[i];
     var alive=sq.naval
       ? sq.members.filter(function(S){ return S.hp>0&&S.sink===0; })
-      : sq.members.filter(function(e){ return e.hp>0; });
+      : sq.members.filter(function(e){ return e.hp>0&&!e.dead; });
     if(!alive.length) continue;
     var order,agg=1.0,rx=player.x,ry=player.y;
-    if(sq.naval){
+    if(sq.tank){
+      if(alive.length<2){ order='hold'; agg=0.75; }
+      else if(ws.playerHP<35){ order='rush'; agg=1.45; }
+      else if(i%2===0){ order='flank'; agg=1.15; }
+      else { order='rush'; agg=1.1; }
+    } else if(sq.naval){
       // Naval fallback: rush when bridge is up and player is in range; hold when battered
       if(alive.length<2){ order='hold'; agg=0.7; }
       else if(ws.playerHP<40){ order='rush'; agg=1.35; }
@@ -247,6 +261,38 @@ function cmdModifyMove(en,mvxIn,mvyIn,pd){
   return {x:rx,y:ry,spd:agg};
 }
 
+// --- apply squad order to a patrol tank each frame ---
+// Controls fire rate (via gunCD) and movement (via C.stop / route clear).
+function cmdApplyTankOrder(C,dt){
+  if(!COMMANDER_ENABLED||C.squadId===undefined) return;
+  var sq=CMD.squads[C.squadId];
+  if(!sq||!sq.tank) return;
+  var order=sq.order, agg=sq.aggression;
+  if(order==='hold'){
+    C.stop=Math.max(C.stop||0,0.5);   // keep stop timer fed so tank stays put
+  } else if(order==='rush'){
+    C.route=null;                      // force re-path toward player on next tick
+    C.stop=0;
+    C.gunCD=Math.max(0,(C.gunCD||0)-dt*(agg-1)*1.1);
+  } else if(order==='flank'){
+    C.gunCD=Math.max(0,(C.gunCD||0)-dt*(agg-1)*0.8);
+  } else if(order==='fallback'){
+    if(sq.rallyX&&sq.rallyY){
+      var rdx=sq.rallyX-C.x,rdy=sq.rallyY-C.y;
+      if(Math.hypot(rdx,rdy)>80) C.route=null;  // re-path toward rally point
+    }
+  }
+}
+
+// --- fire commander when a tank squad's last tank is destroyed ---
+function cmdCheckTankWipe(squadId){
+  if(!COMMANDER_ENABLED) return;
+  var sq=CMD.squads[squadId];
+  if(!sq||!sq.tank) return;
+  var standing=sq.members.filter(function(C){ return !C.dead; });
+  if(standing.length===0) cmdFire('tank_squad_wiped_sq'+squadId);
+}
+
 // --- apply squad order to a warship each frame ---
 // Scales S.spd and accelerates fire cooldowns; no waypoint rewriting needed.
 function cmdApplyShipOrder(S,dt){
@@ -290,7 +336,8 @@ function cmdDrawDebug(){
     var alive=sq.naval
       ? sq.members.filter(function(S){ return S.hp>0&&S.sink===0; }).length
       : sq.members.filter(function(e){ return e.hp>0; }).length;
-    lines.push((sq.naval?'⚓':'👥')+'SQ'+sq.id+' '+sq.order+' x'+alive+' agg'+sq.aggression.toFixed(1));
+    var icon=sq.naval?'[N]':sq.tank?'[T]':'[I]';
+    lines.push(icon+'SQ'+sq.id+' '+sq.order+' x'+alive+' agg'+sq.aggression.toFixed(1));
   }
   var pw=340,ph=14*lines.length+10,px=8,py=VH-ph-8;
   ctx.save();
@@ -7531,6 +7578,7 @@ function updatePatrolTanks(dt){
       }
     }
 
+    if(COMMANDER_ENABLED&&!C.bridgeTank) cmdApplyTankOrder(C,dt);
     if(C.bridgeTank){
       if(seaBridge&&!seaBridge.dead){var patrolWidth=(seaBridge.x1-seaBridge.x0)/3,lo=seaBridge.x0+C.i*patrolWidth+90,hi=lo+patrolWidth-180;C.x+=C.dir*48*dt;C.trackPhase+=48*dt;if(C.x>hi){C.x=hi;C.dir=-1;}if(C.x<lo){C.x=lo;C.dir=1;}C.ang=C.dir>0?0:Math.PI;}
       continue;
@@ -7665,7 +7713,7 @@ function hitMotorcadeCar(C,dmg){
       banner('DRONE BASE DESTROYED','ENEMY LAUNCHES STOPPED',3);hud();
     }return;
   }
-  if(C.hp<=0){ C.dead=1; C.hp=0; if(C.patrolTank)destroyPatrolTank(C); explode(C.x,C.y,105,18,true); money+=150; banner('PATROL TANK DESTROYED','',1.3); hud(); }
+  if(C.hp<=0){ C.dead=1; C.hp=0; if(C.patrolTank)destroyPatrolTank(C); explode(C.x,C.y,105,18,true); money+=150; banner('PATROL TANK DESTROYED','',1.3); hud(); if(COMMANDER_ENABLED&&C.squadId!==undefined) cmdCheckTankWipe(C.squadId); }
 }
 function blowRefinery(R){
   if(R.dead) return;
