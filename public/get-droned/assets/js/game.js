@@ -8784,7 +8784,7 @@ async function sectorClear(){
     try{
       var accessResponse=await fetch('/api/access',{cache:'no-store'});
       var nextAccess=accessResponse.ok?await accessResponse.json():null;
-      if(!nextAccess||!nextAccess.allowed){
+      if(!nextAccess||(!nextAccess.allowed&&!nextAccess.isAdmin)){
         banner('SECTOR 1 COMPLETE','UNLOCK SECTORS 2–6 TO CONTINUE',3);
         setTimeout(function(){window.top.location.href='/';},3000);return;
       }
@@ -8792,7 +8792,7 @@ async function sectorClear(){
   }
   // Notify parent window (Next.js) that this sector was completed
   try{ window.parent.postMessage({type:'gd:sectorComplete',sector:level,kills:totalKills,squadLost:squadLost,moneyEnd:money,timeAlive:Math.floor(timeAlive),belt:belt.slice()},'*'); }catch(e){}
-  banner('SECTOR CLEAR','RESUPPLY · SECTOR '+(level+1),2.2);
+  banner('SECTOR CLEAR','ADVANCING · SECTOR '+(level+1),1.2);
   setTimeout(function(){
     clearing=false;
     syncGun();
@@ -8804,7 +8804,7 @@ async function sectorClear(){
     var cg=gr[gidx]; if(!WEAPONS[cg.id].rail)cg.res+=Math.floor(WEAPONS[cg.id].mag*1.5);
     player.wep=cg.id; player.mag=cg.mag; player.res=cg.res; player.nades=nd+1;
     hud();
-  },2300);
+  },800);
 }
 function gameOver(win,why){
   state='over'; stopMusic();
