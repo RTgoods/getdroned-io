@@ -5213,6 +5213,35 @@ function launchBossVictoryFireworks(){
   },4200);
 }
 var SOLVED_IMGS=['Level-1-solved.png','Level-2-solved.png','Level-3-Solved.png','Level-4-solved.png','Level-5-solved.png','Level-6-solved.png'];
+function continueSector(){
+  if(clearing) return; clearing=true;
+  if(level===6){ showGameCompleteScreen(); return; }
+  // Save carry-over before anything changes
+  syncGun();
+  var carryHp=player.hp, carryAp=player.ap, carryNades=player.nades,
+      carryGuns=player.guns, carryGi=player.gi,
+      carryGod=player.godMode, carryGodInv=player.godInventory;
+  var fromLevel=level;
+  // Report completion to parent (fire-and-forget)
+  try{ window.parent.postMessage({type:'gd:sectorComplete',sector:fromLevel,kills:totalKills,squadLost:squadLost,moneyEnd:money,timeAlive:Math.floor(timeAlive),belt:belt.slice()},'*'); }catch(ex){}
+  function doStart(){
+    clearing=false;
+    startSector(fromLevel+1);
+    player.godMode=carryGod; player.godInventory=carryGodInv;
+    if(carryGod&&belt.indexOf('god')<0)belt.push('god');
+    player.hp=Math.min(player.mx,carryHp+22); player.ap=carryAp;
+    player.guns=carryGuns; player.gi=carryGi;
+    var cg=carryGuns[carryGi]; if(!WEAPONS[cg.id].rail)cg.res+=Math.floor(WEAPONS[cg.id].mag*1.5);
+    player.wep=cg.id; player.mag=cg.mag; player.res=cg.res; player.nades=carryNades+1;
+    hud();
+  }
+  if(fromLevel===1){
+    fetch('/api/access',{cache:'no-store'}).then(function(r){return r.json();}).then(function(acc){
+      if(acc&&(acc.allowed||acc.isAdmin)){ doStart(); }
+      else{ clearing=false; banner('SECTOR 1 COMPLETE','UNLOCK SECTORS 2–6 TO CONTINUE',3); setTimeout(function(){window.top.location.href='/';},3000); }
+    }).catch(function(){ doStart(); });
+  } else { doStart(); }
+}
 function showLevelSolvedScreen(){
   var ov=document.getElementById('solvedOverlay');
   var img=document.getElementById('solvedImg');
@@ -5223,7 +5252,7 @@ function showLevelSolvedScreen(){
   document.getElementById('solvedContinue').onclick=function(){
     ov.classList.remove('show');
     document.getElementById('wrap').classList.remove('in-solved');
-    sectorClear();
+    continueSector();
   };
 }
 function showGameCompleteScreen(){
