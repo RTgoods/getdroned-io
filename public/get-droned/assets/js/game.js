@@ -13698,9 +13698,22 @@ function testLevelBoss5(){
   var splash=document.getElementById('splash'); if(splash) splash.remove();
   var st=document.getElementById('start'); if(st) st.classList.add('hide');
   ac();
-  if(sp_param==='complete'){ showGameCompleteScreen(); return; }
+  if(sp_param==='complete'){
+    showGameCompleteScreen();
+    document.getElementById('gameCompleteBtn').onclick=function(){
+      window.location.href='/admin';
+    };
+    return;
+  }
   var lv=parseInt(sp_param,10);
-  if(lv>=1&&lv<=6){ level=lv; showLevelSolvedScreen(); }
+  if(lv>=1&&lv<=6){
+    level=lv; showLevelSolvedScreen();
+    // Preview mode: CONTINUE cycles to next card instead of triggering gameplay
+    var nextHref=window.location.pathname+'?solvedPreview='+(lv<6?(lv+1):'complete');
+    document.getElementById('solvedContinue').onclick=function(){
+      window.location.href=nextHref;
+    };
+  }
 })();
 bindTap(document.getElementById('retry'),function(){
   document.getElementById('over').classList.add('hide'); totalKills=0; timeAlive=0; belt=[]; money=startCoins; bought={}; upgAP=60; upgHP=100; squadLost=0; startSector(level);
