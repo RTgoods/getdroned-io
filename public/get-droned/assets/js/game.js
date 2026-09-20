@@ -5219,14 +5219,18 @@ function showLevelSolvedScreen(){
   if(!ov||!img) return;
   img.src='assets/images/covers/'+SOLVED_IMGS[level-1];
   state='pause'; ov.classList.add('show');
+  document.getElementById('wrap').classList.add('in-solved');
   document.getElementById('solvedContinue').onclick=function(){
-    ov.classList.remove('show'); sectorClear();
+    ov.classList.remove('show');
+    document.getElementById('wrap').classList.remove('in-solved');
+    sectorClear();
   };
 }
 function showGameCompleteScreen(){
   var ov=document.getElementById('gameCompleteOverlay');
   if(!ov) return;
   state='pause'; ov.classList.add('show');
+  document.getElementById('wrap').classList.add('in-solved');
   document.getElementById('gameCompleteBtn').onclick=function(){
     try{ window.top.location.href='/'; }catch(ex){ window.location.href='/'; }
   };
