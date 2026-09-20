@@ -219,6 +219,48 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
           ))}
         </div>
 
+        {/* Solved cards preview */}
+        <div style={{ marginBottom: 12, marginTop: 40, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ display: 'inline-block', width: 12, height: 2, background: UA.green, borderRadius: 1 }} />
+          <span style={{ fontSize: 8, fontWeight: 900, letterSpacing: '3px', color: UA.green, textTransform: 'uppercase' }}>SOLVED CARDS</span>
+        </div>
+
+        {(() => {
+          const SOLVED_FILENAMES = ['Level-1-solved.png','Level-2-solved.png','Level-3-Solved.png','Level-4-solved.png','Level-5-solved.png','Level-6-solved.png']
+          const solvedCards = [
+            ...SECTORS.map((name, i) => ({
+              label: `SECTOR ${i + 1} · ${name}`,
+              img: `/get-droned/assets/images/covers/${SOLVED_FILENAMES[i]}`,
+              href: `/get-droned/index.html?solvedPreview=${i + 1}`,
+            })),
+            { label: 'GAME COMPLETE', img: '/get-droned/assets/images/covers/Game-Complete.png', href: '/get-droned/index.html?solvedPreview=complete' },
+          ]
+          return (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 10 }}>
+          {solvedCards.map(({ label, img, href }) => (
+            <Link key={label} href={href} style={{ textDecoration: 'none' }}>
+              <div style={{
+                overflow: 'hidden', borderRadius: 4,
+                border: `1px solid ${UA.border}`, background: UA.surface,
+                transition: 'border-color 150ms',
+              }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={img}
+                  alt=""
+                  style={{ width: '100%', height: 110, objectFit: 'cover', display: 'block' }}
+                />
+                <div style={{ padding: '10px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: 8, fontWeight: 900, letterSpacing: '1px', color: UA.text, textTransform: 'uppercase' }}>{label}</span>
+                  <span style={{ fontSize: 8, fontWeight: 900, color: UA.green, letterSpacing: '1px' }}>PREVIEW →</span>
+                </div>
+              </div>
+            </Link>
+          ))}
+        </div>
+          )
+        })()}
+
         {/* Bottom stripe */}
         <div style={{ marginTop: 48, height: 3, background: `linear-gradient(90deg, ${UA.blue} 0%, ${UA.blueMid} 100%)`, borderRadius: 2 }} />
         <div style={{ height: 3, background: `linear-gradient(90deg, ${UA.yellow} 0%, #f5c800 100%)`, borderRadius: 2 }} />

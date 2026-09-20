@@ -392,7 +392,9 @@ function addProp(x,y,w,h,kind,cover){
   for(var j=0;j<h;j++) for(var i=0;i<w;i++) setT(x+i,y+j, cover?BROKEN:PROP);
 }
 
+var compoundDroneHub=null;
 function buildMap(){
+  compoundDroneHub=null;
   // Air defenses belong to their map; never carry launchers or live SAMs into another sector.
   sams.length=0;samShots.length=0;seaMines.length=0;
   aircraft.length=0;
@@ -451,8 +453,12 @@ function buildMap(){
   // ===== outbuilding across the yard =====
   fill(4,6,17,17,WALL); fill(5,7,16,16,FLOOR);
   fill(10,17,11,17,FLOOR); fill(17,10,17,11,FLOOR);
-  addProp(6,8,2,4,'bench'); addProp(13,8,3,2,'crateP'); addProp(6,14,1,1,'barrel');
-  addProp(14,13,2,3,'shelf'); addProp(9,11,4,3,'car');
+  addProp(6,8,3,1,'console');addProp(12,8,3,1,'console');
+  addProp(6,14,1,1,'barrel');addProp(14,14,2,2,'dronerack');
+  compoundDroneHub={x:11*TILE,y:14*TILE,ang:0,hp:700,mx:700,droneHQ:true,dead:0,raidTimer:35,raidCount:0,
+    workshops:[{x:7.5*TILE,y:10*TILE,kind:'drone',enemy:true,cool:38,cd:0},
+               {x:13.5*TILE,y:10*TILE,kind:'droneL',enemy:true,cool:38,cd:0}]};
+  motorcade=[compoundDroneHub];
 
   // ===== shed on the far side =====
   fill(60,30,68,38,WALL); fill(61,31,67,37,FLOOR); fill(60,33,60,34,FLOOR);
@@ -4669,6 +4675,32 @@ function drawHealSpot(c,N){
 /* =========================================================================
    CRATES
    ========================================================================= */
+var compoundWrecks=[];
+function seedCompoundWrecks(){
+  compoundWrecks=[];
+  if(level!==1)return;
+  [[12,23],[32,15],[51,28],[17,36],[40,43]].forEach(function(target,i){
+    var best=null,bestD=Infinity;
+    for(var ty=3;ty<MH-3;ty++)for(var tx=3;tx<MW-3;tx++){
+      var x=(tx+.5)*TILE,y=(ty+.5)*TILE;
+      // Keep the whole wreck and nearby debris clear of the drone hub and its doors.
+      if(x>4*TILE-110&&x<18*TILE+110&&y>6*TILE-110&&y<18*TILE+110)continue;
+      if(inBase(x,y)||compoundWrecks.some(function(w){return Math.hypot(w.x-x,w.y-y)<240;}))continue;
+      var clear=true;
+      for(var sy=-2;sy<=2&&clear;sy++)for(var sx=-2;sx<=2;sx++)if(blocksMove(T(tx+sx,ty+sy))||T(tx+sx,ty+sy)===WATER){clear=false;break;}
+      if(!clear)continue;
+      var d=Math.hypot(tx-target[0],ty-target[1]);if(d<bestD){bestD=d;best={x:x,y:y};}
+    }
+    if(!best)return;
+    var a=i*1.73;
+    compoundWrecks.push({x:best.x,y:best.y,ang:a,i:i,dead:1,hp:0,burnTime:i%2===0?999:0,trackPhase:0});
+    if(i%2===0)fires.push({x:best.x-12,y:best.y,r:16,p:i,life:9999,sp:0});
+    for(var j=0;j<2+i%2;j++){
+      var angle=a+j*2.1,body=freeSpot(best.x+Math.cos(angle)*100,best.y+Math.sin(angle)*90);
+      bakeCorpse(body.x,body.y,angle,'#5b6146','#a44836','rifleman',false,false);
+    }
+  });
+}
 function seedCrates(n){
   var tries=0;
   while(crates.length<n && tries++<800){
@@ -5180,6 +5212,25 @@ function launchBossVictoryFireworks(){
     cv.style.cssText='position:absolute;inset:0;width:100%;height:100%;pointer-events:none';
   },4200);
 }
+var SOLVED_IMGS=['Level-1-solved.png','Level-2-solved.png','Level-3-Solved.png','Level-4-solved.png','Level-5-solved.png','Level-6-solved.png'];
+function showLevelSolvedScreen(){
+  var ov=document.getElementById('solvedOverlay');
+  var img=document.getElementById('solvedImg');
+  if(!ov||!img) return;
+  img.src='assets/images/covers/'+SOLVED_IMGS[level-1];
+  state='pause'; ov.classList.add('show');
+  document.getElementById('solvedContinue').onclick=function(){
+    ov.classList.remove('show'); sectorClear();
+  };
+}
+function showGameCompleteScreen(){
+  var ov=document.getElementById('gameCompleteOverlay');
+  if(!ov) return;
+  state='pause'; ov.classList.add('show');
+  document.getElementById('gameCompleteBtn').onclick=function(){
+    try{ window.top.location.href='/'; }catch(ex){ window.location.href='/'; }
+  };
+}
 function showCompoundBossClear(x,y){
   state='play'; firing=false; actBtn.classList.remove('on');
   var victory=document.getElementById('bossVictory');
@@ -5195,7 +5246,7 @@ function showCompoundBossClear(x,y){
   })(blastTimes[bi],bi);
   setTimeout(function(){ state='pause'; victory.classList.add('show'); sfx('clear'); renderBossOnePortrait(); launchBossVictoryFireworks(); },2850);
   setTimeout(function(){ victory.classList.remove('show'); },6500);
-  setTimeout(function(){ sectorClear(); },7050);
+  setTimeout(showLevelSolvedScreen,6700);
 }
 function showAirfieldBossClear(x,y){
   state='play'; firing=false; actBtn.classList.remove('on'); miniNukes.length=0;
@@ -5205,7 +5256,7 @@ function showAirfieldBossClear(x,y){
   fx.push({t:'boom',x:x,y:y,life:.7,max:.7,r:130}); sfx('boom',.9); shake=Math.min(18,shake+12);
   setTimeout(function(){ state='pause'; victory.classList.add('show'); sfx('clear'); },1550);
   setTimeout(function(){ victory.classList.remove('show'); },5200);
-  setTimeout(function(){ sectorClear(); },5750);
+  setTimeout(showLevelSolvedScreen,5400);
 }
 function showLevelTwoBossClear(x,y){
   state='play'; firing=false; actBtn.classList.remove('on'); meatShots.length=0; meatBits.length=0;
@@ -5215,7 +5266,7 @@ function showLevelTwoBossClear(x,y){
   shake=Math.min(16,shake+10); sfx('boom',.8);
   setTimeout(function(){ state='pause'; victory.classList.add('show'); sfx('clear'); },1450);
   setTimeout(function(){ victory.classList.remove('show'); },5100);
-  setTimeout(function(){ sectorClear(); },5600);
+  setTimeout(showLevelSolvedScreen,5300);
 }
 function showOilBossClear(x,y){
   state='play'; firing=false; actBtn.classList.remove('on'); fireBottles.length=0;
@@ -5225,7 +5276,7 @@ function showOilBossClear(x,y){
   shake=Math.min(16,shake+10); sfx('boom',.8);
   setTimeout(function(){ state='pause'; victory.classList.add('show'); sfx('clear'); },1450);
   setTimeout(function(){ victory.classList.remove('show'); },5100);
-  setTimeout(function(){ sectorClear(); },5600);
+  setTimeout(showLevelSolvedScreen,5300);
 }
 function killEnemy(e,ang,gib){
   var idx=enemies.indexOf(e); if(idx>=0) enemies.splice(idx,1);
@@ -6205,7 +6256,7 @@ function update(dt,realDt){
         if(!defended){damageSeaBridge(bu.x,bu.y,bu.dmg||24,false);impact(bu.x,bu.y);bullets.splice(b,1);bu=null;break;}
       }
       var hitAny=false;
-      if(mapKind==='redSquare'||mapKind==='oil'||mapKind==='sea'){
+      if(mapKind==='redSquare'||mapKind==='oil'||mapKind==='sea'||mapKind==='compound'){
         for(var mcb=0;mcb<motorcade.length;mcb++){
           var shotCar=motorcade[mcb]; if(shotCar.dead) continue;
           var crx=bu.x-shotCar.x,cry=bu.y-shotCar.y,cca=Math.cos(-shotCar.ang),csa=Math.sin(-shotCar.ang);
@@ -7237,7 +7288,7 @@ function showSeaBossClear(){
   banner('LEVEL THREE CLEAR','ALEKSANDR MOISEYEV DEFEATED',3);
   setTimeout(function(){ var c=document.getElementById('seaBossVictory'); state='pause'; if(c) c.classList.add('show'); sfx('clear'); },1450);
   setTimeout(function(){ var c=document.getElementById('seaBossVictory'); if(c) c.classList.remove('show'); },5100);
-  setTimeout(function(){ sectorClear(); },5600);
+  setTimeout(showLevelSolvedScreen,5300);
 }
 function updateShips(dt){
   for(var wi=wakes.length-1;wi>=0;wi--){ wakes[wi].life-=dt; if(wakes[wi].life<=0)wakes.splice(wi,1); }
@@ -7469,7 +7520,7 @@ function spawnOilBoss(){
   banner('LEVEL 4 BOSS','DMITRY MEDVEDEV ENTERS CRUDE INTENTIONS',2.8); hud();
 }
 function spawnCompoundBoss(){
-  if(compoundBossSpawned) return;
+  if(compoundBossSpawned||!compoundDroneHub||!compoundDroneHub.dead) return;
   compoundBossSpawned=1;
   var playerSpot=compoundRoadSpot(42.5);
   var bossSpot=compoundBossRandomSpot(playerSpot.x,playerSpot.y);
@@ -8308,15 +8359,34 @@ function drawBaseRaidWarnings(c){
     c.restore();
   }
 }
+function updateCompoundDroneHub(dt){
+  var H=compoundDroneHub;if(!H||state!=='play'||player.dead)return;
+  if(H.dead){
+    if(!compoundBossSpawned&&flags.length&&flags.every(function(f){return f.state==='done';})&&depots.every(function(d){return d.blown;}))spawnCompoundBoss();
+    return;
+  }
+  H.raidTimer-=dt;H.workshops.forEach(function(P){P.cd=Math.max(0,H.raidTimer);});
+  if(H.raidTimer>0)return;
+  H.raidTimer=38;H.raidCount++;
+  H.workshops.forEach(function(P,i){
+    if(edrones.filter(function(d){return d.compoundHub;}).length>=4)return;
+    edrones.push({x:P.x,y:P.y+40,hx:P.x,hy:P.y+40,vx:0,vy:0,state:'hunt',baseRaid:true,compoundHub:true,
+      huntPlayer:i===0,tx:homeSpawn.x*TILE,ty:homeSpawn.y*TILE,raidType:i?'heavy':'fpv',
+      raidSpeed:i?78:115,raidDamage:i?18:25,rot:0,bob:i,hp:i?4:3,mx:i?4:3,hurt:0,warn:3});
+  });
+  banner('ENEMY HUB LAUNCHING','DRONES TARGETING YOU AND HOME BASE',3);
+}
 function updateEDrones(dt){
+  if(mapKind==='compound')updateCompoundDroneHub(dt);
   for(var i=edrones.length-1;i>=0;i--){
     var D=edrones[i];
     D.rot+=dt*38; D.bob+=dt*2.6;
     if(D.baseRaid){
       if(D.warn>0){D.warn-=dt;continue;}
+      if(D.huntPlayer){D.tx=player.x;D.ty=player.y;}
       var rdx=D.tx-D.x,rdy=D.ty-D.y,rd=Math.hypot(rdx,rdy),rs=Math.min(rd,(D.raidSpeed||100)*dt);
       if(rd>0){D.x+=rdx/rd*rs;D.y+=rdy/rd*rs;}
-      if(rd<=rs+3){edrones.splice(i,1);explode(D.tx,D.ty,65,0,true);hurtRaidedBase(D.raidDamage||20);if(state!=='play')return;}
+      if(rd<=rs+3){edrones.splice(i,1);explode(D.tx,D.ty,65,0,true);if(D.huntPlayer)hurtPlayer(D.raidDamage||25);else hurtRaidedBase(D.raidDamage||20);if(state!=='play')return;}
       continue;
     }
     if(D.hurt>0) D.hurt-=dt;
@@ -8590,6 +8660,7 @@ function startSector(n){
   if(!crew.length||squadLost===0) buildCrew(); else rebuildCrew();
   drops.length=0; twitchers.length=0; sentries.length=0; strikes.length=0; smokes.length=0; bossBarrels.length=0; bossHammers.length=0; meatShots.length=0; meatBits.length=0; fireBottles.length=0; miniNukes.length=0; drone=null; piloting=false;
   crates.length=0; seedCrates(9+Math.min(6,Math.floor(n/2)));
+  seedCompoundWrecks();
   wave=0; tank=null; tankSent=0; droneT=rr(30,50); seaCD=0;
   edrones.length=0; emps.length=0;
   for(var bg=0;bg<bases.length&&mapKind!=='sea';bg++){
@@ -8646,6 +8717,11 @@ function startSector(n){
       }
     }
   }
+  if(mapKind==='compound'&&compoundDroneHub){
+    compoundDroneHub.workshops.forEach(function(P){
+      spawnEnemy('rifleman',P.x-40,P.y+7,true,null,false);enemies[enemies.length-1].workshop=P;
+    });
+  }
   if(mapKind==='redSquare'){
     [[55,33],[61,37],[58,32],[64,34]].forEach(function(p,i){
       var workshop=i>=2?redDroneBase.workshops[i-2]:null;
@@ -8690,13 +8766,15 @@ function startSector(n){
         {t:9.6,a:'LAUNCH TRUCK DEPLOYING',b:'PROTECTED FOR 12 SECONDS'}]:[{t:0,a:'SECTOR '+n,b:'FRANKS AND HAMMERS'},
          {t:2.4,a:'BREACH 3 COMPOUND PERIMETERS',b:'TAKE EACH FORTIFIED POSITION'},
          {t:4.8,a:'NEUTRALIZE ENEMY FORCES',b:'CLEAR ALL HOSTILES'},
-         {t:7.2,a:'ELIMINATE LEVEL ONE BOSS',b:'TAKE DOWN THE ENEMY COMMANDER'}];
+         {t:7.2,a:'DESTROY THE ENEMY DRONE BASE',b:'TOP-LEFT HOUSE · STOP BOTH LAUNCH STATIONS'},
+         {t:9.6,a:'ELIMINATE LEVEL ONE BOSS',b:'CAPTURE ALL BASES AND DESTROY THE DRONE HUB FIRST'}];
   introT=0;
   if(COMMANDER_ENABLED){ cmdBuildSquads(); cmdFire('sector_start'); }
 }
 var clearing=false;
 async function sectorClear(){
   if(clearing) return; clearing=true;
+  if(level===6){ showGameCompleteScreen(); return; }
   state='pause'; sfx('clear');
   if(level===1){
     try{
@@ -10332,6 +10410,7 @@ function drawPatrolTank(c,C){
 function drawDroneCommand(c,C){
   if(C.workshops)C.workshops.forEach(function(P){
     drawLooseDroneParts(c,P);
+    if(C===compoundDroneHub){c.strokeStyle=C.dead?'#534c3d':'#b3a56b';c.lineWidth=2;c.strokeRect(P.x-30,P.y+25,60,48);if(!C.dead){c.save();c.translate(P.x,P.y+49);toolIcon(c,P.kind,30);c.restore();}}
     gearBox(c,P.x-34,P.y-17,68,32,C.dead?'#3b3c34':'#5b6252','#26322c',2);
     gearBox(c,P.x+12,P.y-25,20,14,C.dead?'#262a25':'#30494a','#899480',1);
     if(!C.dead){c.fillStyle='#8eb09b';c.fillRect(P.x+15,P.y-22,12,2);}
@@ -11248,8 +11327,9 @@ function draw(){
   }
   if(medStation) drawHealSpot(ctx,medStation);
 
+  if(mapKind==='compound')for(var cw=0;cw<compoundWrecks.length;cw++)drawPatrolTank(ctx,compoundWrecks[cw]);
   if(mapKind==='sea')drawSeaExpansion(ctx);
-  if(mapKind==='redSquare'||mapKind==='oil'||mapKind==='sea') for(var mcd=0;mcd<motorcade.length;mcd++) drawMotorcadeCar(ctx,motorcade[mcd]);
+  if(mapKind==='redSquare'||mapKind==='oil'||mapKind==='sea'||mapKind==='compound') for(var mcd=0;mcd<motorcade.length;mcd++) drawMotorcadeCar(ctx,motorcade[mcd]);
   if(mapKind==='redSquare'&&redDroneBase){
     var integrity=redDroneBase.hp/redDroneBase.mx;
     drawBaseDamage(ctx,{stage:integrity<=.25?3:integrity<=.5?2:integrity<=.75?1:0,
@@ -12551,6 +12631,7 @@ function drawObjectives(){
     var taken2=0; for(var dq4=0;dq4<flags.length;dq4++) if(flags[dq4].state==='done') taken2++;
     objs.push({t:'CAPTURE BASES ('+taken2+'/'+flags.length+')',      done:taken2>=flags.length&&flags.length>0});
     objs.push({t:'CLEAR ALL HOSTILES',                               done:enemies.length===0&&spawnQ===0});
+    objs.push({t:'DESTROY ENEMY DRONE BASE',done:!!(compoundDroneHub&&compoundDroneHub.dead)});
     objs.push({t:'DEFEAT THE COMPOUND BOSS',                         done:!!compoundBossDefeated});
   }
   if(!objs.length) return;
@@ -12907,6 +12988,18 @@ function drawMinimap(){
   for(var sp5=0;sp5<sams.length;sp5++){
     ctx.fillStyle='rgba(216,120,52,.8)';
     ctx.fillRect(px(sams[sp5].x)-1.4,py(sams[sp5].y)-1.4,2.8,2.8);
+  }
+  // Level one's drone hub remains an objective until its command unit is destroyed.
+  if(mapKind==='compound'&&compoundDroneHub){
+    var hubX=px(compoundDroneHub.x),hubY=py(compoundDroneHub.y);
+    if(!compoundDroneHub.dead){
+      ctx.fillStyle='#e34234';ctx.beginPath();ctx.arc(hubX,hubY,4,0,6.3);ctx.fill();
+      ctx.strokeStyle='#e34234';ctx.lineWidth=1.2;
+      ctx.beginPath();ctx.arc(hubX,hubY,6+Math.abs(Math.sin(now*2.4))*2,0,6.3);ctx.stroke();
+    }else{
+      ctx.strokeStyle='#e8e4d8';ctx.lineWidth=1.8;
+      ctx.beginPath();ctx.moveTo(hubX-3,hubY);ctx.lineTo(hubX-1,hubY+2);ctx.lineTo(hubX+4,hubY-3);ctx.stroke();
+    }
   }
   // depots on the plot
   for(var dp9=0;dp9<depots.length;dp9++){
@@ -13541,6 +13634,7 @@ function testLevelBoss1(){
   enemies.length=0; queue.length=0; spawnQ=0; edrones.length=0; tank=null; tankSent=1;
   for(var bf1=0;bf1<flags.length;bf1++){ flags[bf1].state='done'; flags[bf1].p=2; flags[bf1].assault=0; }
   for(var bd1=0;bd1<depots.length;bd1++) depots[bd1].blown=1;
+  if(compoundDroneHub){compoundDroneHub.hp=0;compoundDroneHub.dead=1;}
   intro=[]; introT=999; spawnCompoundBoss();
   var testBoss=enemies[enemies.length-1];
   player.face=Math.atan2(testBoss.y-player.y,testBoss.x-player.x);
@@ -13592,6 +13686,17 @@ function testLevelBoss5(){
   if(!Number.isInteger(bossLevel)||bossLevel<1||bossLevel>6)return;
   var splash=document.getElementById('splash');if(splash)splash.remove();
   [null,testLevelBoss1,testLevelBoss2,testLevelBoss3,testLevelBoss4,testLevelBoss5,testLevelBoss6][bossLevel]();
+})();
+// Solved card preview shortcuts (admin use) — ?solvedPreview=1..6 or ?solvedPreview=complete
+(function(){
+  var sp_param=new URLSearchParams(window.location.search).get('solvedPreview');
+  if(!sp_param) return;
+  var splash=document.getElementById('splash'); if(splash) splash.remove();
+  var st=document.getElementById('start'); if(st) st.classList.add('hide');
+  ac();
+  if(sp_param==='complete'){ showGameCompleteScreen(); return; }
+  var lv=parseInt(sp_param,10);
+  if(lv>=1&&lv<=6){ level=lv; showLevelSolvedScreen(); }
 })();
 bindTap(document.getElementById('retry'),function(){
   document.getElementById('over').classList.add('hide'); totalKills=0; timeAlive=0; belt=[]; money=startCoins; bought={}; upgAP=60; upgHP=100; squadLost=0; startSector(level);

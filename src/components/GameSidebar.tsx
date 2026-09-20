@@ -365,7 +365,7 @@ export function GameSidebar({ game, user, hasPurchased, isAdmin = false, complet
 
 // Per-sector objectives
 const OBJECTIVES: Record<number, string[]> = {
-  1: ['Breach 3 compound perimeters', 'Neutralize enemy forces', 'Eliminate Level One Boss'],
+  1: ['Breach 3 compound perimeters', 'Neutralize enemy forces', 'Destroy the enemy drone base (top-left house)', 'Eliminate Level One Boss'],
   2: ['Push through enemy trenches', 'Clear the front-line network', 'Secure the trench boss'],
   3: ['Establish naval dominance', 'Destroy the Black Sea fleet', 'Defeat the sea commander'],
   4: ['Disrupt enemy supply lines', 'Destroy oil infrastructure', 'Take out the field boss'],

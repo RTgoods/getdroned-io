@@ -6,7 +6,7 @@ import type { Game } from '@/types/database'
 import type { User } from '@supabase/supabase-js'
 
 const SECTORS = [
-  { num: 1, terrain: 'Compound assault', briefing: 'Fight through a battered compound, clear enemy positions and capture the flags. Launch drones from your base before confronting Franks and Hammers.', name: 'FRANKS AND HAMMERS', cover: '/get-droned/assets/images/covers/level-1.png?v=2' },
+  { num: 1, terrain: 'Compound assault', briefing: 'Fight through a battered compound, clear enemy positions and capture the flags. Destroy the enemy drone hub in the top-left house to stop its launches, then confront Franks and Hammers.', name: 'FRANKS AND HAMMERS', cover: '/get-droned/assets/images/covers/level-1.png?v=2' },
   { num: 2, terrain: 'Trench warfare', briefing: 'Navigate a maze of trenches beneath burnt trees and shattered ground. Use narrow approaches, cover and drone support to reach the enemy strongholds.', name: 'THE TRENCHES',   cover: '/get-droned/assets/images/covers/level-2.png?v=1' },
   { num: 3, terrain: 'Naval combat', briefing: 'Take the fight offshore. Pilot sea drones, board your gunboat and attack hostile ships while defending your coastal base.', name: 'THE BLACK SEA',  cover: '/get-droned/assets/images/covers/level-3.png?v=1' },
   { num: 4, terrain: 'Industrial assault', briefing: 'Battle through an oil refinery complex packed with tanks, pipes and industrial cover. Watch for machine-gun towers that threaten both you and your drones.', name: 'THE OIL FIELDS', cover: '/get-droned/assets/images/covers/level-4.png?v=1' },
