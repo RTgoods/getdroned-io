@@ -296,18 +296,6 @@ export function GameSidebar({ game, user, hasPurchased, isAdmin = false, complet
           />
         )}
 
-        {/* ── Fullscreen ───────────────────────────────────── */}
-        {game.play_url && (
-          <SideRow
-            open={open}
-            href={game.play_url}
-            target="_blank"
-            icon={<span style={{ fontSize: 13, color: UA.textMuted, flexShrink: 0 }}>↗</span>}
-            label={<span style={{ fontSize: 9, fontWeight: 900, letterSpacing: '2px', color: UA.textMuted, textTransform: 'uppercase' }}>FULLSCREEN</span>}
-            hover
-            border
-          />
-        )}
 
         {/* ── Admin ────────────────────────────────────────── */}
         {isAdmin && (
