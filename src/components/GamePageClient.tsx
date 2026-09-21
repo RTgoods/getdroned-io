@@ -194,16 +194,18 @@ export function GamePageClient({ game, solvedPreview = null }: { game: Game; sol
           allow="autoplay; fullscreen; pointer-lock"
         />
       ) : <GameLanding game={game} user={user} hasPurchased={allowed} onPlay={() => play(1)} />}
+      {settingsOpen && user && (
+        <div role="dialog" aria-modal="true" aria-label="Pilot Settings" style={{ position: 'absolute', inset: 0, zIndex: 1000, background: '#09101f', overflowY: 'auto' }}>
+          <ProfileContent game={game} user={user} hasPurchased={allowed} isAdmin={isAdmin} completedSectors={completedSectors} sectorStats={sectorStats} avatarUrl={avatarUrl} gameId={gameId}
+            onReturnToGame={() => {
+              setSettingsOpen(false)
+              setMusicMuted(localStorage.getItem('gd_muted') === '1')
+              frame.current?.contentWindow?.postMessage({ type: 'gd:pilotSettings', open: false }, window.location.origin)
+              frame.current?.focus()
+              void loadAccess()
+            }} />
+        </div>
+      )}
     </div>
-    {settingsOpen && user && <div role="dialog" aria-modal="true" aria-label="Pilot Settings" style={{ position: 'fixed', inset: 0, zIndex: 1000, background: '#09101f' }}>
-      <ProfileContent game={game} user={user} hasPurchased={allowed} isAdmin={isAdmin} completedSectors={completedSectors} sectorStats={sectorStats} avatarUrl={avatarUrl} gameId={gameId}
-        onReturnToGame={() => {
-          setSettingsOpen(false)
-          setMusicMuted(localStorage.getItem('gd_muted') === '1')
-          frame.current?.contentWindow?.postMessage({ type: 'gd:pilotSettings', open: false }, window.location.origin)
-          frame.current?.focus()
-          void loadAccess()
-        }} />
-    </div>}
   </div>
 }
