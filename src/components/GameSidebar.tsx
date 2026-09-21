@@ -15,6 +15,7 @@ interface Props {
   isAdmin?: boolean
   completedSectors?: number[]
   sectorStats?: Record<string, SectorStat>
+  liveObjectives?: Record<number, number[]>
   playing?: boolean
   onPlay?: (level: number) => void
   onPilotSettings?: () => void
@@ -55,7 +56,7 @@ const SECTORS = [
   { num: 6, name: 'RED SQUARE',     cover: '/get-droned/assets/images/covers/level-6.png?v=1' },
 ]
 
-export function GameSidebar({ game, user, hasPurchased, isAdmin = false, completedSectors = [], sectorStats = {}, playing = false, onPlay, onBack, onPilotSettings, onReset, avatarUrl = null }: Props) {
+export function GameSidebar({ game, user, hasPurchased, isAdmin = false, completedSectors = [], sectorStats = {}, liveObjectives = {}, playing = false, onPlay, onBack, onPilotSettings, onReset, avatarUrl = null }: Props) {
   const [open, setOpen] = useState(false)
   const [mobile, setMobile] = useState(false)
   const [mounted, setMounted] = useState(false)
@@ -236,6 +237,7 @@ export function GameSidebar({ game, user, hasPurchased, isAdmin = false, complet
                 hasUser={!!user}
                 hasPurchased={hasPurchased}
                 prevDone={prevDone}
+                liveCompleted={liveObjectives[s.num] ?? []}
               />
             )
           })}
@@ -389,11 +391,12 @@ interface LevelRowProps {
   hasUser: boolean
   hasPurchased: boolean
   prevDone: boolean
+  liveCompleted: number[]
 }
 
 function fmtTime(s: number) { const m = Math.floor(s / 60); return m > 0 ? `${m}m ${s % 60}s` : `${s}s` }
 
-function LevelRow({ sector, unlocked, done, stat, open, expanded, onToggle, onPlay, price, hasUser, hasPurchased, prevDone }: LevelRowProps) {
+function LevelRow({ sector, unlocked, done, stat, open, expanded, onToggle, onPlay, price, hasUser, hasPurchased, prevDone, liveCompleted }: LevelRowProps) {
   const [hovered, setHovered] = useState(false)
   const objectives = OBJECTIVES[sector.num] ?? []
 
@@ -469,27 +472,32 @@ function LevelRow({ sector, unlocked, done, stat, open, expanded, onToggle, onPl
           background: 'rgba(0,60,120,0.04)',
           borderTop: `1px solid ${UA.borderFaint}`,
         }}>
-          {objectives.map((obj, i) => (
+          {objectives.map((obj, i) => {
+            const objDone = done || liveCompleted.includes(i)
+            return (
             <div key={i} style={{
               display: 'flex', alignItems: 'flex-start', gap: 6,
               marginBottom: i < objectives.length - 1 ? 5 : 10,
             }}>
               <span style={{
                 flexShrink: 0, marginTop: 1, fontSize: 8, fontWeight: 900,
-                color: done ? UA.yellow : UA.textMuted,
+                color: objDone ? UA.yellow : UA.textMuted,
+                transition: 'color 300ms',
               }}>
-                {done ? '✓' : '○'}
+                {objDone ? '✓' : '○'}
               </span>
               <span style={{
                 fontSize: 8, letterSpacing: '0.5px', lineHeight: 1.4,
-                color: done ? 'rgba(255,215,0,0.6)' : '#5a7090',
-                textDecoration: done ? 'line-through' : 'none',
+                color: objDone ? 'rgba(255,215,0,0.6)' : '#5a7090',
+                textDecoration: objDone ? 'line-through' : 'none',
                 textTransform: 'capitalize',
+                transition: 'color 300ms',
               }}>
                 {obj}
               </span>
             </div>
-          ))}
+            )
+          })}
 
           {/* Sector stats — shown after completion */}
           {done && stat && (

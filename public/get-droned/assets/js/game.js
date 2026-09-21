@@ -5257,6 +5257,18 @@ function launchBossVictoryFireworks(){
   },4200);
 }
 var SOLVED_IMGS=['Level-1-solved.png','Level-2-solved.png','Level-3-Solved.png','Level-4-solved.png','Level-5-solved.png','Level-6-solved.png'];
+// Objective milestone kill thresholds per sector (non-boss objectives tick at these kill counts)
+var OBJ_THRESHOLDS={1:[8,20,35],2:[12,30],3:[10,22],4:[10,25],5:[10,25],6:[15,35]};
+var sentObjs={};
+function postObj(idx){
+  if(sentObjs[idx]) return;
+  sentObjs[idx]=true;
+  try{ window.parent.postMessage({type:'gd:objectiveComplete',sector:level,index:idx},'*'); }catch(ex){}
+}
+function checkObjMilestones(){
+  var thr=OBJ_THRESHOLDS[level]; if(!thr) return;
+  for(var i=0;i<thr.length;i++){ if(totalKills>=thr[i]) postObj(i); }
+}
 function continueSector(){
   if(clearing) return; clearing=true;
   if(level===6){ showGameCompleteScreen(); return; }
@@ -5425,24 +5437,29 @@ function killEnemy(e,ang,gib){
   var idx=enemies.indexOf(e); if(idx>=0) enemies.splice(idx,1);
   if(COMMANDER_ENABLED&&e.squadId!==undefined) cmdCheckSquadWipe(e.squadId);
   if(e.finalBoss){ redBossDefeated=1; bossBarrels.length=0; banner('FINAL BOSS DEFEATED','RED SQUARE SECURED',2.5);
+    postObj(OBJ_THRESHOLDS[level]?OBJ_THRESHOLDS[level].length:2);
     try{ window.parent.postMessage({type:'gd:sectorComplete',sector:6,kills:totalKills,squadLost:squadLost,moneyEnd:money,timeAlive:Math.floor(timeAlive),belt:belt.slice()},'*'); }catch(ex){} }
   if(e.airfieldBoss){
     airfieldBossDefeated=1; miniNukes.length=0; killed++; totalKills++;
+    postObj(OBJ_THRESHOLDS[level]?OBJ_THRESHOLDS[level].length:2);
     showAirfieldBossClear(e.x,e.y); hud(); return;
   }
   if(e.compoundBoss){
     compoundBossDefeated=1; bossHammers.length=0; killed++; totalKills++;
+    postObj(OBJ_THRESHOLDS[level]?OBJ_THRESHOLDS[level].length:2);
     fx.push({t:'ring',x:e.x,y:e.y,life:.5,max:.5}); showCompoundBossClear(e.x,e.y); hud(); return;
   }
   if(e.levelTwoBoss){
     levelTwoBossDefeated=1; meatShots.length=0; meatBits.length=0; killed++; totalKills++;
+    postObj(OBJ_THRESHOLDS[level]?OBJ_THRESHOLDS[level].length:2);
     showLevelTwoBossClear(e.x,e.y); hud(); return;
   }
   if(e.oilBoss){
     oilBossDefeated=1; fireBottles.length=0; killed++; totalKills++;
+    postObj(OBJ_THRESHOLDS[level]?OBJ_THRESHOLDS[level].length:2);
     showOilBossClear(e.x,e.y); hud(); return;
   }
-  killed++; totalKills++;
+  killed++; totalKills++; checkObjMilestones();
   var a=(ang||0);
   var behead = !gib && !e.compoundBoss && Math.random()<.3;
   if(gib){
@@ -7428,6 +7445,7 @@ function spawnSeaBoss(){
 function showSeaBossClear(){
   if(seaBossDefeated) return;
   seaBossDefeated=1;
+  postObj(OBJ_THRESHOLDS[level]?OBJ_THRESHOLDS[level].length:2);
   banner('LEVEL THREE CLEAR','ALEKSANDR MOISEYEV DEFEATED',3);
   setTimeout(function(){ var c=document.getElementById('seaBossVictory'); state='pause'; if(c) c.classList.add('show'); sfx('clear'); },1450);
   setTimeout(function(){ var c=document.getElementById('seaBossVictory'); if(c) c.classList.remove('show'); },5100);
@@ -8751,7 +8769,7 @@ function doSpawn(){
 }
 function startSector(n){
   baseHP=baseMX=400; baseFlash=0;
-  level=n; killed=0; baseCatsDone=0; compoundBossSpawned=0; compoundBossDefeated=0; levelTwoBossSpawned=0; levelTwoBossDefeated=0; oilBossSpawned=0; oilBossDefeated=0; airfieldBossSpawned=0; airfieldBossDefeated=0; seaBossSpawned=0; seaBossDefeated=0;
+  level=n; killed=0; sentObjs={}; baseCatsDone=0; compoundBossSpawned=0; compoundBossDefeated=0; levelTwoBossSpawned=0; levelTwoBossDefeated=0; oilBossSpawned=0; oilBossDefeated=0; airfieldBossSpawned=0; airfieldBossDefeated=0; seaBossSpawned=0; seaBossDefeated=0;
   document.getElementById('bossVictory').classList.remove('show');
   document.getElementById('levelTwoBossVictory').classList.remove('show');
   document.getElementById('airBossVictory').classList.remove('show');

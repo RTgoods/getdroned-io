@@ -21,6 +21,7 @@ export function GamePageClient({ game, solvedPreview = null }: { game: Game; sol
   const [ready, setReady] = useState(true) // show landing immediately; auth check runs in background
   const [completedSectors, setCompletedSectors] = useState<number[]>([])
   const [sectorStats, setSectorStats] = useState<Record<string, SectorStat>>({})
+  const [liveObjectives, setLiveObjectives] = useState<Record<number, number[]>>({})
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
   const [musicMuted, setMusicMuted] = useState(false)
   const frame = useRef<HTMLIFrameElement>(null)
@@ -73,12 +74,28 @@ export function GamePageClient({ game, solvedPreview = null }: { game: Game; sol
     }
   }, [allowed, gameId, user?.id])
 
-  // Listen for sector-complete messages from the game iframe
+  // Listen for messages from the game iframe
   useEffect(() => {
     const handler = async (event: MessageEvent) => {
-      if (event.origin !== window.location.origin || event.source !== frame.current?.contentWindow || !user || !gameId) return
-      const { type, sector, kills, squadLost, moneyEnd, timeAlive, belt } = event.data ?? {}
-      if (type !== 'gd:sectorComplete' || !Number.isInteger(sector) || sector < 1 || sector > 6) return
+      if (event.origin !== window.location.origin || event.source !== frame.current?.contentWindow) return
+      const { type } = event.data ?? {}
+
+      // Objective tick — update sidebar live without a DB write
+      if (type === 'gd:objectiveComplete') {
+        const { sector, index } = event.data
+        if (Number.isInteger(sector) && sector >= 1 && sector <= 6 && Number.isInteger(index) && index >= 0) {
+          setLiveObjectives(prev => {
+            const existing = prev[sector] ?? []
+            if (existing.includes(index)) return prev
+            return { ...prev, [sector]: [...existing, index] }
+          })
+        }
+        return
+      }
+
+      if (type !== 'gd:sectorComplete' || !user || !gameId) return
+      const { sector, kills, squadLost, moneyEnd, timeAlive, belt } = event.data
+      if (!Number.isInteger(sector) || sector < 1 || sector > 6) return
 
       // Save to DB and get carry state back
       try {
@@ -111,6 +128,7 @@ export function GamePageClient({ game, solvedPreview = null }: { game: Game; sol
     const carryBelt = prevStat?.belt ?? []
 
     setPreview(null)
+    setLiveObjectives({})
     setLaunch(previous => ({
       level: Number.isInteger(level) && level >= 1 && level <= 6 ? level : 1,
       version: previous.version + 1,
@@ -150,6 +168,7 @@ export function GamePageClient({ game, solvedPreview = null }: { game: Game; sol
       isAdmin={isAdmin}
       completedSectors={completedSectors}
       sectorStats={sectorStats}
+      liveObjectives={liveObjectives}
       playing={playing}
       onPilotSettings={() => {
         frame.current?.contentWindow?.postMessage({ type: 'gd:pilotSettings', open: true }, window.location.origin)
