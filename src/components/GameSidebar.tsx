@@ -17,6 +17,7 @@ interface Props {
   sectorStats?: Record<string, SectorStat>
   playing?: boolean
   onPlay?: (level: number) => void
+  onPilotSettings?: () => void
   onBack?: () => void
   onReset?: () => void
   avatarUrl?: string | null
@@ -54,7 +55,7 @@ const SECTORS = [
   { num: 6, name: 'RED SQUARE',     cover: '/get-droned/assets/images/covers/level-6.png?v=1' },
 ]
 
-export function GameSidebar({ game, user, hasPurchased, isAdmin = false, completedSectors = [], sectorStats = {}, playing = false, onPlay, onBack, onReset, avatarUrl = null }: Props) {
+export function GameSidebar({ game, user, hasPurchased, isAdmin = false, completedSectors = [], sectorStats = {}, playing = false, onPlay, onBack, onPilotSettings, onReset, avatarUrl = null }: Props) {
   const [open, setOpen] = useState(false)
   const [mobile, setMobile] = useState(false)
   const [mounted, setMounted] = useState(false)
@@ -161,11 +162,12 @@ export function GameSidebar({ game, user, hasPurchased, isAdmin = false, complet
         {/* ── Player ───────────────────────────────────────── */}
         <SideRow
           open={open}
-          href={user ? '/profile' : '/auth/login'}
+          href={playing && onPilotSettings ? undefined : user ? '/profile' : '/auth/login'}
+          onClick={playing && onPilotSettings ? () => { setOpen(false); onPilotSettings() } : undefined}
           hover
           icon={
             <div style={{
-              width: 26, height: 26, borderRadius: '50%',
+              width: 26, height: 26, borderRadius: 4,
               background: avatarUrl ? 'transparent' : `linear-gradient(135deg, ${UA.blue} 0%, #003d80 100%)`,
               border: `1px solid ${avatarUrl ? 'rgba(255,215,0,0.5)' : UA.blueMid}`,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -408,7 +410,7 @@ function LevelRow({ sector, unlocked, done, stat, open, expanded, onToggle, onPl
         onClick={open ? onToggle : (unlocked ? onPlay : undefined)}
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
-        title={sector.num === 1 && !hasUser ? 'Play Sector 1 free — sign in to start' : !unlocked ? `Buy to unlock Sector ${sector.num}` : done ? `Sector ${sector.num} complete` : `Sector ${sector.num} — ${sector.name}`}
+        title={sector.num === 1 && !hasUser ? 'Play Sector 1 free — sign in to start' : !unlocked ? (hasPurchased ? `Complete Sector ${sector.num - 1} to unlock Sector ${sector.num}` : `Buy to unlock Sector ${sector.num}`) : done ? `Sector ${sector.num} complete` : `Sector ${sector.num} — ${sector.name}`}
         style={{
           width: '100%', display: 'flex', alignItems: 'center',
           gap: open ? 10 : 0, padding: open ? '7px 12px' : '7px 0',
@@ -546,7 +548,7 @@ function LevelRow({ sector, unlocked, done, stat, open, expanded, onToggle, onPl
               onMouseEnter={e => (e.currentTarget.style.filter = 'brightness(1.15)')}
               onMouseLeave={e => (e.currentTarget.style.filter = 'none')}
             >
-              {sector.num === 1 ? '▶ PLAY SECTOR 1 FREE' : done ? '↺ REPLAY' : '▶ PLAY'}
+              {sector.num === 1 ? (hasUser && hasPurchased ? 'PLAY' : '▶ PLAY SECTOR 1 FREE') : done ? '↺ REPLAY' : '▶ PLAY'}
             </button>
           ) : !hasPurchased ? (
             <a

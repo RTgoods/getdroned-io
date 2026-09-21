@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { drawPortrait } from './pilot-portrait.generated'
+import { drawPilotBody } from './pilot-portrait.generated'
 
 /* ─── Kit definitions matching game.js PKITS + airfield (snow) overrides ─── */
 
@@ -63,7 +63,7 @@ export function AvatarSelector({ current, onSave, saving }: Props) {
   useEffect(() => {
     ALL_KITS.forEach((kit, i) => {
       const canvas = canvasRefs.current[kit.id]
-      if (canvas) drawPortrait(canvas, kit)
+      if (canvas) drawPilotBody(canvas, kit)
     })
   }, [])
 
@@ -114,21 +114,21 @@ function AvatarThumb({
       }}
     >
       <div style={{
-        borderRadius: '50%',
+        borderRadius: 8,
         border: selected
           ? `2.5px solid ${UA.yellow}`
           : `2px solid rgba(0,104,204,0.3)`,
         boxShadow: selected ? `0 0 8px rgba(255,215,0,0.45)` : 'none',
         transition: 'border-color .15s, box-shadow .15s',
         overflow: 'hidden',
-        width: 64, height: 64,
+        width: 96, height: 112,
         flexShrink: 0,
       }}>
         <canvas
-          width={64}
-          height={64}
+          width={192}
+          height={224}
           ref={el => { canvasRefs.current[kit.id] = el }}
-          style={{ display: 'block' }}
+          style={{ display: 'block', width: '100%', height: '100%' }}
         />
       </div>
       <span style={{
@@ -136,7 +136,7 @@ function AvatarThumb({
         color: selected ? UA.yellow : UA.muted,
         textTransform: 'uppercase',
         textAlign: 'center',
-        maxWidth: 64,
+        maxWidth: 96,
         lineHeight: 1.3,
         whiteSpace: 'nowrap',
         overflow: 'hidden',
@@ -157,7 +157,16 @@ export function AvatarBadge({ kitId, size = 40 }: { kitId: string | null; size?:
   useEffect(() => {
     if (!canvasRef.current) return
     if (kit) {
-      drawPortrait(canvasRef.current, kit)
+      // Crop the exact selection artwork: same pose and face, framed as a bust.
+      const portrait = document.createElement('canvas')
+      portrait.width = 192
+      portrait.height = 224
+      drawPilotBody(portrait, kit)
+      const context = canvasRef.current.getContext('2d')
+      if (context) {
+        context.clearRect(0, 0, 192, 192)
+        context.drawImage(portrait, 43, 58, 82, 82, 0, 0, 192, 192)
+      }
     } else {
       // Default: initials placeholder — draw empty (caller renders initials on top)
       const c = canvasRef.current.getContext('2d')!
@@ -170,9 +179,9 @@ export function AvatarBadge({ kitId, size = 40 }: { kitId: string | null; size?:
   return (
     <canvas
       ref={canvasRef}
-      width={size}
-      height={size}
-      style={{ display: 'block', borderRadius: '50%' }}
+      width={192}
+      height={192}
+      style={{ display: 'block', width: size, height: size, flexShrink: 0 }}
     />
   )
 }

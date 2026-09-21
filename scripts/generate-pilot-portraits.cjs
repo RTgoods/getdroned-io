@@ -20,13 +20,49 @@ export function drawPortrait(canvas, selected) {
   var kit=selected.id==='god'?VEHICLE_SENTRY_KIT:PKITS.find(k=>k.id===selected.id);
   if(!kit)return;
   var c=canvas.getContext('2d');if(!c)return;
-  var size=canvas.width, scale=size/25;
+  var size=canvas.width, scale=size/36;
   c.clearRect(0,0,size,size);c.save();c.beginPath();c.arc(size/2,size/2,size/2-1,0,Math.PI*2);c.clip();
   c.fillStyle='#0f1828';c.fillRect(0,0,size,size);
-  c.translate(size/2-1.2*scale,size/2+31*scale);c.scale(scale,scale);
-  var col=kit.col,PAL=kit.pal,seed=selected.id==='god'?417:31;
-  var rus=false,front=true,back=false,kind=null,mapKind='compound',unitSkin=SKIN;
-  ${source.slice(headStart,headEnd)}
+  // Frame the real head, shoulders and vest together inside the circular badge.
+  c.translate(size/2,42*scale);c.scale(scale,scale);
+  drawUnit(c,0,0,Math.PI/2,kit.col,kit.band,0,0,null,null,false,false,false,selected.id==='god'?417:31,0,null,true,kit);
+  c.restore();
+}
+`);
+
+// Full-body selection cards use the same soldier renderer and kit data as gameplay.
+const allFunctions = new Map();
+function collect(node) {
+  if (ts.isFunctionDeclaration(node) && node.name) allFunctions.set(node.name.text, node);
+  ts.forEachChild(node, collect);
+}
+collect(ast);
+const included = new Set(helpers);
+const bodyFunctions = [];
+function include(name) {
+  if (included.has(name) || !allFunctions.has(name)) return;
+  included.add(name);
+  const node = allFunctions.get(name);
+  function dependencies(child) {
+    if (ts.isCallExpression(child) && ts.isIdentifier(child.expression)) include(child.expression.text);
+    ts.forEachChild(child, dependencies);
+  }
+  dependencies(node);
+  bodyFunctions.push(node.getText(ast));
+}
+include('drawUnit');
+fs.appendFileSync('src/components/pilot-portrait.generated.js', `
+var mapKind='compound',now=0,PK=PKITS[0],equipmentArtCache={};
+${bodyFunctions.join('\n')}
+export function drawPilotBody(canvas, selected) {
+  var kit=selected.id==='god'?VEHICLE_SENTRY_KIT:PKITS.find(k=>k.id===selected.id);
+  if(!kit)return;
+  var c=canvas.getContext('2d');if(!c)return;
+  var w=canvas.width,h=canvas.height,scale=Math.min(w/66,h/64);
+  c.clearRect(0,0,w,h);c.save();
+  c.fillStyle='#0f1828';c.fillRect(0,0,w,h);
+  c.translate(w/2-5*scale,h*.83);c.scale(scale,scale);
+  drawUnit(c,0,0,1.15,kit.col,kit.band,0,0,null,'rifle',false,false,false,selected.id==='god'?417:31,0,null,true,kit);
   c.restore();
 }
 `);

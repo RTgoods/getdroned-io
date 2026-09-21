@@ -46,6 +46,14 @@ export async function middleware(request: NextRequest) {
       const access = await gameAccess(supabase, user)
       const requestedLevel = request.nextUrl.searchParams.get('autostart') || '1'
       if (!access.allowed && path.endsWith('index.html') && requestedLevel !== '1') return privateResponse(new NextResponse('Purchase required for Sectors 2–6. Return to the home page to unlock.', { status: 403 }))
+      if (path.endsWith('index.html') && !access.isAdmin && /^[2-6]$/.test(requestedLevel)) {
+        const { data: progress, error } = await supabase.from('progress').select('completed_sectors')
+          .eq('user_id', user.id).eq('game_id', access.gameId).maybeSingle()
+        if (error || !progress?.completed_sectors?.includes(Number(requestedLevel) - 1)) {
+          return privateResponse(new NextResponse(`Complete Sector ${Number(requestedLevel) - 1} to unlock Sector ${requestedLevel}. Return to the home page to continue.`, { status: 403 }))
+        }
+      }
+      if (request.nextUrl.searchParams.has('solvedPreview') && !access.isAdmin) return privateResponse(new NextResponse('Admin access required', { status: 403 }))
       if (request.nextUrl.searchParams.has('basePreview') && !access.isAdmin) return privateResponse(new NextResponse('Admin access required', { status: 403 }))
       if (request.nextUrl.searchParams.has('boss') && !access.isAdmin) return privateResponse(new NextResponse('Admin access required', { status: 403 }))
       if (path.endsWith('index.html') && !access.isAdmin && ! /^[1-6]$/.test(request.nextUrl.searchParams.get('autostart') || '')) {

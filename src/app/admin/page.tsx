@@ -231,9 +231,9 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
             ...SECTORS.map((name, i) => ({
               label: `SECTOR ${i + 1} · ${name}`,
               img: `/get-droned/assets/images/covers/${SOLVED_FILENAMES[i]}`,
-              href: `/get-droned/index.html?solvedPreview=${i + 1}`,
+              href: `/admin/solved-preview?card=${i + 1}`,
             })),
-            { label: 'GAME COMPLETE', img: '/get-droned/assets/images/covers/Game-Complete.png', href: '/get-droned/index.html?solvedPreview=complete' },
+            { label: 'GAME COMPLETE', img: '/get-droned/assets/images/covers/Game-Complete.png', href: '/admin/solved-preview?card=complete' },
           ]
           return (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 10 }}>

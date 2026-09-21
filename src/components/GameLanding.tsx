@@ -54,7 +54,7 @@ export function GameLanding({ game, user, hasPurchased, onPlay }: Props) {
   }
 
   return (
-    <div className="h-full overflow-y-auto" style={{ background: '#0c0d0b', color: '#e8e4d8' }}>
+    <div data-page-scroll className="h-full overflow-y-auto" style={{ background: '#0c0d0b', color: '#e8e4d8' }}>
 
       {/* ── Responsive hero height ─────────────────────────────────────── */}
       <style>{`

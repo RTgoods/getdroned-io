@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const access = await gameAccess(supabase, user)
-  if (!access.allowed) return NextResponse.json({ error: 'Purchase required' }, { status: 403 })
+
 
   const gameId = req.nextUrl.searchParams.get('gameId')
   if (!gameId || gameId !== access.gameId) return NextResponse.json({ error: 'Invalid game' }, { status: 400 })
@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const access = await gameAccess(supabase, user)
-  if (!access.allowed) return NextResponse.json({ error: 'Purchase required' }, { status: 403 })
+
 
   const body = await req.json() as {
     gameId: string
@@ -77,6 +77,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid game or sector' }, { status: 400 })
   }
 
+  if (sector > 1 && !access.allowed) return NextResponse.json({ error: 'Purchase required' }, { status: 403 })
+
   const db = adminClient()
 
   // Fetch existing
@@ -88,6 +90,7 @@ export async function POST(req: NextRequest) {
     .maybeSingle()
 
   const current: number[] = existing?.completed_sectors ?? []
+  if (!access.isAdmin && sector > 1 && !current.includes(sector - 1)) return NextResponse.json({ error: `Complete Sector ${sector - 1} first` }, { status: 403 })
   const updated = current.includes(sector) ? current : [...current, sector].sort((a, b) => a - b)
 
   const existingStats: Record<string, SectorStat> = existing?.sector_stats ?? {}

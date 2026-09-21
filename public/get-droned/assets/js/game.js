@@ -2193,6 +2193,7 @@ function sfx(kind,vol){
 var _bgm=null; // current HTMLAudioElement
 function stopMusic(fast){
   var el=_bgm; _bgm=null; if(!el) return;
+  clearInterval(el._fadeIn);
   if(fast){ el.pause(); el.currentTime=0; return; }
   // ~1.2 s fade-out
   var steps=15, delta=el.volume/steps;
@@ -2202,23 +2203,39 @@ function stopMusic(fast){
   },80);
 }
 function startMusic(kind){
-  stopMusic(true);
-  // same track plays on all levels until user mutes
   void kind;
-  setTimeout(function(){
-    if(muted||state!=='play') return;
-    var el=new Audio('assets/audio/advance-in-contact-92bpm-lvl1.wav');
-    el.loop=true; el.volume=0; _bgm=el;
-    el.play().catch(function(){});
-    // 4 s fade-in to 0.45
-    var target=0.45, steps2=40, delta2=target/steps2;
-    var fi=setInterval(function(){
-      if(_bgm!==el){ clearInterval(fi); return; }
-      if(el.volume<target-delta2){ el.volume=Math.min(target,el.volume+delta2); }
-      else{ el.volume=target; clearInterval(fi); }
+  if(muted||state!=='play'||document.hidden)return;
+  if(_bgm&&!_bgm.paused)return;
+  var el=_bgm;
+  if(!el){
+    el=new Audio('assets/audio/advance-in-contact-92bpm-lvl1.wav');
+    el.loop=true;el.volume=.12;_bgm=el;
+  }
+  if(el._starting)return;
+  el._starting=true;
+  el.play().then(function(){
+    el._starting=false;
+    if(_bgm!==el||muted||state!=='play'||document.hidden){el.pause();return;}
+    clearInterval(el._fadeIn);
+    el._fadeIn=setInterval(function(){
+      if(_bgm!==el||el.paused){clearInterval(el._fadeIn);return;}
+      el.volume=Math.min(.45,el.volume+.011);
+      if(el.volume>=.45)clearInterval(el._fadeIn);
     },100);
-  },300);
+  }).catch(function(){
+    // Autoplay can require a real gesture inside the game frame. Retry on input.
+    el._starting=false;
+  });
 }
+function resumeGameAudio(){
+  if(muted||state!=='play'||document.hidden)return;
+  if(AC&&AC.state==='suspended')AC.resume().catch(function(){});
+  startMusic(mapKind);
+}
+window.addEventListener('pointerdown',resumeGameAudio,{capture:true,passive:true});
+window.addEventListener('touchstart',resumeGameAudio,{capture:true,passive:true});
+window.addEventListener('keydown',resumeGameAudio,{capture:true});
+document.addEventListener('visibilitychange',function(){if(!document.hidden)resumeGameAudio();});
 
 var SHOP=[
   {id:'plate',  n:'PLATE',        p:120, d:'+40 armour'},
@@ -3781,17 +3798,26 @@ function spawnEnemy(kind,x,y,dug,home,boss){
 /* ---------- collision ---------- */
 function solidAt(x,y){ return blocksMove(T(Math.floor(x/TILE),Math.floor(y/TILE))); }
 function moveEnt(e,dx,dy){
+  // Recover a player whose collision radius overlaps furniture after placement.
+  if(e===player&&hitBox(e.x,e.y,e.r)){
+    var escaped=false;
+    for(var radius=2;radius<=48&&!escaped;radius+=2)for(var sample=0;sample<24;sample++){
+      var angle=sample*Math.PI/12,nx=e.x+Math.cos(angle)*radius,ny=e.y+Math.sin(angle)*radius;
+      if(nx<e.r||ny<e.r||nx>WW-e.r||ny>WH-e.r||hitBox(nx,ny,e.r))continue;
+      e.x=nx;e.y=ny;escaped=true;break;
+    }
+  }
   var entryX=e.x,entryY=e.y;
   var i,k,off=[3,-3,6,-6,10,-10];
   if(dx!==0){
     if(!hitBox(e.x+dx,e.y,e.r)) e.x+=dx;
     else for(i=0;i<off.length;i++){ k=off[i];
-      if(!hitBox(e.x,e.y+k,e.r)&&!hitBox(e.x+dx,e.y+k,e.r)){ e.y+=k*.3; e.x+=dx*.8; break; } }
+      if(!hitBox(e.x,e.y+k*.3,e.r)&&!hitBox(e.x+dx*.8,e.y+k*.3,e.r)){ e.y+=k*.3; e.x+=dx*.8; break; } }
   }
   if(dy!==0){
     if(!hitBox(e.x,e.y+dy,e.r)) e.y+=dy;
     else for(i=0;i<off.length;i++){ k=off[i];
-      if(!hitBox(e.x+k,e.y,e.r)&&!hitBox(e.x+k,e.y+dy,e.r)){ e.x+=k*.3; e.y+=dy*.8; break; } }
+      if(!hitBox(e.x+k*.3,e.y,e.r)&&!hitBox(e.x+k*.3,e.y+dy*.8,e.r)){ e.x+=k*.3; e.y+=dy*.8; break; } }
   }
   e.x=Math.max(e.r,Math.min(WW-e.r,e.x)); e.y=Math.max(e.r,Math.min(WH-e.r,e.y));
   if(e.d&&((level===2&&!e.baseAssault)||level===5)&&inBase(e.x,e.y)){e.x=entryX;e.y=entryY;}
@@ -4707,6 +4733,9 @@ function seedCrates(n){
     var x=ri(1,MW-2), y=ri(1,MH-2), t=T(x,y);
     if(blocksMove(t)) continue;
     var wx=x*TILE+TILE/2, wy=y*TILE+TILE/2;
+    // Keep the whole supply crate clear of the home base and its entrances.
+    if(wx+TILE>=BASE.x0*TILE&&wx-TILE<=BASE.x1*TILE&&
+       wy+TILE>=BASE.y0*TILE&&wy-TILE<=BASE.y1*TILE) continue;
     if(Math.hypot(wx-player.x,wy-player.y)<TILE*4) continue;
     var ok=true;
     for(var i=0;i<crates.length;i++) if(Math.hypot(crates[i].x-wx,crates[i].y-wy)<TILE*3.5) ok=false;
@@ -4856,6 +4885,19 @@ function keyVec(){
 /* =========================================================================
    COMBAT
    ========================================================================= */
+// Touch aiming uses a 15-degree total cone, centred on the joystick facing.
+function mobileAimTarget(range){
+  if(!touchControls.matches||mouseAim.active||!player||piloting||aboard)return null;
+  var best=null,score=Infinity,halfCone=Math.PI/24;
+  enemies.forEach(function(e){
+    var dx=e.x-player.x,dy=e.y-player.y,d=Math.hypot(dx,dy);
+    if(e.hp<=0||d>range||d<1)return;
+    var a=Math.atan2(dy,dx)-player.face,offset=Math.abs(Math.atan2(Math.sin(a),Math.cos(a)));
+    if(offset>halfCone||!los(player.x,player.y,e.x,e.y)||smokeBlocked(player.x,player.y,e.x,e.y))return;
+    var rank=offset/halfCone+d/range*.2;if(rank<score){score=rank;best=e;}
+  });
+  return best;
+}
 function nearestTarget(closestOnly){
   var best=null, bd=1e9;
   for(var i=0;i<enemies.length;i++){
@@ -5007,22 +5049,23 @@ function shoot(){
   if(player.reload>0) return;
   if(player.godMode){player.mag=W.mag;player.reload=0;}
   if(player.mag<=0){ startReload(); return; }
-  var tgt=nearestTarget(autoAimEnabled), ang=player.face;
+  var mobile=touchControls.matches&&!mouseAim.active;
+  var tgt=mobile?mobileAimTarget(Math.min(720,W.spd*1.4)):nearestTarget(autoAimEnabled), ang=player.face;
   var moving=Math.hypot(player.lvx||0,player.lvy||0)>8;
   if(manualAim()){ ang=aimAngle(); player.face=ang; }
-  if((autoAimEnabled||(bot&&bot.on))&&!manualAim()&&tgt){
+  if((mobile||autoAimEnabled||(bot&&bot.on))&&!manualAim()&&tgt){
     var aimX=tgt.x,aimY=tgt.y;
-    if(tgt.compoundBoss){
+    if(tgt.compoundBoss&&!mobile){
       var shotTravel=Math.min(.48,Math.hypot(tgt.x-player.x,tgt.y-player.y)/Math.max(1,W.spd));
       aimX+=(tgt.cvx||0)*shotTravel; aimY+=(tgt.cvy||0)*shotTravel;
     }
-    ang=Math.atan2(aimY-player.y,aimX-player.x); player.face=ang;
+    ang=Math.atan2(aimY-player.y,aimX-player.x); if(!mobile)player.face=ang;
   }
   player.ang=ang;
   if(W.rail)fireRailgun(ang);
   var pel=W.rail?0:(W.pel||1);
   for(var i=0;i<pel;i++){
-    var a=ang+rr(-W.spread,W.spread)*(pel>1?1:.7);
+    var a=ang+rr(-W.spread,W.spread)*(pel>1?1:mobile&&tgt?0:.7);
     bullets.push({x:player.x+Math.cos(ang)*16,y:player.y+Math.sin(ang)*16,
       vx:Math.cos(a)*W.spd, vy:Math.sin(a)*W.spd, dmg:W.dmg, life:1.4, pierce:W.pierce||0, trail:W.spd>800?18:12});
   }
@@ -5048,13 +5091,14 @@ function finishReload(){
 function throwNade(){
   if(state==='play'&&piloting&&drone&&drone.kind==='dog'){dogJump();return;}
   if(!player||state!=='play'||(!player.godMode&&player.nades<=0)) return;
-  var tgt=nearestTarget(),targetX=tgt?tgt.x:player.x+Math.cos(player.face)*220,targetY=tgt?tgt.y:player.y+Math.sin(player.face)*220;
+  var mobile=touchControls.matches&&!mouseAim.active;
+  var tgt=mobile?mobileAimTarget(300):nearestTarget(),targetX=tgt?tgt.x:player.x+Math.cos(player.face)*220,targetY=tgt?tgt.y:player.y+Math.sin(player.face)*220;
   if(manualAim()){ targetX=mouseAim.x+cam.x; targetY=mouseAim.y+cam.y; tgt=null; }
-  if(tgt&&tgt.compoundBoss){ targetX+=(tgt.cvx||0)*.62; targetY+=(tgt.cvy||0)*.62; }
+  if(tgt&&tgt.compoundBoss&&!mobile){ targetX+=(tgt.cvx||0)*.62; targetY+=(tgt.cvy||0)*.62; }
   var ang=Math.atan2(targetY-player.y,targetX-player.x);
   var dist2=tgt?Math.min(tgt.compoundBoss?460:300,Math.hypot(targetX-player.x,targetY-player.y)):220;
   if(manualAim()) dist2=Math.min(300,Math.hypot(targetX-player.x,targetY-player.y));
-  if(!player.godMode)player.nades--; player.face=ang;
+  if(!player.godMode)player.nades--; if(!mobile)player.face=ang;
   nades.push({x:player.x,y:player.y,sx:player.x,sy:player.y,
     tx:player.x+Math.cos(ang)*dist2, ty:player.y+Math.sin(ang)*dist2, t:0, dur:.62, spin:0});
   sfx('reload'); hud();
@@ -5228,6 +5272,7 @@ function continueSector(){
     clearing=false;
     startSector(fromLevel+1);
     player.godMode=carryGod; player.godInventory=carryGodInv;
+    baseGuards.forEach(function(g){if(g.vehicleSentry)g.deployed=!!carryGod;});
     if(carryGod&&belt.indexOf('god')<0)belt.push('god');
     player.hp=Math.min(player.mx,carryHp+22); player.ap=carryAp;
     player.guns=carryGuns; player.gi=carryGi;
@@ -5237,28 +5282,96 @@ function continueSector(){
   }
   if(fromLevel===1){
     fetch('/api/access',{cache:'no-store'}).then(function(r){return r.json();}).then(function(acc){
-      if(acc&&(acc.allowed||acc.isAdmin)){ doStart(); }
+      if(acc&&(acc.allowed||acc.isAdmin)){ transitionToSectorTwo(doStart); }
       else{ clearing=false; banner('SECTOR 1 COMPLETE','UNLOCK SECTORS 2–6 TO CONTINUE',3); setTimeout(function(){window.top.location.href='/';},3000); }
-    }).catch(function(){ doStart(); });
+    }).catch(function(){ clearing=false;banner('CONNECTION LOST','RETRYING SECTOR ACCESS',3);setTimeout(continueSector,3000); });
   } else { doStart(); }
 }
-function showLevelSolvedScreen(){
+function launchSolvedFireworks(overlay){
+  if(!overlay||window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;
+  if(overlay.stopFireworks)overlay.stopFireworks();
+  var canvas=document.createElement('canvas'),c=canvas.getContext('2d');
+  if(!c)return;
+  canvas.setAttribute('aria-hidden','true');
+  canvas.style.cssText='position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1';
+  overlay.appendChild(canvas);
+  var controls=overlay.querySelector('.solvedContinueWrap');if(controls)controls.style.zIndex='2';
+  var particles=[],elapsed=0,nextBurst=0,last=0,raf=0,stopped=false;
+  function stop(){stopped=true;cancelAnimationFrame(raf);canvas.remove();overlay.stopFireworks=null;}
+  overlay.stopFireworks=stop;
+  function animate(t){
+    if(stopped)return;
+    if(!overlay.classList.contains('show')){stop();return;}
+    var w=overlay.clientWidth,h=overlay.clientHeight,dpr=Math.min(window.devicePixelRatio||1,2);
+    if(canvas.width!==Math.round(w*dpr)||canvas.height!==Math.round(h*dpr)){canvas.width=Math.round(w*dpr);canvas.height=Math.round(h*dpr);}
+    c.setTransform(dpr,0,0,dpr,0,0);c.clearRect(0,0,w,h);
+    var dt=last?Math.min(.04,(t-last)/1000):0;last=t;elapsed+=dt;
+    if(elapsed>=nextBurst&&elapsed<7){
+      nextBurst=elapsed+.45+Math.random()*.3;
+      var x=w*(Math.random()<.5?.08+Math.random()*.23:.69+Math.random()*.23),y=h*(.12+Math.random()*.4);
+      var color=['#ffd700','#4a9eff','#fff1c2'][Math.floor(Math.random()*3)];
+      for(var i=0;i<42;i++){
+        var angle=Math.random()*Math.PI*2,speed=45+Math.random()*145;
+        particles.push({x:x,y:y,vx:Math.cos(angle)*speed,vy:Math.sin(angle)*speed-30,life:1.2+Math.random()*.6,color:color});
+      }
+    }
+    c.globalCompositeOperation='lighter';c.lineWidth=1.6;
+    for(var i=particles.length-1;i>=0;i--){
+      var p=particles[i];p.life-=dt;if(p.life<=0){particles.splice(i,1);continue;}
+      var ox=p.x,oy=p.y;p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=65*dt;p.vx*=Math.exp(-dt*.7);
+      c.globalAlpha=Math.min(.85,p.life);c.strokeStyle=p.color;c.fillStyle=p.color;
+      c.beginPath();c.moveTo(ox,oy);c.lineTo(p.x,p.y);c.stroke();
+      c.beginPath();c.arc(p.x,p.y,1.4,0,Math.PI*2);c.fill();
+    }
+    c.globalAlpha=1;c.globalCompositeOperation='source-over';
+    if(elapsed>=7&&!particles.length){stop();return;}
+    raf=requestAnimationFrame(animate);
+  }
+  raf=requestAnimationFrame(animate);
+}
+var solvedAdvanceTimer=0;
+function transitionToSectorTwo(onReady){
+  var intro=document.getElementById('levelTwoIntro');
+  state='pause';
+  if(intro){
+    intro.setAttribute('aria-hidden','false');intro.classList.add('show');
+    var bar=intro.querySelector('.levelIntroBar i');
+    if(bar){bar.style.animation='none';void bar.offsetWidth;bar.style.animation='';}
+  }
+  requestAnimationFrame(function(){
+    document.getElementById('solvedOverlay').classList.remove('show');
+    setTimeout(function(){
+      onReady();draw();
+      requestAnimationFrame(function(){
+        if(intro){intro.classList.remove('show');intro.setAttribute('aria-hidden','true');}
+        document.getElementById('wrap').classList.remove('in-solved');
+      });
+    },3000);
+  });
+}
+function showLevelSolvedScreen(previewAdvance){
   var ov=document.getElementById('solvedOverlay');
   var img=document.getElementById('solvedImg');
   if(!ov||!img) return;
+  clearTimeout(solvedAdvanceTimer);
   img.src='assets/images/covers/'+SOLVED_IMGS[level-1];
   state='pause'; ov.classList.add('show');
+  launchSolvedFireworks(ov);
   document.getElementById('wrap').classList.add('in-solved');
-  document.getElementById('solvedContinue').onclick=function(){
+  var button=document.getElementById('solvedContinue');
+  button.parentElement.style.display=level===1?'none':'';
+  button.onclick=function(){
     ov.classList.remove('show');
     document.getElementById('wrap').classList.remove('in-solved');
     continueSector();
   };
+  if(level===1)solvedAdvanceTimer=setTimeout(previewAdvance||continueSector,4000);
 }
 function showGameCompleteScreen(){
   var ov=document.getElementById('gameCompleteOverlay');
   if(!ov) return;
   state='pause'; ov.classList.add('show');
+  launchSolvedFireworks(ov);
   document.getElementById('wrap').classList.add('in-solved');
   document.getElementById('gameCompleteBtn').onclick=function(){
     try{ window.top.location.href='/'; }catch(ex){ window.location.href='/'; }
@@ -5266,8 +5379,7 @@ function showGameCompleteScreen(){
 }
 function showCompoundBossClear(x,y){
   state='play'; firing=false; actBtn.classList.remove('on');
-  var victory=document.getElementById('bossVictory');
-  banner('BOSS DOWN','EXPLOSION CHAIN',1.5);
+  banner('BOSS DOWN','',1.5);
   var blastTimes=[0,360,760,1180,1660,2180];
   for(var bi=0;bi<blastTimes.length;bi++) (function(delay,index){
     setTimeout(function(){
@@ -5277,9 +5389,7 @@ function showCompoundBossClear(x,y){
       dustPuff(bx,by,10,1.4); shake=Math.min(18,shake+5+index*.8); sfx('boom',Math.max(.35,1-index*.08));
     },delay);
   })(blastTimes[bi],bi);
-  setTimeout(function(){ state='pause'; victory.classList.add('show'); sfx('clear'); renderBossOnePortrait(); launchBossVictoryFireworks(); },2850);
-  setTimeout(function(){ victory.classList.remove('show'); },6500);
-  setTimeout(showLevelSolvedScreen,6700);
+  setTimeout(function(){sfx('clear');showLevelSolvedScreen();},2850);
 }
 function showAirfieldBossClear(x,y){
   state='play'; firing=false; actBtn.classList.remove('on'); miniNukes.length=0;
@@ -5669,7 +5779,7 @@ function update(dt,realDt){
 
   if(manualAim()){ player.face=aimAngle(); player.ang=player.face; }
 
-  var autoTarget=autoAimEnabled&&!piloting&&!aboard&&!player.dead?nearestTarget(true):null;
+  var autoTarget=autoAimEnabled&&!(touchControls.matches&&!mouseAim.active)&&!piloting&&!aboard&&!player.dead?nearestTarget(true):null;
   if(autoTarget){player.face=Math.atan2(autoTarget.y-player.y,autoTarget.x-player.x);player.ang=player.face;}
   var combatFire=firing;
   // --- ACT
@@ -7555,17 +7665,13 @@ function spawnOilBoss(){
 function spawnCompoundBoss(){
   if(compoundBossSpawned||!compoundDroneHub||!compoundDroneHub.dead) return;
   compoundBossSpawned=1;
-  var playerSpot=compoundRoadSpot(42.5);
+  var playerSpot={x:player.x,y:player.y};
   var bossSpot=compoundBossRandomSpot(playerSpot.x,playerSpot.y);
   spawnEnemy('heavy',bossSpot.x,bossSpot.y,false,null,true);
   var CB=enemies[enemies.length-1];
   CB.compoundBoss=1; CB.boss=1; CB.elite=0; CB.r=16; CB.bossScale=1.14;
   CB.hp=CB.mx=1040; CB.hammerCd=.35; CB.hammerWind=0; CB.walk=0; CB.walkBlend=0; CB.stuckT=0; CB.cvx=0; CB.cvy=0; CB.amt=0;
   CB.d=Object.assign({},CB.d,{col:'#c5b58f',band:'#7f7159',dmg:0,range:0,rof:9,pref:235,spd:72});
-  if(player){
-    player.x=playerSpot.x; player.y=playerSpot.y; player.face=Math.atan2(CB.y-player.y,CB.x-player.x);
-    cam.x=player.x-VW/2; cam.y=player.y-VH/2;
-  }
   banner('LEVEL 1 BOSS','ENEMY COMMANDER ENTERS THE FIGHT',2.8); hud();
   // Ramp music to 130% speed over ~1.5 s when boss enters
   if(_bgm){
@@ -8827,6 +8933,7 @@ async function sectorClear(){
     syncGun();
     var keepHp=player.hp, keepAp=player.ap, nd=player.nades, gr=player.guns, gidx=player.gi,keepGod=player.godMode,keepGodInventory=player.godInventory;
     startSector(level+1);player.godMode=keepGod;player.godInventory=keepGodInventory;
+    baseGuards.forEach(function(g){if(g.vehicleSentry)g.deployed=!!keepGod;});
     if(keepGod&&belt.indexOf('god')<0)belt.push('god');
     player.hp=Math.min(player.mx,keepHp+22); player.ap=keepAp;
     player.guns=gr; player.gi=gidx;
@@ -13729,6 +13836,7 @@ function testLevelBoss5(){
   ac();
   if(sp_param==='complete'){
     showGameCompleteScreen();
+    if(window.parent!==window)document.getElementById('gameCompleteBtn').parentElement.style.display='none';
     document.getElementById('gameCompleteBtn').onclick=function(){
       window.location.href='/admin';
     };
@@ -13736,9 +13844,15 @@ function testLevelBoss5(){
   }
   var lv=parseInt(sp_param,10);
   if(lv>=1&&lv<=6){
-    level=lv; showLevelSolvedScreen();
-    // Preview mode: CONTINUE cycles to next card instead of triggering gameplay
-    var nextHref=window.location.pathname+'?solvedPreview='+(lv<6?(lv+1):'complete');
+    level=lv;
+    if(lv===1){
+      showLevelSolvedScreen(function(){transitionToSectorTwo(function(){levelIntroActive=2;beginLevelFromIntro(2);});});
+      return;
+    }
+    showLevelSolvedScreen();
+    var nextHref=lv<6
+      ? window.location.pathname+'?autostart='+(lv+1)+'&coins=5000'
+      : window.location.pathname+'?solvedPreview=complete';
     document.getElementById('solvedContinue').onclick=function(){
       window.location.href=nextHref;
     };
@@ -13751,6 +13865,21 @@ bindTap(document.getElementById('mute'),function(){
   var m=document.getElementById('mute');
   muted=!muted; m.textContent=muted?'✕':'♪'; m.style.opacity=muted?.5:1;
   if(muted) stopMusic(); else if(state==='play') startMusic(mapKind);
+});
+// Pilot settings overlay preserves the live iframe and its exact world state.
+var pilotSettingsState=null;
+window.addEventListener('message',function(e){
+  if(e.origin!==window.location.origin||e.source!==window.parent||!e.data||e.data.type!=='gd:pilotSettings')return;
+  if(e.data.open){
+    if(pilotSettingsState!==null)return;
+    pilotSettingsState=state;state='pause';releaseControls();stopMusic(true);
+  }else if(pilotSettingsState!==null){
+    state=pilotSettingsState;pilotSettingsState=null;
+    autoAimEnabled=(localStorage.getItem('gd_autoAim')||'0')==='1';
+    muted=localStorage.getItem('gd_muted')==='1';
+    if(state==='play'&&!muted)startMusic(mapKind);
+    focusGame();
+  }
 });
 // Parent sidebar can send {type:'gd:setMute', muted: bool} to toggle music
 window.addEventListener('message',function(e){

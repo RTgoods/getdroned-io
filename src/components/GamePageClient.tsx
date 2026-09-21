@@ -3,13 +3,16 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { GameSidebar } from './GameSidebar'
+import { ProfileContent } from './ProfileContent'
 import { GameLanding } from './GameLanding'
 import type { Game } from '@/types/database'
 import type { User } from '@supabase/supabase-js'
 import type { SectorStat } from '@/app/api/progress/route'
 
-export function GamePageClient({ game }: { game: Game }) {
-  const [playing, setPlaying] = useState(false)
+export function GamePageClient({ game, solvedPreview = null }: { game: Game; solvedPreview?: string | null }) {
+  const [preview, setPreview] = useState(solvedPreview)
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [playing, setPlaying] = useState(!!solvedPreview)
   const [launch, setLaunch] = useState({ level: 1, version: 0, coins: 0, belt: [] as string[], muted: false })
   const [user, setUser] = useState<User | null>(null)
   const [allowed, setAllowed] = useState(false)
@@ -59,7 +62,7 @@ export function GamePageClient({ game }: { game: Game }) {
   useEffect(() => {
     setCompletedSectors([])
     setSectorStats({})
-    if (allowed && gameId) {
+    if (user && gameId) {
       fetch(`/api/progress?gameId=${gameId}`)
         .then(r => r.json())
         .then(d => {
@@ -73,7 +76,7 @@ export function GamePageClient({ game }: { game: Game }) {
   // Listen for sector-complete messages from the game iframe
   useEffect(() => {
     const handler = async (event: MessageEvent) => {
-      if (event.origin !== window.location.origin || event.source !== frame.current?.contentWindow || !allowed || !gameId) return
+      if (event.origin !== window.location.origin || event.source !== frame.current?.contentWindow || !user || !gameId) return
       const { type, sector, kills, squadLost, moneyEnd, timeAlive, belt } = event.data ?? {}
       if (type !== 'gd:sectorComplete' || !Number.isInteger(sector) || sector < 1 || sector > 6) return
 
@@ -91,7 +94,7 @@ export function GamePageClient({ game }: { game: Game }) {
     }
     window.addEventListener('message', handler)
     return () => window.removeEventListener('message', handler)
-  }, [allowed, gameId])
+  }, [allowed, gameId, user])
 
   const play = useCallback(async (level = 1) => {
     const access = await loadAccess()
@@ -99,7 +102,7 @@ export function GamePageClient({ game }: { game: Game }) {
 
     // Sector 1 is always free; sectors 2–6 require purchase + previous sector complete (unless admin)
     const prevDone = completedSectors.includes(level - 1)
-    const canPlay = level === 1 || access.isAdmin || (access.allowed && (level === 2 || prevDone))
+    const canPlay = level === 1 || access.isAdmin || (access.allowed && prevDone)
     if (!canPlay) return
 
     // Derive carry state from the sector just before the one being launched
@@ -107,12 +110,13 @@ export function GamePageClient({ game }: { game: Game }) {
     const carryCoins = prevStat?.moneyEnd ?? 0
     const carryBelt = prevStat?.belt ?? []
 
+    setPreview(null)
     setLaunch(previous => ({
       level: Number.isInteger(level) && level >= 1 && level <= 6 ? level : 1,
       version: previous.version + 1,
       coins: carryCoins,
       belt: carryBelt,
-      muted: musicMuted, // saved Pilot Settings preference at launch
+      muted: localStorage.getItem('gd_muted') === '1', // read the latest preference at launch
     }))
     setPlaying(true)
   }, [completedSectors, sectorStats, loadAccess])
@@ -128,6 +132,7 @@ export function GamePageClient({ game }: { game: Game }) {
 
   // Build the iframe src with carry-over params
   const iframeSrc = (() => {
+    if (preview) return `/get-droned/index.html?solvedPreview=${encodeURIComponent(preview)}`
     const params = new URLSearchParams({ v: '47', autostart: String(launch.level) })
     if (isAdmin) params.set('coins', '5000')
     else if (launch.coins > 0) params.set('coins', String(launch.coins))
@@ -146,6 +151,10 @@ export function GamePageClient({ game }: { game: Game }) {
       completedSectors={completedSectors}
       sectorStats={sectorStats}
       playing={playing}
+      onPilotSettings={() => {
+        frame.current?.contentWindow?.postMessage({ type: 'gd:pilotSettings', open: true }, window.location.origin)
+        setSettingsOpen(true)
+      }}
       onPlay={play}
       onBack={() => {
         frame.current?.contentWindow?.postMessage({ type: 'gd:setMute', muted: true }, '*')
@@ -167,5 +176,15 @@ export function GamePageClient({ game }: { game: Game }) {
         />
       ) : <GameLanding game={game} user={user} hasPurchased={allowed} onPlay={() => play(1)} />}
     </div>
+    {settingsOpen && user && <div role="dialog" aria-modal="true" aria-label="Pilot Settings" style={{ position: 'fixed', inset: 0, zIndex: 1000, background: '#09101f' }}>
+      <ProfileContent game={game} user={user} hasPurchased={allowed} isAdmin={isAdmin} completedSectors={completedSectors} sectorStats={sectorStats} avatarUrl={avatarUrl} gameId={gameId}
+        onReturnToGame={() => {
+          setSettingsOpen(false)
+          setMusicMuted(localStorage.getItem('gd_muted') === '1')
+          frame.current?.contentWindow?.postMessage({ type: 'gd:pilotSettings', open: false }, window.location.origin)
+          frame.current?.focus()
+          void loadAccess()
+        }} />
+    </div>}
   </div>
 }

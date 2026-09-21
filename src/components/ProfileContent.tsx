@@ -15,6 +15,7 @@ interface Props {
   completedSectors: number[]
   sectorStats: Record<string, SectorStat>
   avatarUrl: string | null
+  onReturnToGame?: () => void
   gameId: string | null
 }
 
@@ -46,7 +47,7 @@ function fmtTime(s: number) {
   return m > 0 ? `${m}m ${s % 60}s` : `${s}s`
 }
 
-export function ProfileContent({ game, user, hasPurchased, isAdmin, completedSectors, sectorStats, avatarUrl: initialAvatarUrl, gameId }: Props) {
+export function ProfileContent({ game, user, hasPurchased, isAdmin, completedSectors, sectorStats, avatarUrl: initialAvatarUrl, gameId, onReturnToGame }: Props) {
   const totalKills = Object.values(sectorStats).reduce((s, x) => s + (x.kills ?? 0), 0)
   const totalTime  = Object.values(sectorStats).reduce((s, x) => s + (x.timeAlive ?? 0), 0)
   const totalSquad = Object.values(sectorStats).reduce((s, x) => s + (x.squadLost ?? 0), 0)
@@ -94,7 +95,7 @@ export function ProfileContent({ game, user, hasPurchased, isAdmin, completedSec
 
   return (
     <div style={{ display: 'flex', height: '100dvh', overflow: 'hidden', background: UA.bg }}>
-      <GameSidebar
+      {!onReturnToGame && <GameSidebar
         game={game}
         user={user}
         hasPurchased={hasPurchased}
@@ -102,7 +103,7 @@ export function ProfileContent({ game, user, hasPurchased, isAdmin, completedSec
         completedSectors={completedSectors}
         sectorStats={sectorStats}
         avatarUrl={avatarUrl}
-      />
+      />}
 
       {/* Main content */}
       <div style={{ flex: 1, minWidth: 0, height: '100dvh', overflowY: 'auto', padding: '32px 24px' }}>
@@ -112,6 +113,7 @@ export function ProfileContent({ game, user, hasPurchased, isAdmin, completedSec
           <div style={{ marginBottom: 24 }}>
             <a
               href="/"
+              onClick={onReturnToGame ? (event) => { event.preventDefault(); onReturnToGame() } : undefined}
               style={{
                 display: 'inline-flex', alignItems: 'center', gap: 7,
                 fontSize: 8, fontWeight: 900, letterSpacing: '2px', textTransform: 'uppercase',
@@ -124,7 +126,7 @@ export function ProfileContent({ game, user, hasPurchased, isAdmin, completedSec
               onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = UA.yellow; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,215,0,0.3)' }}
               onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = UA.muted; (e.currentTarget as HTMLElement).style.borderColor = UA.borderFaint }}
             >
-              ← BACK TO GAME
+              {onReturnToGame ? '▶ RESUME GAME' : '← BACK TO GAME'}
             </a>
           </div>
 
@@ -138,7 +140,7 @@ export function ProfileContent({ game, user, hasPurchased, isAdmin, completedSec
             {/* Avatar + title side by side */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
               <div style={{
-                width: 80, height: 80, borderRadius: '50%', flexShrink: 0,
+                width: 80, height: 80, borderRadius: 8, flexShrink: 0,
                 border: `2px solid ${kit ? UA.yellow : 'rgba(0,104,204,0.35)'}`,
                 background: UA.surface,
                 overflow: 'hidden',

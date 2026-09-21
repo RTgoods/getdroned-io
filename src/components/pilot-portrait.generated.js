@@ -43,13 +43,419 @@ export function drawPortrait(canvas, selected) {
   var kit=selected.id==='god'?VEHICLE_SENTRY_KIT:PKITS.find(k=>k.id===selected.id);
   if(!kit)return;
   var c=canvas.getContext('2d');if(!c)return;
-  var size=canvas.width, scale=size/25;
+  var size=canvas.width, scale=size/36;
   c.clearRect(0,0,size,size);c.save();c.beginPath();c.arc(size/2,size/2,size/2-1,0,Math.PI*2);c.clip();
   c.fillStyle='#0f1828';c.fillRect(0,0,size,size);
-  c.translate(size/2-1.2*scale,size/2+31*scale);c.scale(scale,scale);
-  var col=kit.col,PAL=kit.pal,seed=selected.id==='god'?417:31;
-  var rus=false,front=true,back=false,kind=null,mapKind='compound',unitSkin=SKIN;
-    var bodyKit=kit,bodyCol=col,bodyPAL=PAL;
+  // Frame the real head, shoulders and vest together inside the circular badge.
+  c.translate(size/2,42*scale);c.scale(scale,scale);
+  drawUnit(c,0,0,Math.PI/2,kit.col,kit.band,0,0,null,null,false,false,false,selected.id==='god'?417:31,0,null,true,kit);
+  c.restore();
+}
+
+var mapKind='compound',now=0,PK=PKITS[0],equipmentArtCache={};
+function drawWalkingLeg(c,ox,phase,amount,col,seed,pal,side,farLeg,plain){
+  // The support foot stays down for half a cycle; the returning foot lifts.
+  // Keep each foot beneath its hip instead of sweeping across the other leg.
+  var swing=Math.sin(phase)*amount,lift=Math.max(0,Math.sin(phase))*2.6*amount;
+  var footX=ox+swing*.65,footY=1.5+Math.cos(phase)*amount*.8-lift;
+  var kneeX=ox+swing*.45,kneeY=-5.5-lift*.5;
+  side=side||0;
+  // In profile the hips share a stride line, with the near leg drawn over the far leg.
+  var hipX=ox*(1-side*.98*amount);
+  var stride=Math.cos(phase)*6.2*amount;
+  var recovery=Math.max(0,-Math.sin(phase));
+  var profileX=hipX+stride,profileY=1.5-recovery*4*amount-(farLeg?.65:0)*amount;
+  footX+=(profileX-footX)*side;
+  footY+=(profileY-footY)*side;
+  kneeX+=(hipX+stride*.4+recovery*2.8*amount-kneeX)*side;
+  kneeY+=(-5.5-recovery*1.6*amount-kneeY)*side;
+  c.save();c.lineCap='round';c.lineJoin='round';
+  c.beginPath();c.moveTo(hipX,-12);c.lineTo(kneeX,kneeY);c.lineTo(footX,footY);
+  c.strokeStyle='#15130e';c.lineWidth=7;c.stroke();c.strokeStyle=shade(col,farLeg?.54:.67);c.lineWidth=5;c.stroke();
+  c.fillStyle=pal[seed%4];rrect(c,hipX-2,-11,4,3,1);c.fill();
+  if(!plain){c.fillStyle='#424a37';rrect(c,kneeX-3,kneeY-2.2,6,4.4,1.4);c.fill();outl(c,'#15130e',1);}
+  c.fillStyle=shade(col,.36);rrect(c,footX-3.5,footY-1,8,4,1.5);c.fill();outl(c,'#15130e',1.2);
+  gearLine(c,footX-2,footY+.5,footX+2,footY+.5,'#81856b',.65);
+  gearLine(c,footX-3,footY+2.7,footX+3.5,footY+2.7,'#141b15',1);c.restore();
+}
+function drawAssemblyArms(c,col,pose){
+  var phase=now*(pose.working?2:1.5)+pose.phase;
+  var sway=Math.sin(phase*.7)*.3;
+  // The forward hand supports the assembly; the rear hand rests near the chest.
+  var arms=[[-4.2,-22.2,-1,-17,13,-19],[5,-22,8,-16,7,-19]];
+  for(var i=0;i<arms.length;i++){
+    var breath=Math.sin(phase*(i?1.6:1)+(i?.6:0))*1.4;
+    var a=arms[i],hx=a[4]+sway,hy=a[5]+breath;
+    c.lineCap='round';c.lineJoin='round';
+    c.beginPath();c.moveTo(a[0],a[1]);c.lineTo(a[2]+sway*.5,a[3]+breath*.5);c.lineTo(hx,hy);
+    c.strokeStyle='#15130e';c.lineWidth=6;c.stroke();
+    c.strokeStyle=shade(col,i?.95:.78);c.lineWidth=3.8;c.stroke();
+    c.fillStyle=SKIN2;c.beginPath();c.arc(hx,hy,2.3,0,6.3);c.fill();outl(c,'#15130e',1);
+    c.strokeStyle='#34382f';c.lineWidth=1;c.beginPath();c.arc(hx,hy,2.7,.2,2.6);c.stroke();
+  }
+}
+function gearPoly(c,points,fill){c.fillStyle=fill;c.beginPath();points.forEach(function(p,i){if(i)c.lineTo(p[0],p[1]);else c.moveTo(p[0],p[1]);});c.closePath();c.fill();outl(c,'#111b1e',.9);}
+function box(x,y,w,h,t,b,r){gearBox(c,x,y,w,h,t,b,r);}
+function line(x,y,xx,yy,col,w){gearLine(c,x,y,xx,yy,col,w);}
+function screws(x,y,n){for(var i=0;i<n;i++){c.fillStyle='#b1b7aa';c.beginPath();c.arc(x+i*4,y,.55,0,6.3);c.fill();}}
+function gearLens(c,x,y,r,color){
+  c.fillStyle='#111d24';c.beginPath();c.arc(x,y,r+1,0,6.3);c.fill();
+  var g=c.createRadialGradient(x-r*.3,y-r*.3,0,x,y,r);g.addColorStop(0,'#e0ffff');g.addColorStop(.3,color||'#70cbd9');g.addColorStop(1,'#163945');
+  c.fillStyle=g;c.beginPath();c.arc(x,y,r,0,6.3);c.fill();
+}
+function paintGun(c,id){
+  var steel='#74858b',black='#253139',wood='#986c42',tan='#a2926b';
+  function box(x,y,w,h,t,b,r){gearBox(c,x,y,w,h,t,b,r);}
+  function line(x,y,xx,yy,col,w){gearLine(c,x,y,xx,yy,col,w);}
+  function screws(x,y,n){for(var i=0;i<n;i++){c.fillStyle='#b1b7aa';c.beginPath();c.arc(x+i*4,y,.55,0,6.3);c.fill();}}
+  if(id==='pistol'){
+    gearPoly(c,[[-2,0],[4,0],[2,9],[-4,8]],'#303a39');
+    box(-3,3,4,4,'#57645a','#27332d',.6);for(var p=0;p<3;p++)line(-2,4+p,0,4+p,'#899381',.5);
+    box(-4,-3.5,18,5,steel,black,1.2);box(9,-2.5,6,3,'#bac4c3','#49585e',.5);
+    box(3,-3,4,2,'#1b252b','#1b252b',.3);for(var p=0;p<4;p++)line(-3+p,-3,-3+p,-.4,'#a1aaa5',.5);
+    line(2,2,7,2,'#768887',.8);line(7,2,6,5,'#768887',.8);line(6,5,2,5,'#768887',.8);
+    box(-2,-4.6,2,1,'#929d8e','#47574e',.2);c.fillStyle='#b9e0bd';c.fillRect(11,-4,1,1);screws(-1,1,2);
+  }else if(id==='railgun'){
+    box(-11,-4,10,8,'#858585','#292929',1.5);box(-3,-5,17,10,'#dededb','#646464',1.5);
+    // Angular urban camouflage across stock and receiver.
+    gearPoly(c,[[-10,-3],[-5,-3],[-6,0],[-9,1]],'#ededeb');
+    gearPoly(c,[[-5,0],[-1,-2],[1,2],[-4,3]],'#222222');
+    gearPoly(c,[[-2,-4],[4,-4],[2,-1],[-1,0]],'#424242');
+    gearPoly(c,[[5,-4],[10,-4],[8,0],[4,1]],'#f5f5f1');
+    gearPoly(c,[[8,1],[13,-1],[13,4],[6,4]],'#303030');
+    gearPoly(c,[[0,4],[5,4],[3,11],[-1,10]],'#262626');
+    line(1,6,3,6,'#aaaaa6',.8);line(0,8,2,8,'#777777',.8);
+    box(10,-5,24,3,'#d6d6d3','#555555',.8);box(10,3,24,3,'#bdbdbb','#424242',.8);
+    line(10,0,35,0,'#f2f2ed',1.7);
+    for(var coil=0;coil<4;coil++){box(12+coil*5,-6,2,13,'#555555','#1d1d1d',.5);line(13+coil*5,-3,13+coil*5,3,'#dcdcd7',1);}
+    box(0,-3,6,4,'#222222','#111111',.6);line(1,-1,5,-1,'#f7f7ef',1.2);
+    box(-8,-2,5,3,'#bdbdb8','#666666',.5);
+  }else if(id==='flamer'){
+    box(-10,-6,7,13,'#708259','#35472f',2.5);box(-9,-7,5,2,'#a8b5a0','#4d5b50');
+    line(-9,-2,-4,-2,'#cbb764',1.3);box(-3,-3,18,6,steel,black,1.5);
+    box(13,-2,10,4,'#9b9d83','#464b40');for(var f=0;f<4;f++)line(16+f*1.6,-2,16+f*1.6,2,'#252e2e',.6);
+    gearPoly(c,[[0,2],[4,2],[3,9],[-1,8]],'#344038');
+    c.strokeStyle='#202b26';c.lineWidth=2;c.beginPath();c.moveTo(-7,6);c.quadraticCurveTo(-2,13,3,6);c.stroke();
+    gearLens(c,-6,-3,1,'#eac989');c.fillStyle='#ffbd63';c.beginPath();c.ellipse(24,0,2,1.2,0,0,6.3);c.fill();
+  }else{
+    var smg=id==='smg',ak=id==='rifle',shot=id==='shotgun',dmr=id==='dmr',lmg=id==='lmg';
+    var end=smg?19:(dmr?33:29),stock=ak||shot?wood:tan;
+    // Stocks, grips and magazine shapes distinguish each weapon at small sizes.
+    gearPoly(c,[[-11,-3],[-3,-2],[-1,1],[-8,3],[-11,4]],stock);
+    box(-11,-3,2,7,'#394343','#202a2d',.5);
+    if(smg){line(-9,-1,-3,-1,'#c5c4ac',.9);line(-9,2,-3,-1,'#202b2f',.8);}
+    gearPoly(c,[[0,1],[4,2],[2,9],[-2,8]],smg?'#38454b':'#605c46');
+    if(ak){gearPoly(c,[[6,2],[11,2],[12,7],[10,12],[6,13],[8,7]],'#3f4c4d');line(9,4,10,8,'#89928a',.65);}
+    else if(lmg){box(4,2,12,10,'#8a8257','#484e35',1.5);line(6,4,14,4,'#d1b966',1);for(var b=0;b<4;b++)box(5+b*2,0,1.3,4,'#d1b366','#796039',.2);}
+    else if(!shot){gearPoly(c,[[6,2],[10,2],[9,10],[5,10]],smg?'#3b494e':'#605e48');line(7,4,7,8,'#b1b6a3',.65);}
+    box(-3,-3,17,6,smg?'#778589':steel,black,1);
+    box(12,-2.4,end-12,3.7,'#8a9998','#35434b',.5);
+    box(end-2,-2.8,4,4.5,'#465960','#1d2d32',.7);
+    line(-2,-2.6,12,-2.6,'#d0d6c4',.65);
+    box(3,-2,4,1.6,'#18282e','#18282e',.2);screws(-1,.2,3);
+    if(ak){box(13,-2,8,4,wood,'#5d432c',.7);for(var q=0;q<3;q++)line(15+q*2,-1,15+q*2,1,'#ce9962',.6);line(21,-4,21,-1,'#677a7b',1.2);}
+    if(shot){box(13,-.3,10,4,'#8f7451','#433e32',.8);for(var q=0;q<5;q++)line(14+q*1.6,.3,14+q*1.6,3,'#c2a17a',.6);line(7,4,24,4,'#77898b',1);}
+    if(smg){box(9,-2,6,5,'#a99f7c','#696c53',.5);for(var q=0;q<3;q++)box(10+q*1.5,-1,1,2,'#243338','#243338',.2);box(0,-7,5,3,'#7d8c89','#263b42');gearLens(c,4,-5.5,1,'#a3e1dc');}
+    if(dmr){
+      box(1,-7,15,3.5,'#81958d','#2c4243',1);box(0,-7.5,3,4.5,'#556c65','#253e3c');box(14,-8,4,5,'#81998b','#304c45');gearLens(c,17,-5.5,1.1,'#b2e1b4');
+      line(4,-3.5,4,-5,'#667875',1);line(12,-3.5,12,-5,'#667875',1);line(25,2,22,8,'#637671',1);line(25,2,29,8,'#637671',1);
+    }
+    if(lmg){for(var q=0;q<5;q++)box(15+q*1.6,-2,1,1.6,'#18282e','#18282e',.2);line(0,-4,2,-7,'#7e8c80',1.1);line(2,-7,8,-7,'#7e8c80',1.1);line(8,-7,10,-4,'#7e8c80',1.1);line(24,2,20,9,'#75877b',1);line(24,2,28,9,'#75877b',1);}
+    line(0,3,5,4,'#83908b',.7);line(5,4,4,6,'#83908b',.7);
+  }
+}
+function paintRobotDog(c,phase){
+  // Four articulated legs surround an armoured spine; nose points upward like other drone icons.
+  for(var side=-1;side<=1;side+=2)for(var leg=0;leg<2;leg++){
+    var ly=leg?10:-10,swing=Math.sin(phase*.35+leg*Math.PI+(side<0?Math.PI:0))*4;
+    gearLine(c,side*7,ly,side*14,ly+4+swing,'#858c77',4);
+    gearLine(c,side*14,ly+4+swing,side*12,ly+10+swing,'#3c4840',3);
+    gearBox(c,side*12-3,ly+8+swing,6,5,'#242e2a','#111c18',1);
+    c.fillStyle='#b0b39a';c.beginPath();c.arc(side*14,ly+4+swing,2,0,6.3);c.fill();
+    // Polished actuator rods, joint bolts and ribbed rubber feet.
+    gearLine(c,side*9,ly+1,side*13,ly+4+swing,'#d0d3bd',1);
+    c.fillStyle='#28392d';c.beginPath();c.arc(side*14,ly+4+swing,.8,0,6.3);c.fill();
+    for(var tread=0;tread<3;tread++)gearLine(c,side*12-2,ly+9+swing+tread,side*12+2,ly+9+swing+tread,'#536054',.65);
+
+  }
+  gearBox(c,-8,-16,16,33,'#6e795e','#25362c',3);
+  gearBox(c,-6,-12,12,24,'#959d80','#46543e',2);
+  for(var vent=0;vent<4;vent++)gearLine(c,-4,7+vent*2,4,7+vent*2,'#3b493c',1);
+  gearBox(c,-6,-23,12,10,'#454f43','#202d26',3);gearLens(c,0,-21,2.5,'#80c9d0');
+  gearBox(c,-5,-5,10,12,'#303b32','#192820',2);
+  gearBox(c,1,-25,3,23,'#333e36','#18251e',1);
+  gearBox(c,-8,-3,5,9,'#aca177','#3e4736',1);
+  gearLine(c,6,10,10,21,'#303b32',1.5);
+  // Layered cheek armour and paired optical sensors.
+  gearPoly(c,[[-7,-21],[-10,-17],[-8,-11],[-5,-13]],'#858e71');
+  gearPoly(c,[[7,-21],[10,-17],[8,-11],[5,-13]],'#59694e');
+  gearLens(c,-3,-21,1.4,'#94bec0');gearLens(c,3,-21,1.4,'#bc7052');
+  gearLine(c,-4,-24,4,-24,'#c5c9b3',.8);
+  for(var bolt=0;bolt<4;bolt++){
+    c.fillStyle='#c6c9af';c.fillRect(bolt%2?5:-6,bolt<2?-11:12,1.2,1.2);
+  }
+  // Gun cooling jacket, muzzle brake, feed belt and battery latch.
+  gearBox(c,.5,-29,4,5,'#56645a','#18291f',.6);
+  for(var hole=0;hole<5;hole++){c.fillStyle='#111e18';c.fillRect(1.5,-22+hole*2.5,1,1.2);}
+  for(var link=0;link<4;link++)gearLine(c,-7+link*2,1,-7+link*2,4,'#b4a574',1.3);
+  gearBox(c,-4,15,8,3,'#3b4a39','#223023',.6);
+  gearLine(c,-5,-9,-3,-7,'#c4c7ad',.7);gearLine(c,4,9,6,7,'#bfc3a8',.6);
+  c.fillStyle='#d4c999';c.font='bold 3px monospace';c.fillText('K9',-5,11);
+
+}
+function paintFPV(c,spin){
+  var motors=[[-11,-5],[11,-5],[-8,10],[8,10]];
+  motors.forEach(function(p,i){
+    gearLine(c,0,i<2?-2:5,p[0],p[1],'#15191d',3.8);
+    gearLine(c,0,i<2?-2:5,p[0],p[1],'#778082',1);
+    c.save();c.translate(p[0],p[1]);c.rotate((spin||0)+i*.9);
+    c.fillStyle=i<2?'#b4b49a':'#6c775b';
+    for(var blade=0;blade<3;blade++){c.rotate(2.094);c.beginPath();c.ellipse(2,0,2.7,.85,0,0,6.3);c.fill();}
+    c.restore();c.fillStyle='#242b2e';c.beginPath();c.arc(p[0],p[1],1.4,0,6.3);c.fill();
+  });
+  gearPoly(c,[[-4,-8],[4,-8],[5,4],[3,11],[-3,11],[-5,4]],'#3b4534');
+  gearBox(c,-3,-3,6,11,'#a99d79','#5c644a',1.2);
+  gearLine(c,-4,0,4,0,'#1b2023',2);gearLine(c,-4,5,4,5,'#1b2023',2);
+  gearBox(c,-4,-10,8,6,'#949d9d','#303a40',1.5);gearLens(c,0,-8,2.6,'#a0ddd6');
+  gearLine(c,2,8,5,14,'#9caaa4',1);gearLine(c,2,14,8,14,'#242a2e',2);
+  gearPoly(c,[[-2,7],[2,7],[2,12],[0,14],[-2,12]],'#867b5d');
+  c.fillStyle='#ded9c5';c.fillRect(-2,-2,1,2);c.fillStyle='#b76a4c';c.fillRect(1,-2,1,2);
+}
+function paintMilitaryDrone(c,kind,spin){
+  if(kind==='dog'){paintRobotDog(c,spin);return;}
+  if(kind==='drone'){paintFPV(c,spin);return;}
+  if(kind==='usv'){
+    gearPoly(c,[[0,-16],[6,-7],[7,12],[-7,12],[-6,-7]],'#303b38');
+    gearPoly(c,[[0,-12],[4,-6],[4,9],[-4,9],[-4,-6]],'#7e846d');
+    gearPoly(c,[[-4,-5],[4,-8],[4,-3],[-4,1]],'#333932');
+    gearPoly(c,[[-4,3],[4,0],[4,6],[-4,8]],'#b5ad8a');
+    gearBox(c,-3,-2,6,7,'#626e60','#2a342d',1);gearLens(c,0,-2,1.6,'#98bbb3');
+    gearLine(c,1,4,3,11,'#232b28',1);gearLine(c,-5,10,-5,14,'#181d1b',2);gearLine(c,5,10,5,14,'#181d1b',2);
+    gearLine(c,-3,-9,3,-9,'#d3cba7',1);return;
+  }
+  var heavy=kind==='droneL',motors=heavy?[[-10,-10],[10,-10],[-12,0],[12,0],[-10,10],[10,10]]:[[-8,-7],[8,-7],[-8,8],[8,8]];
+  motors.forEach(function(p,i){
+    gearLine(c,0,0,p[0],p[1],'#202720',heavy?3.6:2.8);gearLine(c,0,-.5,p[0],p[1]-.5,'#858b71',1);
+    if(!heavy){c.strokeStyle='#6f7d60';c.lineWidth=1.6;c.beginPath();c.arc(p[0],p[1],4.7,0,6.3);c.stroke();}
+    c.save();c.translate(p[0],p[1]);c.rotate((spin||0)+i*.8);c.fillStyle=heavy?'#b6ae92':'#a3ac92';
+    c.beginPath();c.ellipse(0,0,4,.9,0,0,6.3);c.fill();c.rotate(1.57);c.beginPath();c.ellipse(0,0,3.6,.7,0,0,6.3);c.fill();c.restore();
+    c.fillStyle='#222a23';c.beginPath();c.arc(p[0],p[1],1.2,0,6.3);c.fill();
+  });
+  gearBox(c,heavy?-6:-4,-8,heavy?12:8,16,heavy?'#9a9274':'#7c8a67','#39432f',2);
+  gearPoly(c,[[-3,-7],[2,-7],[3,-3],[-2,-1]],'#c3bea0');gearPoly(c,[[-3,1],[4,-1],[3,5],[-3,4]],'#3b4735');
+  if(heavy){
+    gearBox(c,-5,-5,4,7,'#626b56','#2d3429',.6);gearBox(c,1,-5,4,7,'#626b56','#2d3429',.6);
+    gearBox(c,-4,3,8,10,'#b4a17a','#645537',1);gearLine(c,-4,6,4,6,'#373c30',2);gearLine(c,-7,4,-7,13,'#7e8778',1.3);gearLine(c,7,4,7,13,'#7e8778',1.3);
+  }else{gearBox(c,-3,-11,6,5,'#4e5b48','#252f25',1);gearLine(c,2,5,5,13,'#444e3c',1);}
+  gearLens(c,0,-8,heavy?1.8:2.5,'#91b7b0');
+}
+function ring(x,y,r,col,w){c.strokeStyle=col;c.lineWidth=w||1;c.beginPath();c.arc(x,y,r,0,6.3);c.stroke();}
+function paintTool(c,k){
+  if(k==='god'){
+    gearBox(c,-12,-14,24,28,'#182c3a','#ffd700',3);
+    c.save();rrect(c,-11,-13,22,26,2);c.clip();c.scale(1.45,1.45);
+    // Use the exact head and shoulders of the playable veteran, not a separate icon face.
+    drawUnit(c,0,32,Math.PI/2,VEHICLE_SENTRY_KIT.col,VEHICLE_SENTRY_KIT.band,0,0,null,null,true,false,false,417,0,null,false,VEHICLE_SENTRY_KIT);
+    c.restore();return;
+  }
+
+  if(k==='dog'){paintRobotDog(c,0);return;}
+  if(k==='drone'||k==='droneS'||k==='droneL'||k==='usv'){paintMilitaryDrone(c,k,0);return;}
+  function box(x,y,w,h,t,b,r){gearBox(c,x,y,w,h,t,b,r);}
+  function line(x,y,xx,yy,col,w){gearLine(c,x,y,xx,yy,col,w);}
+  function ring(x,y,r,col,w){c.strokeStyle=col;c.lineWidth=w||1;c.beginPath();c.arc(x,y,r,0,6.3);c.stroke();}
+  if(k==='drone'||k==='droneS'||k==='droneL'){
+    var scout=k==='droneS',heavy=k==='droneL';
+    // Distinct silhouettes: guarded camera quad, exposed racing X, six-rotor heavy lift.
+    var motors=scout?[[-7,-7],[7,-7],[-7,7],[7,7]]:
+      heavy?[[-10,-9],[10,-9],[-12,0],[12,0],[-10,9],[10,9]]:
+      [[-10,-10],[10,-10],[-10,10],[10,10]];
+    motors.forEach(function(p,i){
+      line(0,0,p[0],p[1],'#142328',heavy?3.4:2.5);
+      line(0,-.5,p[0],p[1]-.5,scout?'#a9d9cf':heavy?'#8298aa':'#b48953',1);
+      if(scout){ring(p[0],p[1],5,'#a4d1c7',1.7);ring(p[0],p[1],3.8,'#233e40',.8);}
+      c.save();c.translate(p[0],p[1]);c.rotate(i*.8+.4);
+      c.fillStyle=heavy?'#d0d9d5':scout?'#d7eee0':'#eab65e';
+      c.beginPath();c.ellipse(0,0,scout?3.3:4.1,.95,0,0,6.3);c.fill();
+      if(!scout){c.rotate(2.1);c.beginPath();c.ellipse(0,0,4.1,.85,0,0,6.3);c.fill();}
+      c.restore();ring(p[0],p[1],1.1,'#14252b',1.2);
+    });
+    if(scout){
+      box(-4,-6,8,12,'#c6e0d6','#547b76',3);
+      box(-2.5,-4,5,5,'#52766e','#294744',1);
+      box(-3,5,6,4,'#263e46','#10232d',1);
+      gearLens(c,0,7,2.4,'#7de6f5');line(-2,-3,2,-3,'#f0f5dc',1);
+    }else if(heavy){
+      box(-6,-8,12,16,'#829aad','#344c61',2);
+      box(-4,-6,3,7,'#c0c8b1','#596550',.8);box(1,-6,3,7,'#c0c8b1','#596550',.8);
+      box(-4,1,8,11,'#b29259','#604d2f',1.5);
+      line(-4,4,4,4,'#efd087',1.5);line(-4,8,4,8,'#efd087',1.5);
+      line(-7,5,-7,13,'#b3bdc5',1.6);line(7,5,7,13,'#b3bdc5',1.6);
+      gearLens(c,0,-7,1.6,'#85c6f1');
+    }else{
+      box(-3,-7,6,14,'#424944','#192b29',1);
+      box(-2,-5,4,8,'#c48247','#70452d',.6);
+      line(-3,-2,3,-2,'#eee0ad',1.5);
+      gearPoly(c,[[-2,3],[2,3],[3,9],[0,13],[-3,9]],'#b7563f');
+      line(3,-5,6,-13,'#bdc3b6',1);ring(6,-13,1.4,'#efb653',1);
+      box(-3,-9,6,4,'#273638','#111d22',1);gearLens(c,0,-7,1.8,'#8bdbf3');
+    }
+  }else if(k==='usv'){
+    gearPoly(c,[[0,-14],[7,-3],[8,11],[-8,11],[-7,-3]],'#354f5e');
+    gearPoly(c,[[0,-11],[4,-2],[5,9],[-5,9],[-4,-2]],'#80938f');
+    box(-3,-1,6,8,'#50686b','#233c44',1.5);box(-2,0,4,3,'#91b9be','#315563');
+    line(-6,5,-6,10,'#192e37',2);line(6,5,6,10,'#192e37',2);line(0,-1,0,-7,'#bac6b6',.8);
+    gearLens(c,0,-4,1.5,'#70ccdf');line(-3,10,3,10,'#d4b779',1.4);
+  }else if(k==='sentry'){
+    line(0,3,-10,12,'#8c9684',2);line(0,3,10,12,'#8c9684',2);line(0,3,0,13,'#596a60',2);
+    box(-2,-1,4,7,'#899887','#3c5149');box(-7,-7,14,9,'#ab9e6a','#545b3e',2);
+    box(-1,-14,3,10,'#829692','#2d4347');box(-2,-15,5,3,'#526c6d','#20383d');
+    gearLens(c,4,-4,1.5,'#e78963');box(-8,-4,4,7,'#7d8053','#414e34');line(-5,-6,2,-6,'#dad2a5',.8);
+  }else if(k==='strike'){
+    gearPoly(c,[[0,-14],[4,-7],[4,6],[0,10],[-4,6],[-4,-7]],'#b8b9a0');
+    gearPoly(c,[[0,-14],[4,-7],[-4,-7]],'#6b817c');
+    gearPoly(c,[[-3,3],[-9,11],[-3,9]],'#ac6145');gearPoly(c,[[3,3],[9,11],[3,9]],'#ac6145');
+    box(-4,-3,8,3,'#d6a95f','#a3713c',.3);line(-1,-6,-1,5,'#ecedcc',.7);ring(0,0,12,'rgba(205,108,73,.4)',.7);
+  }else if(k==='stim'){
+    c.rotate(.35);box(-3,-8,6,15,'#d5e5df','#749b99',1);box(-2,-2,4,8,'#7be9ae','#248e6a',.4);
+    box(-5,-10,10,2,'#a7c5b9','#657f78');line(0,7,0,14,'#dfeddf',1);
+    box(-1,-14,2,4,'#91b4a7','#638577');box(-4,-15,8,2,'#d3e0cc','#739084');
+    for(var q=0;q<4;q++)line(0,-6+q*2,2,-6+q*2,'#344c4c',.65);
+  }else if(k==='smoke'||k==='frag'||k==='incend'){
+    var frag=k==='frag',fire=k==='incend';
+    var tone=frag?'#92a36f':fire?'#c98659':'#b7bdb0';
+    box(-6,-5,12,17,tone,frag?'#3e5238':fire?'#804730':'#626f68',frag?4:2);
+    box(-3,-9,6,5,'#8b9b8c','#364b42',1);ring(3,-10,3,'#c8c8a7',.9);
+    gearPoly(c,[[-3,-9],[5,-9],[7,4],[5,5],[3,-6],[-3,-6]],'#596b60');
+    if(frag){for(var q=0;q<3;q++)line(-5,-1+q*4,5,-1+q*4,'#293e2b',.8);line(-1,-3,-1,10,'#304731',.8);}
+    else {box(-5,0,10,5,fire?'#edbd75':'#dce1ce',fire?'#ca8251':'#afbca9',.3);line(-3,2,3,2,'#56635a',.7);}
+    line(-4,-2,-4,7,'rgba(255,255,224,.35)',.8);
+    if(k==='smoke'){c.fillStyle='rgba(190,213,208,.28)';c.beginPath();c.arc(-6,-10,3,0,6.3);c.arc(-4,-14,2.5,0,6.3);c.fill();}
+  }else if(k==='emp'){
+    box(-10,-5,15,11,'#769398','#304b57',2);box(-8,-3,7,5,'#142e38','#142e38');
+    line(-7,0,-5,-1,'#93dcd9',1);line(-5,-1,-3,1,'#93dcd9',1);
+    box(4,-7,4,15,'#9dc2c0','#3d7785');line(-5,6,-7,12,'#6d8783',3);
+    for(var q=0;q<3;q++)line(5,-4+q*4,9,-4+q*4,'#c5e3d4',1);
+    c.strokeStyle='#89d6df';c.lineWidth=1;c.beginPath();c.arc(8,0,6,-.8,.8);c.stroke();c.beginPath();c.arc(8,0,9,-.7,.7);c.stroke();
+  }else if(k==='flamer'){
+    c.scale(.57,.8);c.translate(-5,0);paintGun(c,'flamer');
+  }else if(k==='med'){
+    box(-12,-7,24,18,'#9da487','#4e624f',3);box(-6,-11,12,4,'#748575','#354c40',1.5);
+    box(-9,-4,18,11,'#e2e1c7','#b3b9a1',1.5);c.fillStyle='#b8463d';c.fillRect(-1.5,-2,3,8);c.fillRect(-4,0.5,8,3);
+    box(-12,-4,3,12,'#7e8a6c','#44593f');box(9,-4,3,12,'#7e8a6c','#44593f');line(-8,8,8,8,'#c4c7a5',.7);
+  }else if(k==='plate'){
+    gearPoly(c,[[-6,-13],[6,-13],[11,-7],[10,9],[5,13],[-5,13],[-10,9],[-11,-7]],'#425c68');
+    gearPoly(c,[[-5,-10],[5,-10],[8,-5],[7,8],[0,11],[-7,8],[-8,-5]],'#829b9b');
+    line(-5,-7,5,-7,'#c3d2bb',.8);line(-6,7,6,7,'#364f56',1);
+    box(-4,-2,8,5,'#b7b998','#848e72',.4);line(-2,0,2,0,'#4b6058',.7);
+  }else if(k==='repair'){
+    // Centered field-repair case, with a clearly readable steel hammer.
+    box(-12,-7,24,18,'#776b4d','#303a30',2);
+    box(-6,-11,12,4,'#8d8262','#343c31',1);
+    box(-11,-6,22,4,'#a0936c','#504b37',1);
+    line(-8,5,8,5,'#484b39',1);
+    c.save();c.translate(-1,1);c.rotate(.55);
+    box(-1.5,-6,3,15,'#b39561','#59432a',.7);
+    box(-7,-9,14,5,'#bfc8c3','#455752',1);
+    line(-6,-8,6,-8,'#eef0df',.8);c.restore();
+    box(7,1,2,5,'#b4bab0','#4c574a',.5);
+  }else if(k==='ammo'||k==='loose'){
+    if(k==='ammo'){box(-12,-7,24,19,'#839263','#394e36',2);box(-13,-8,26,4,'#9ea675','#596746');box(-6,-12,12,4,'#829574','#334a3b');line(-10,4,10,4,'#c6b66c',2);box(-2,-4,4,5,'#a2aa82','#485e44');}
+    else {for(var q=0;q<3;q++){c.save();c.translate(-7+q*7,q%2*3);box(-2,-6,4,15,'#e6c878','#886231',.6);gearPoly(c,[[-2,-6],[0,-11],[2,-6]],'#b28a51');line(-1,-4,-1,7,'#f2e4a4',.7);c.restore();}}
+  }else if(k==='truckpad'){
+    box(-13,-4,18,12,'#849171','#3b503d',1.5);box(5,-6,9,14,'#a2ab85','#4d6250',2);box(7,-4,5,5,'#a2c8c3','#385c64');
+    box(-11,-8,14,4,'#687e70','#344f42');for(var q=0;q<2;q++){c.fillStyle='#1b282b';c.beginPath();c.arc(q?9:-8,9,3.4,0,6.3);c.fill();ring(q?9:-8,9,1.4,'#899b8c',1);}
+    line(-10,-2,1,-2,'#d0c391',.7);
+  }
+}
+function equipmentSprite(type,id){
+  var key=type+':'+id, cached=equipmentArtCache[key];if(cached)return cached;
+  var gun=type==='gun',b=gun?{x:-13,y:-13,w:50,h:31}:{x:-17,y:-17,w:34,h:34};
+  var canvas=document.createElement('canvas');canvas.width=b.w*4;canvas.height=b.h*4;
+  var c=canvas.getContext('2d');c.scale(4,4);c.translate(-b.x,-b.y);c.lineJoin='round';c.lineCap='round';
+  if(gun) paintGun(c,id);else paintTool(c,id);
+  cached={canvas:canvas,x:b.x,y:b.y,w:b.w,h:b.h};equipmentArtCache[key]=cached;return cached;
+}
+function drawGun(c,id,x,y){
+  if(!id)return;var a=equipmentSprite('gun',id);c.drawImage(a.canvas,x+a.x,y+a.y,a.w,a.h);
+}
+function drawUnit(c,x,y,ang,col,band,walk,amt,kind,gun,dark,noHead,rus,seed,recoil,workPose,playerGait,appearance){
+  var unitSkin=rus?'#ae7b56':SKIN,unitSkinShade=rus?'#8e5e40':SKIN2;
+  var kit=appearance||(workPose?PKITS[workPose.scout?2:3]:PK);
+  seed=seed||7;
+  recoil=recoil||0;
+  var PAL=rus?EMR:kit.pal;
+  if(mapKind==='airfield'&&appearance!==VEHICLE_SENTRY_KIT){
+    col=rus?'#d0d8d7':'#e2e8e4';
+    PAL=['#edf1eb','#c2cfce','#94a5aa','#dce4df'];
+    kit=Object.assign({},kit,{rig:'#909f9b',mask:true,scarf:true,gog:true});
+  }
+  var mir = Math.cos(ang)<0 ? -1 : 1;
+  var facing = Math.sin(ang);
+  var front = facing > -0.30, back = facing < -0.55;
+  var bulk = kind==='elite'?1.3:(kind==='heavy'?1.16:(kind==='rusher'?.9:1));
+  var ph=walk;
+  var bob=-(1-Math.cos(ph*2))*.3*amt;
+  var gAng=Math.atan2(Math.sin(ang)*.5,Math.cos(ang));
+  var kick=recoil*5.5;
+  var sx=mir*3, sy=-22+bob, hx=Math.cos(gAng)*(12.5-kick), hy=-20+Math.sin(gAng)*(7.5-kick*.55)+bob;
+  // Match the hands to the weapon's rotated, upright local coordinates.
+  var supportX=gun==='pistol'?1:12,supportY=gun==='pistol'?4:2.5;
+  var gripX=hx+.92*(Math.cos(gAng)*supportX-Math.sin(gAng)*supportY*mir);
+  var gripY=hy+.92*(Math.sin(gAng)*supportX+Math.cos(gAng)*supportY*mir);
+
+  c.save(); c.translate(x,y); c.scale(bulk,bulk);
+  if(!dark){ c.fillStyle='rgba(0,0,0,.34)'; c.beginPath(); c.ellipse(0,1,11.5,5,0,0,6.3); c.fill(); }
+
+  c.save(); c.scale(mir,1);
+  c.translate(Math.sin(ph)*.25*amt,0);
+  c.rotate(Math.sin(ph)*amt*.006);
+
+  // Blend into a profile stride when moving left/right; retain the vertical gait.
+  var sideGait=Math.pow(Math.abs(Math.cos(ang)),2);
+  drawWalkingLeg(c,-3.8,ph+Math.PI,amt,col,seed+3,PAL,sideGait,true);
+  drawWalkingLeg(c,3.8,ph,amt,col,seed+9,PAL,sideGait,false);
+
+  c.translate(0,bob);
+
+  // ---- torso
+  c.fillStyle=col; rrect(c,-7.6,-25,15.2,14.5,5); c.fill();
+  c.save(); rrect(c,-7.6,-25,15.2,14.5,5); c.clip(); camoFleck(c,seed,-8,-25.5,15,14,15,PAL); c.restore();
+  rrect(c,-7.6,-25,15.2,14.5,5); outl(c,'#15130e',2);
+  if(rus){
+    var blackOps=col==='#171a1d'||col==='#252a31';
+    c.fillStyle=mapKind==='airfield'?'#9ba9a4':blackOps?'#20252a':'#a8955f'; rrect(c,-5.6,-23.4,11.2,11,3); c.fill(); outl(c,'#15130e',1.4);   // tactical rig
+    c.fillStyle=blackOps?'#111519':'#8b7a4c'; rrect(c,-4.4,-22.4,3.6,4.4,1.2); c.fill(); rrect(c,-.2,-22.4,3.6,4.4,1.2); c.fill();
+    c.fillStyle=blackOps?'#2b3035':'#7a6b42'; rrect(c,-4.4,-16.8,7.8,3,1); c.fill();
+    if(kind==='rusher'){ // telnyashka showing at the collar
+      c.fillStyle='#e6eaf0'; rrect(c,-3,-25.6,7,3.4,1.2); c.fill();
+      c.fillStyle='#4f7fb5'; c.fillRect(-3,-25,7,.9); c.fillRect(-3,-23.6,7,.9);
+      outl(c,'#15130e',1);
+    }
+    c.fillStyle='#e8e6e0'; c.fillRect(-8.2,-22.6,3.4,1.5);   // national patch
+    c.fillStyle='#3a5fa0'; c.fillRect(-8.2,-21.1,3.4,1.5);
+    c.fillStyle='#b2312a'; c.fillRect(-8.2,-19.6,3.4,1.5);
+    c.fillStyle=band; rrect(c,-8.4,-16.4,3.6,4,1.4); c.fill(); outl(c,'#15130e',1);  // ID armband
+  } else {
+    c.fillStyle=kit.rig; rrect(c,-5.6,-23.4,11.2,11,3); c.fill(); outl(c,'#15130e',1.4);      // plate carrier
+    c.fillStyle=shade(kit.rig,.8); rrect(c,-4.4,-22.4,3.6,4.4,1.2); c.fill(); rrect(c,-.2,-22.4,3.6,4.4,1.2); c.fill();
+    c.fillStyle=shade(kit.rig,.68); rrect(c,-4.4,-16.8,7.8,3,1); c.fill();
+    if(kit.scarf){ c.fillStyle=shade(col,.72); rrect(c,-4,-26,9,3.6,1.4); c.fill(); outl(c,'#15130e',1); }
+    c.fillStyle=band; rrect(c,-8.4,-22.6,3.6,5,1.4); c.fill(); outl(c,'#15130e',1);            // armband
+    c.fillStyle='rgba(255,255,255,.55)'; c.fillRect(-8.4,-20.8,3.6,1);
+    // MOLLE webbing and buckles give the player carrier more readable detail.
+    c.strokeStyle='rgba(28,25,18,.55)'; c.lineWidth=.75;
+    for(var mw=0;mw<3;mw++){ c.beginPath(); c.moveTo(-4.4,-20.8+mw*2.5); c.lineTo(3.4,-20.8+mw*2.5); c.stroke(); }
+    c.fillStyle='#b9aa79'; c.fillRect(-1,-16.6,2,1.4);
+  }
+  c.fillStyle=shade(col,.6); rrect(c,-9.5,-23,3,9,2); c.fill(); outl(c,'#15130e',1.4); // pack strap
+
+  // ---- head
+  if(noHead){
+    c.fillStyle='rgba(126,16,12,.95)'; c.beginPath(); c.arc(1.2,-26,4.2,0,6.3); c.fill();
+    c.restore(); c.restore(); return;
+  }
+  var bodyKit=kit,bodyCol=col,bodyPAL=PAL;
   if(kit.operatorHead){kit=PKITS[3];col=kit.col;PAL=kit.pal;}
   if(kit.faceUp){
     // Open eyes remain visible below the helmet rim; no nose or mouth detail.
@@ -123,5 +529,59 @@ export function drawPortrait(canvas, selected) {
   if(kind==='sniper'){ c.fillStyle='rgba(60,150,190,.85)'; rrect(c,-3,-30.6,9,3,1.2); c.fill(); outl(c,'#15130e',1.2); }
   if(kind==='rusher'){ c.fillStyle=shade(band,.9); rrect(c,-4,-26.5,10,3,1.4); c.fill(); }
   }
+  c.restore();
+
+  kit=bodyKit;col=bodyCol;PAL=bodyPAL;
+
+  // Arms, weapon, and hands are only drawn when facing the player.
+  // When back-facing (moving north) they would incorrectly appear in front of the body.
+  if(workPose){
+    c.save();c.scale(mir,1);drawAssemblyArms(c,col,workPose);c.restore();
+  } else if(!back){
+    // ---- support arm reaches across the chest to the weapon's front grip
+    // Drawn here (above the torso) so the second arm cannot disappear behind the body.
+    if(!kit.hideSupportArm){
+    var ssx=-4.2, ssy=-22.2+bob, sax=gripX-ssx, say=gripY-ssy, sal=Math.hypot(sax,say);
+    c.save(); c.translate(ssx,ssy); c.rotate(Math.atan2(say,sax));
+    c.fillStyle=shade(col,.76); rrect(c,-1,-2.6,sal+1.2,5.2,2.6); c.fill(); outl(c,'#15130e',1.5);
+    c.fillStyle=rus?band:kit.band; rrect(c,1,-2.8,3.4,5.6,1); c.fill(); outl(c,'#15130e',.9);
+    c.restore();
+
+    // Weapon sling runs from the shoulder to the forward weapon mount.
+    c.strokeStyle='rgba(35,30,20,.72)'; c.lineWidth=1.25;
+    c.beginPath(); c.moveTo(-4.8,-24+bob); c.quadraticCurveTo(0,-15+bob,gripX,gripY+2); c.stroke();
+
+    }
+    // ---- gun arm + weapon, aimed in screen space (vertical foreshortened)
+    var ax=hx-sx, ay=hy-sy, al=Math.hypot(ax,ay);
+    c.save(); c.translate(sx,sy); c.rotate(Math.atan2(ay,ax));
+    c.fillStyle=shade(col,.9); rrect(c,-1,-2.7,al+2,5.4,2.7); c.fill(); outl(c,'#15130e',1.5);
+    c.restore();
+    c.save(); c.translate(hx,hy); c.rotate(gAng); c.scale(.92,.92*mir);
+    drawGun(c,gun,0,0);
+    // Trigger hand is drawn over the weapon so it remains readable.
+    c.fillStyle=unitSkinShade; c.beginPath(); c.arc(0,1.5,2.8,0,6.3); c.fill(); outl(c,'#15130e',1.4);
+    c.restore();
+
+    if(!kit.hideSupportArm){
+    // Support hand on the foregrip, also above the weapon: both hands stay visible.
+    c.fillStyle=unitSkinShade; c.beginPath(); c.arc(gripX,gripY,2.75,0,6.3); c.fill(); outl(c,'#15130e',1.4);
+    // Small glove cuffs help separate both hands from the sleeves and gun.
+    c.strokeStyle='#34382f'; c.lineWidth=1.35;
+    c.beginPath(); c.arc(gripX,gripY,3.1,.15,2.7); c.stroke();
+    }
+  }
+
+  c.restore();
+}
+export function drawPilotBody(canvas, selected) {
+  var kit=selected.id==='god'?VEHICLE_SENTRY_KIT:PKITS.find(k=>k.id===selected.id);
+  if(!kit)return;
+  var c=canvas.getContext('2d');if(!c)return;
+  var w=canvas.width,h=canvas.height,scale=Math.min(w/66,h/64);
+  c.clearRect(0,0,w,h);c.save();
+  c.fillStyle='#0f1828';c.fillRect(0,0,w,h);
+  c.translate(w/2-5*scale,h*.83);c.scale(scale,scale);
+  drawUnit(c,0,0,1.15,kit.col,kit.band,0,0,null,'rifle',false,false,false,selected.id==='god'?417:31,0,null,true,kit);
   c.restore();
 }
