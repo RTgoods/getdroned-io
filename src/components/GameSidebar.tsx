@@ -164,7 +164,7 @@ export function GameSidebar({ game, user, hasPurchased, isAdmin = false, complet
         <SideRow
           open={open}
           href={playing && onPilotSettings ? undefined : user ? '/profile' : '/auth/login'}
-          onClick={playing && onPilotSettings ? () => { setOpen(false); onPilotSettings() } : undefined}
+          onClick={playing && onPilotSettings ? () => { onPilotSettings() } : undefined}
           hover
           icon={
             <div style={{
