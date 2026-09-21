@@ -127,6 +127,7 @@ export function GameSidebar({ game, user, hasPurchased, isAdmin = false, complet
           top: 0, left: 0,
           zIndex: mobile ? 50 : 'auto',
           flexShrink: 0,
+          willChange: 'width',
         }}
       >
         {/* ── Header ───────────────────────────────────────── */}

@@ -182,7 +182,7 @@ export function GamePageClient({ game, solvedPreview = null }: { game: Game; sol
       onReset={reset}
       avatarUrl={avatarUrl}
     />
-    <div style={{ flex: 1, minWidth: 0, height: '100dvh', overflow: 'hidden', position: 'relative' }}>
+    <div style={{ flex: 1, minWidth: 0, height: '100dvh', overflow: 'hidden', position: 'relative', isolation: 'isolate' }}>
       {playing && user && (allowed || isAdmin || launch.level === 1) ? (
         <iframe
           key={launch.version}
