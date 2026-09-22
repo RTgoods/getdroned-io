@@ -1,10 +1,13 @@
 import { AdminSignups } from '@/components/AdminSignups'
 import { AdminRecToggle } from '@/components/AdminRecToggle'
+import { GameSidebar } from '@/components/GameSidebar'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { isGameAdmin } from '@/lib/game-access'
+import { isGameAdmin, gameAccess } from '@/lib/game-access'
+import { STATIC_GAMES } from '@/lib/games-catalog'
 import type { Game } from '@/types/database'
+import type { User } from '@supabase/supabase-js'
 
 export const dynamic = 'force-dynamic'
 
@@ -32,8 +35,12 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
   if (!user) redirect('/auth/login?redirect=/admin')
   if (!isGameAdmin(user)) redirect('/')
 
-  const { data: rawGame } = await db.from('games').select('rec_enabled').eq('slug', 'get-droned').single()
+  const [{ data: rawGame }, access] = await Promise.all([
+    db.from('games').select('rec_enabled').eq('slug', 'get-droned').single(),
+    gameAccess(db, user),
+  ])
   const recEnabled = (rawGame as Pick<Game, 'rec_enabled'> | null)?.rec_enabled ?? false
+  const game = STATIC_GAMES.find(g => g.slug === 'get-droned')!
 
   const SECTORS = [
     'Franks and Hammers', 'The Trenches', 'The Black Sea',
@@ -41,15 +48,14 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
   ]
 
   return (
-    <main style={{ minHeight: '100vh', background: UA.bg, color: UA.text, padding: '32px 16px' }}>
+    <div style={{ display: 'flex', height: '100dvh', overflow: 'hidden', background: UA.bg }}>
+      <GameSidebar game={game} user={user as User} hasPurchased={access.allowed} isAdmin={true} />
+      <main style={{ flex: 1, minWidth: 0, height: '100dvh', overflowY: 'auto', color: UA.text, padding: '32px 16px' }}>
       <div style={{ maxWidth: 900, margin: '0 auto' }}>
 
         {/* Header */}
         <div style={{ marginBottom: 32 }}>
-          <Link href="/" style={{ fontSize: 9, fontWeight: 900, letterSpacing: '2px', color: UA.muted, textTransform: 'uppercase', textDecoration: 'none' }}>
-            ← BACK TO BASE
-          </Link>
-          <div style={{ marginTop: 20, display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <span style={{ display: 'inline-block', width: 12, height: 2, background: UA.yellow, borderRadius: 1 }} />
             <span style={{ fontSize: 8, fontWeight: 900, letterSpacing: '3px', color: UA.yellow, textTransform: 'uppercase' }}>COMMAND</span>
           </div>
@@ -265,6 +271,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
         <div style={{ marginTop: 48, height: 3, background: `linear-gradient(90deg, ${UA.blue} 0%, ${UA.blueMid} 100%)`, borderRadius: 2 }} />
         <div style={{ height: 3, background: `linear-gradient(90deg, ${UA.yellow} 0%, #f5c800 100%)`, borderRadius: 2 }} />
       </div>
-    </main>
+      </main>
+    </div>
   )
 }

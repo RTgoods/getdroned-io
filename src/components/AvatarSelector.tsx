@@ -33,7 +33,7 @@ const BASE_KITS: Kit[] = [
     pal:['#44484e','#2e3136','#53585f','#1f2226'], mask:true, gog:true },
 ]
 
-export const ALL_KITS: Kit[] = [...BASE_KITS, { id: 'god', label: 'GOD', col: '#b9b9a0', band: '#f2c744', pal: ['#dedbc5','#bfc4ad','#939c83','#c9c7b1'], bareHead: true, hair: '#d5b65f' }]
+export const ALL_KITS: Kit[] = [...BASE_KITS, { id: 'god', label: 'Nolan', col: '#b9b9a0', band: '#f2c744', pal: ['#dedbc5','#bfc4ad','#939c83','#c9c7b1'], bareHead: true, hair: '#d5b65f' }]
 
 /* ─── Selector component ─────────────────────────────────────────────────── */
 
