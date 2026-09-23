@@ -35,7 +35,7 @@ test('bridge and sea effects render finite geometry before and during collapse',
  const c=setup();c.cam={x:0,y:0};c.VW=c.WW;c.VH=c.WH;
  for(const name of ['drawSeaExpansion','drawSeagulls','gearBox','gearLine','gearPoly','outl','rrect'])vm.runInContext(functions[name],c);
  let depth=0;
- const canvas=new Proxy({save(){depth++;},restore(){depth--;assert(depth>=0);},createLinearGradient(){return {addColorStop(){}};}},{get(o,k){return k in o?o[k]:(...args)=>{for(const a of args)if(typeof a==='number')assert(Number.isFinite(a),k+' invalid coordinate');};},set(o,k,v){o[k]=v;return true;}});
+ const canvas=new Proxy({save(){depth++;},restore(){depth--;assert(depth>=0);},createLinearGradient(){return {addColorStop(offset,color){assert.equal(typeof color,'string','Canvas gradient stops require color strings');}};}},{get(o,k){return k in o?o[k]:(...args)=>{for(const a of args)if(typeof a==='number')assert(Number.isFinite(a),k+' invalid coordinate');};},set(o,k,v){o[k]=v;return true;}});
  c.drawSeaExpansion(canvas);c.drawSeagulls(canvas);c.seaBridge.dead=true;c.seaBridge.fall=5;c.seaWrecks=[{x:1000,y:900,a:1,len:200,wid:80,t:4}];c.seaSharks=[{x:1000,y:900,a:1,t:4}];c.drawSeaExpansion(canvas);assert.equal(depth,0);
 });
 

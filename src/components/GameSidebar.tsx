@@ -402,7 +402,7 @@ function LevelRow({ sector, unlocked, done, stat, open, expanded, onToggle, onPl
         onClick={open ? onToggle : (unlocked ? onPlay : undefined)}
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
-        title={sector.num === 1 && !hasUser ? 'Play Sector 1 free — sign in to start' : !unlocked ? (hasPurchased ? `Complete Sector ${sector.num - 1} to unlock Sector ${sector.num}` : `Buy to unlock Sector ${sector.num}`) : done ? `Sector ${sector.num} complete` : `Sector ${sector.num} — ${sector.name}`}
+        title={sector.num === 1 && !hasUser ? 'Play Sector 1 free — sign in to start' : !unlocked ? (hasUser && !prevDone ? `Complete Sector ${sector.num - 1} to unlock Sector ${sector.num}` : `Buy to unlock Sector ${sector.num}`) : done ? `Sector ${sector.num} complete` : `Sector ${sector.num} — ${sector.name}`}
         style={{
           width: '100%', display: 'flex', alignItems: 'center',
           gap: open ? 10 : 0, padding: open ? '7px 12px' : '7px 0',
@@ -547,6 +547,20 @@ function LevelRow({ sector, unlocked, done, stat, open, expanded, onToggle, onPl
             >
               {sector.num === 1 ? (hasUser && hasPurchased ? 'PLAY' : '▶ PLAY SECTOR 1 FREE') : done ? '↺ REPLAY' : '▶ PLAY'}
             </button>
+          ) : hasUser && !prevDone ? (
+            <button
+              type="button"
+              disabled
+              title={`Complete Sector ${sector.num - 1} to unlock Sector ${sector.num}`}
+              style={{
+                marginTop: 4, width: '100%', padding: '9px 8px', borderRadius: 3,
+                background: UA.blueDim, border: `1px solid ${UA.blueMid}`,
+                color: UA.yellow, fontSize: 8, fontWeight: 900, letterSpacing: '1px',
+                lineHeight: 1.5, textAlign: 'center', cursor: 'not-allowed',
+              }}
+            >
+              COMPLETE SECTOR {sector.num - 1} TO UNLOCK
+            </button>
           ) : !hasPurchased ? (
             <a
               href={hasUser ? '#unlock' : '/auth/login'}
@@ -566,16 +580,6 @@ function LevelRow({ sector, unlocked, done, stat, open, expanded, onToggle, onPl
             >
               Unlock all Sectors
             </a>
-          ) : !prevDone ? (
-            /* Purchased but previous sector not yet complete */
-            <div style={{
-              marginTop: 4, padding: '5px 8px', borderRadius: 3, textAlign: 'center',
-              background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)',
-            }}>
-              <span style={{ fontSize: 7, fontWeight: 900, letterSpacing: '1.5px', color: UA.textDim, textTransform: 'uppercase' }}>
-                COMPLETE SECTOR {sector.num - 1} TO UNLOCK
-              </span>
-            </div>
           ) : null}
         </div>
       )}
