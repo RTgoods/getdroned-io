@@ -258,6 +258,14 @@ export function LoginForm() {
             >
               {loading ? 'LOADING…' : mode === 'login' ? 'SIGN IN' : mode === 'recovery' ? 'SEND RESET LINK' : 'CREATE ACCOUNT'}
             </button>
+            {mode === 'signup' && (
+              <p className="text-center text-[10px] leading-relaxed tracking-[0.5px]" style={{ color: '#6e7680' }}>
+                By creating an account you agree to our{' '}
+                <Link href="/terms" className="underline" style={{ color: '#8a95a0' }}>Terms</Link>
+                {' '}and{' '}
+                <Link href="/privacy" className="underline" style={{ color: '#8a95a0' }}>Privacy Policy</Link>.
+              </p>
+            )}
           </form>
 
           <div className="mt-6 pt-4 text-center" style={{ borderTop: '1px solid rgba(0,104,204,0.1)' }}>
@@ -277,7 +285,7 @@ export function LoginForm() {
         </div>
 
         <p className="mt-4 text-center text-[11px] tracking-[1.5px] uppercase" style={{ color: '#a9b9cb' }}>
-          100% of proceeds go to Ukraine relief
+          A portion of every payment supports Ukraine relief
         </p>
       </div>
     </div>

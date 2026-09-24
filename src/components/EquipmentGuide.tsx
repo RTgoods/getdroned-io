@@ -32,10 +32,19 @@ const weapons = [
   ['railgun', 'Railgun', 'Rail weapon · 3 shots', 'A piercing beam that cuts through terrain and kills every enemy in its path. Three shots, no reserve ammo.'],
 ]
 
+// Quartermaster prices from game.js SHOP. Unpriced equipment is found, not sold.
+const equipmentCost: Record<string, number> = {
+  pistol: 0, med: 90, plate: 120, repair: 130, stim: 150, droneS: 160,
+  emp: 190, fullArmour: 250, drone: 250, sentry: 260, flamer: 280,
+  strike: 320, reinforcements: 350, usv: 360, droneL: 420, railgun: 600,
+}
+
 export function EquipmentGuide() {
   const { t } = useSiteLanguage()
   const [view, setView] = useState<'tools' | 'weapons'>('tools')
-  const entries = (view === 'tools' ? tools : weapons).map(([id,name,role,description]) => [id,t(name),t(role),t(description)])
+  const entries = (view === 'tools' ? tools : weapons).slice()
+    .sort((a, b) => (equipmentCost[a[0]] ?? 0) - (equipmentCost[b[0]] ?? 0))
+    .map(([id,name,role,description]) => [id,t(name),t(role),t(description)])
   return <section className="py-7 sm:py-10 border-b border-white/10" aria-labelledby="equipment-title">
     <div className="flex items-center gap-3 mb-3"><span className="h-px w-8 bg-[#0057b7]" /><p className="text-[9px] font-black tracking-[3px] uppercase text-[#ffd700]">{t("Field guide")}</p></div>
     <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-5">
@@ -52,7 +61,9 @@ export function EquipmentGuide() {
           {/* The adjacent title identifies the illustration. */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={id === 'fullArmour' ? '/equipment/fullArmour.svg' : id === 'reinforcements' ? '/equipment/reinforcements.png?v=1' : `/equipment/${id}.png?v=4`} alt="" loading="lazy" width={400} height={240} className="w-full h-full object-contain px-6 py-2" />
-          <span className="absolute bottom-3 right-3 w-5 h-0.5 bg-[#ffd700]" />
+          <span className="absolute bottom-2 right-3 rounded bg-[#09101f] px-2 py-1 text-[11px] font-bold text-[#ffd700]">
+            {id === 'pistol' ? t('Starting weapon') : equipmentCost[id] === undefined ? t('Pickup only') : `$${equipmentCost[id]}`}
+          </span>
         </div>
         <div className="p-4"><p className="text-[9px] font-bold uppercase tracking-widest text-[#79b9f1] mb-2">{role}</p><h3 className="font-black text-base text-[#f2ead2]">{name}</h3><p className="mt-2 text-sm leading-relaxed text-[#b0bdc6]">{description.split('. ')[0]}{description.includes('. ') ? '.' : ''}</p>
           {description.includes('. ') && <details className="mt-3 text-sm text-[#b0bdc6]"><summary className="cursor-pointer py-2 text-[#ffd700]">{t("How to use")}</summary><p className="mt-2 leading-relaxed">{description.split('. ').slice(1).join('. ')}</p></details>}</div>

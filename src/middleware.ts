@@ -1,9 +1,16 @@
 import { gameAccess, isGameAdmin } from './lib/game-access'
+import { middlewareLimiter, checkLimit } from './lib/rate-limit'
 import { createServerClient } from '@supabase/ssr'
 import type { CookieOptions } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function middleware(request: NextRequest) {
+  // Gate before any Supabase call — the costliest, most abusable step this middleware takes.
+  const forwardedFor = request.headers.get('x-forwarded-for')
+  const ip = forwardedFor ? forwardedFor.split(',')[0].trim() : request.headers.get('x-real-ip') || '127.0.0.1'
+  const { success } = await checkLimit(middlewareLimiter, ip)
+  if (!success) return new NextResponse('Too many requests', { status: 429 })
+
   let supabaseResponse = NextResponse.next({ request })
 
   const supabase = createServerClient(

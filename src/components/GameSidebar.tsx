@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { translate } from '../../public/get-droned/assets/js/language'
 import { createClient } from '@/lib/supabase/client'
 import { AvatarBadge } from './AvatarSelector'
+import { DonationAmountPicker } from './DonationAmountPicker'
 import type { Game } from '@/types/database'
 import type { User } from '@supabase/supabase-js'
 import type { SectorStat } from '@/app/api/progress/route'
@@ -89,7 +90,32 @@ export function GameSidebar({ game, user, hasPurchased, isAdmin = false, complet
   const [expandedSector, setExpandedSector] = useState<number | null>(null)
   const t = (text: string) => ukrainian ? translate(text) : text
   const supabase = createClient()
-  const price = `$${(game.price_cents / 100).toFixed(2)}`
+
+  const [picking, setPicking] = useState(false)
+  const [pickLoading, setPickLoading] = useState(false)
+  const [pickError, setPickError] = useState('')
+
+  const openPicker = () => {
+    if (!user) { window.location.href = '/auth/login'; return }
+    setPickError(''); setPicking(true)
+  }
+
+  const handlePickConfirm = async (amountCents: number) => {
+    setPickLoading(true); setPickError('')
+    try {
+      const res = await fetch('/api/stripe/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ gameId: game.id, amountCents }),
+      })
+      if (!res.ok) throw new Error((await res.json()).error || 'Failed')
+      const { url } = await res.json()
+      if (url) window.location.href = url
+    } catch (err: unknown) {
+      setPickError(err instanceof Error ? err.message : 'Checkout failed')
+      setPickLoading(false)
+    }
+  }
 
   useEffect(() => {
     const isMob = window.innerWidth < 768
@@ -262,7 +288,6 @@ export function GameSidebar({ game, user, hasPurchased, isAdmin = false, complet
                 expanded={expandedSector === s.num}
                 onToggle={() => setExpandedSector(prev => prev === s.num ? null : s.num)}
                 onPlay={() => { if (unlocked) { if (mobile) setOpen(false); onPlay?.(s.num) } }}
-                price={price}
                 hasUser={!!user}
                 hasPurchased={hasPurchased}
                 prevDone={prevDone}
@@ -289,21 +314,21 @@ export function GameSidebar({ game, user, hasPurchased, isAdmin = false, complet
                 fontSize: 11, fontWeight: 900, letterSpacing: '2px',
                 color: UA.yellow, textTransform: 'uppercase', marginBottom: 4,
               }}>
-                UNLOCK ALL SECTORS
+                {t('UNLOCK ALL SECTORS')}
               </div>
               <div style={{ fontSize: 11, color: UA.textMuted, marginBottom: 8, lineHeight: 1.5 }}>
-                ${(game.price_cents / 100).toFixed(2)} · One-Time · 100% To Ukraine
+                {t('Pay what you want · $2 min · One-Time')}
               </div>
-              <a id="sidebar-unlock-btn" href="/auth/login" style={{
+              <button id="sidebar-unlock-btn" type="button" onClick={openPicker} style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 gap: 6, textAlign: 'center', fontSize: 11, fontWeight: 900,
-                letterSpacing: '2px', textTransform: 'uppercase', textDecoration: 'none',
-                padding: '6px 0', borderRadius: 3,
+                letterSpacing: '2px', textTransform: 'uppercase',
+                padding: '6px 0', borderRadius: 3, width: '100%',
                 background: `linear-gradient(180deg, ${UA.yellow} 0%, #c8a000 100%)`,
-                color: '#0a1000',
+                color: '#0a1000', border: 'none', cursor: 'pointer',
               }}>
-                Unlock all Sectors
-              </a>
+                {t('Unlock all Sectors')}
+              </button>
             </div>
           )}
         </div>
@@ -404,6 +429,15 @@ export function GameSidebar({ game, user, hasPurchased, isAdmin = false, complet
           <span style={{ width: 15, height: 1.5, background: UA.yellow, display: 'block', borderRadius: 1 }} />
         </button>
       )}
+
+      {picking && (
+        <DonationAmountPicker
+          loading={pickLoading}
+          error={pickError}
+          onConfirm={handlePickConfirm}
+          onCancel={() => { if (!pickLoading) setPicking(false) }}
+        />
+      )}
     </>
   )
 }
@@ -429,7 +463,6 @@ interface LevelRowProps {
   expanded: boolean
   onToggle: () => void
   onPlay: () => void
-  price: string
   hasUser: boolean
   hasPurchased: boolean
   prevDone: boolean
@@ -438,7 +471,7 @@ interface LevelRowProps {
 
 function fmtTime(s: number) { const m = Math.floor(s / 60); return m > 0 ? `${m}m ${s % 60}s` : `${s}s` }
 
-function LevelRow({ ukrainian, sector, unlocked, done, stat, open, expanded, onToggle, onPlay, price, hasUser, hasPurchased, prevDone, liveCompleted }: LevelRowProps) {
+function LevelRow({ ukrainian, sector, unlocked, done, stat, open, expanded, onToggle, onPlay, hasUser, hasPurchased, prevDone, liveCompleted }: LevelRowProps) {
   const [hovered, setHovered] = useState(false)
   const t = (text: string) => ukrainian ? translate(text) : text
   const objectives = OBJECTIVES[sector.num] ?? []

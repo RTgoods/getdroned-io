@@ -2,6 +2,7 @@ import { gameAccess } from '@/lib/game-access'
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createSupabase } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/server'
+import { progressLimiter, checkLimit } from '@/lib/rate-limit'
 
 function safeUrl(v: string | undefined) {
   if (!v) return 'https://placeholder.supabase.co'
@@ -29,6 +30,8 @@ export async function GET(req: NextRequest) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { success } = await checkLimit(progressLimiter, user.id)
+  if (!success) return NextResponse.json({ error: 'Too many requests' }, { status: 429 })
   const access = await gameAccess(supabase, user)
 
 
@@ -60,6 +63,8 @@ export async function POST(req: NextRequest) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { success } = await checkLimit(progressLimiter, user.id)
+  if (!success) return NextResponse.json({ error: 'Too many requests' }, { status: 429 })
   const access = await gameAccess(supabase, user)
 
 
@@ -138,6 +143,8 @@ export async function DELETE(req: NextRequest) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { success } = await checkLimit(progressLimiter, user.id)
+  if (!success) return NextResponse.json({ error: 'Too many requests' }, { status: 429 })
   const access = await gameAccess(supabase, user)
   if (!access.allowed) return NextResponse.json({ error: 'Purchase required' }, { status: 403 })
 

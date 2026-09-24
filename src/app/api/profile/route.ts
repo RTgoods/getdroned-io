@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { profileLimiter, checkLimit } from '@/lib/rate-limit'
 import type { Database } from '@/types/database'
 
 type ProfileUpdate = Database['public']['Tables']['profiles']['Update']
@@ -14,6 +15,8 @@ export async function GET() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { success } = await checkLimit(profileLimiter, user.id)
+  if (!success) return NextResponse.json({ error: 'Too many requests' }, { status: 429 })
 
   const { data } = await supabase
     .from('profiles')
@@ -29,6 +32,8 @@ export async function PATCH(req: Request) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { success } = await checkLimit(profileLimiter, user.id)
+  if (!success) return NextResponse.json({ error: 'Too many requests' }, { status: 429 })
 
   let body: Record<string, unknown>
   try { body = await req.json() } catch { return NextResponse.json({ error: 'Bad JSON' }, { status: 400 }) }

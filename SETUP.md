@@ -66,6 +66,23 @@ Same pattern as Google — the login page already has a "Continue with Discord" 
 
 ---
 
+## 2d · Rate limiting (Upstash Redis)
+
+Without this configured, rate limiting is silently disabled (fails open — the site still works, it's just unprotected). It protects two things: the middleware's Supabase Auth check, which runs on nearly every page request including anonymous ones, and the app's own API routes (`/api/stripe/checkout`, `/api/access`, `/api/progress`, `/api/profile`).
+
+1. [console.upstash.com](https://console.upstash.com) → create a free account → **Create Database** (Redis, any region close to your Vercel deployment).
+2. On the database's page, under **REST API**, copy:
+   - **UPSTASH_REDIS_REST_URL**
+   - **UPSTASH_REDIS_REST_TOKEN**
+3. Add both to `.env.local` (and to Vercel env vars for production — see step 7 below).
+4. Confirm it's working: the `[rate-limit] ... rate limiting is disabled` warning should stop appearing in `npm run dev` / Vercel logs once both vars are set.
+
+Limits are defined in `src/lib/rate-limit.ts` — adjust there if legitimate traffic ever gets blocked (e.g. a shared office IP).
+
+> **Note:** this only rate-limits requests handled by this app's own server. Direct client-to-Supabase calls (e.g. `supabase.auth.signUp()` in the login form) bypass it entirely — for signup/login abuse specifically, enable Supabase's own CAPTCHA under **Authentication → Settings → Bot and Abuse Protection**.
+
+---
+
 ## 3 · Stripe
 
 1. Go to [dashboard.stripe.com](https://dashboard.stripe.com).
@@ -102,6 +119,10 @@ NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_...
 STRIPE_WEBHOOK_SECRET=whsec_...
 
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
+
+# Optional — see "2d · Rate limiting" above
+UPSTASH_REDIS_REST_URL=https://your-db.upstash.io
+UPSTASH_REDIS_REST_TOKEN=...
 ```
 
 ---
@@ -141,6 +162,8 @@ vercel env add STRIPE_SECRET_KEY
 vercel env add NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
 vercel env add STRIPE_WEBHOOK_SECRET
 vercel env add NEXT_PUBLIC_SITE_URL  # your https:// URL
+vercel env add UPSTASH_REDIS_REST_URL      # optional — see "2d · Rate limiting"
+vercel env add UPSTASH_REDIS_REST_TOKEN    # optional
 
 vercel --prod
 ```

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { stripe } from '@/lib/stripe'
+import { MIN_DONATION_CENTS, MAX_DONATION_CENTS } from '@/lib/donation'
+import { checkoutLimiter, checkLimit } from '@/lib/rate-limit'
 import type { Game } from '@/types/database'
 
 export async function POST(request: NextRequest) {
@@ -13,11 +15,17 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  const { success } = await checkLimit(checkoutLimiter, user.id)
+  if (!success) return NextResponse.json({ error: 'Too many requests, please slow down.' }, { status: 429 })
+
   const body = await request.json()
-  const { gameId } = body as { gameId: string }
+  const { gameId, amountCents } = body as { gameId: string; amountCents?: number }
 
   if (!gameId) {
     return NextResponse.json({ error: 'gameId is required' }, { status: 400 })
+  }
+  if (!Number.isInteger(amountCents) || amountCents! < MIN_DONATION_CENTS || amountCents! > MAX_DONATION_CENTS) {
+    return NextResponse.json({ error: `Enter an amount between $${(MIN_DONATION_CENTS / 100).toFixed(2)} and $${(MAX_DONATION_CENTS / 100).toFixed(0)}` }, { status: 400 })
   }
 
   // Fetch the game
@@ -65,11 +73,11 @@ export async function POST(request: NextRequest) {
           price_data: {
             currency: 'usd',
             product_data: {
-              name: game.title,
-              description: game.tagline ?? undefined,
+              name: `${game.title} — Full Access`,
+              description: 'Pay-what-you-want unlock. A portion supports Ukraine relief; the rest covers site running costs.',
               images: game.thumbnail_url ? [game.thumbnail_url] : [],
             },
-            unit_amount: game.price_cents,
+            unit_amount: amountCents,
           },
           quantity: 1,
         },

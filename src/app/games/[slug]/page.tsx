@@ -158,7 +158,7 @@ export default async function GamePage({ params }: Props) {
             <div>
               <div className="text-4xl font-black mb-1">{formatPrice(game.price_cents)}</div>
               {game.price_cents > 0 && (
-                <p className="text-xs text-slate-500">One-time purchase</p>
+                <p className="text-xs text-slate-500">Pay what you want, one time</p>
               )}
             </div>
 

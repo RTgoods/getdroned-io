@@ -1,10 +1,7 @@
 {
   "Slava Ukraini": "Слава Україні",
-  "Six sectors of aerial combat. 100% of every sale goes to Ukraine.": "Шість секторів повітряного бою. 100% з кожного продажу йде на допомогу Україні.",
-  "A fast-paced browser shooter with six escalating levels of drone warfare. Half of every purchase is donated to Ukraine relief.": "Динамічний браузерний шутер із шістьма дедалі складнішими рівнями дронового бою. Половина коштів з кожної покупки йде на допомогу Україні.",
-  "Take command of your craft and battle through six uniquely themed sectors of escalating drone combat. Face off against progressively tougher enemy formations and boss encounters, each with distinct attack patterns.": "Візьміть управління своїм апаратом і пройдіть шість унікальних секторів дедалі складнішого дронового бою. Протистійте все сильнішим ворожим формаціям та босам, кожен з яких має власну тактику атаки.",
-  "Built entirely in the browser — no downloads, no plugins. Responsive controls work on desktop, tablet, and mobile. Synthesized audio keeps the action immersive without any large audio files to load.": "Гра повністю працює в браузері — без завантажень і плагінів. Адаптивне керування працює на комп'ютері, планшеті та мобільному пристрої. Синтезований звук занурює в дію без важких аудіофайлів для завантаження.",
-  "100% of every purchase is donated directly to Ukraine.": "100% коштів із кожної покупки йде безпосередньо на допомогу Україні.",
+  "Six sectors of aerial combat. Pay what you want — a portion supports Ukraine relief.": "Шість секторів повітряного бою. Платіть скільки хочете — частина коштів йде на допомогу Україні.",
+  "Unlocking the full game is pay-what-you-want, $2 minimum. A portion of every payment supports Ukraine relief; the rest helps cover the cost of running this site.": "Розблокування повної гри — оплата на власний розсуд, мінімум $2. Частина кожного платежу йде на допомогу Україні; решта покриває витрати на утримання сайту.",
   "Checking your pilot profile…": "Перевіряємо профіль пілота…",
   "▶ REPLAY SECTOR 1": "▶ ПОВТОРИТИ СЕКТОР 1",
   "▶ CONTINUE · SECTOR": "▶ ПРОДОВЖИТИ · СЕКТОР",
@@ -14,7 +11,7 @@
   "SIGN IN · SECTOR 1 FREE": "УВІЙТИ · СЕКТОР 1 БЕЗКОШТОВНО",
   "Unlock all Sectors": "Відкрити всі сектори",
   "Redirecting…": "Перенаправлення…",
-  "100% of proceeds go to Ukraine relief · one-time payment. Complete each sector to unlock the next.": "100% коштів на допомогу Україні · одноразова оплата. Пройдіть кожен сектор, щоб відкрити наступний.",
+  "Pay what you want, $2 minimum · one-time payment. A portion supports Ukraine relief; the rest covers site running costs. Complete each sector to unlock the next.": "Платіть скільки хочете, мінімум $2 · одноразовий платіж. Частина коштів йде на допомогу Україні; решта покриває витрати на утримання сайту. Проходьте кожен сектор, щоб відкрити наступний.",
   "ABOUT THIS GAME": "ПРО ГРУ",
   "Sector Intel": "Розвіддані секторів",
   "Six sectors. Six battlefields.": "Шість секторів. Шість полів бою.",
@@ -87,12 +84,10 @@
   "Industrial assault": "Штурм промислової зони",
   "Winter operations": "Зимові операції",
   "City showdown": "Вирішальний бій у місті",
-  "Six sectors of aerial combat. 100% of every sale goes to Ukraine.": "Шість секторів повітряних боїв. 100% коштів від кожного продажу йдуть на допомогу Україні.",
   "Six sectors of aerial combat. No installs. No mercy.": "Шість секторів повітряних боїв. Без встановлення. Без пощади.",
   "A fast-paced browser shooter with six escalating levels of drone warfare.": "Динамічний браузерний шутер із шістьма дедалі складнішими рівнями війни дронів.",
   "Take command of your craft and battle through six uniquely themed sectors of escalating drone combat. Face off against progressively tougher enemy formations and boss encounters, each with distinct attack patterns.": "Керуйте бойовою технікою та пройдіть шість унікальних секторів війни дронів. На вас чекають дедалі сильніші ворожі загони й боси з власною тактикою атак.",
   "Built entirely in the browser — no downloads, no plugins. Responsive controls work on desktop, tablet, and mobile. Synthesized audio keeps the action immersive without any large audio files to load.": "Гра працює просто у браузері — без завантажень і плагінів. Керування адаптоване для комп’ютера, планшета й телефона. Синтезований звук створює атмосферу бою без завантаження великих аудіофайлів.",
-  "100% of every purchase is donated directly to Ukraine.": "100% коштів від кожної покупки передаються на допомогу Україні.",
   "Stored in your tool belt when purchased. Activate it to refill your armour to 100% of its current capacity, including the Heavy Plate upgrade. Kept if your armour is already full.": "Після покупки зберігається на поясі спорядження. Активуйте, щоб заповнити броню до 100% її поточної місткості, включно з поліпшенням важкої бронепластини. Не витрачається, якщо броня вже повна.",
   "Call five allied soldiers to nearby open ground for 15 seconds. They push toward enemies, fire rapid bursts and each carry two frags. They regroup loosely rather than following closely. Each has 80 health and can be killed. Buy it at the quartermaster, then activate it from your tool belt. Use multiple tools to deploy more squads at once; each squad has its own 15-second timer.": "Викличте п’ятьох союзних бійців на вільне місце поруч на 15 секунд. Вони наступають на ворогів, стріляють швидкими чергами та мають по дві гранати. Тримаються неподалік, але не йдуть за вами впритул. Кожен має 80 здоров’я та може загинути. Купіть засіб у квартирмейстера й активуйте з пояса. Можна викликати кілька загонів одночасно; кожен діє свої 15 секунд.",
   "A compact camera drone for scouting ahead, with a small blast when detonated.": "Компактний дрон із камерою для розвідки та невеликим вибуховим зарядом.",
@@ -121,5 +116,7 @@
   "Take the fight offshore. Pilot sea drones, board your gunboat and attack hostile ships while defending your coastal base. Destroy the Kerch road and rail bridge before confronting the sea boss.": "Перенесіть бій у море. Керуйте морськими дронами й катером, атакуйте ворожі кораблі та захищайте берегову базу. Зруйнуйте автомобільний і залізничний Керченський міст перед боєм із морським босом.",
   "Battle through an oil refinery complex packed with tanks, pipes and industrial cover. Watch for machine-gun towers that threaten both you and your drones. Destroy all six refineries and their six patrol tanks to draw out the boss.": "Бийтеся серед резервуарів, труб і промислових укриттів нафтопереробного комплексу. Кулеметні вежі загрожують вам і вашим дронам. Знищте всі шість об’єктів і шість патрульних танків, щоб викликати боса.",
   "Push across a snow-covered airfield in winter gear. Work around aircraft, icy open ground and snow-laden trees as you close in on the boss.": "Наступайте засніженим аеродромом у зимовому спорядженні. Маневруйте між літаками, відкритими крижаними ділянками та засніженими деревами на шляху до боса.",
-  "Fight through city streets beneath Red Square-inspired landmarks. Break through the final defenses and face the mounted boss.": "Бийтеся на міських вулицях серед споруд у стилі Красної площі. Прорвіть останню оборону та здолайте боса верхи на коні."
+  "Fight through city streets beneath Red Square-inspired landmarks. Break through the final defenses and face the mounted boss.": "Бийтеся на міських вулицях серед споруд у стилі Красної площі. Прорвіть останню оборону та здолайте боса верхи на коні.",
+  "Starting weapon": "Початкова зброя",
+  "Pickup only": "Лише як знахідка"
 }

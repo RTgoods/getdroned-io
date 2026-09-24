@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { DonationAmountPicker } from './DonationAmountPicker'
 import type { Game } from '@/types/database'
 
 interface Props {
@@ -11,22 +12,28 @@ interface Props {
 }
 
 export function BuyButton({ game, userId, hasPurchased }: Props) {
+  const [picking, setPicking] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const router = useRouter()
 
-  const handleBuy = async () => {
+  const openPicker = () => {
     if (!userId) {
       router.push(`/auth/login?redirect=/games/${game.slug}`)
       return
     }
+    setError('')
+    setPicking(true)
+  }
+
+  const handleConfirm = async (amountCents: number) => {
     setLoading(true)
     setError('')
     try {
       const res = await fetch('/api/stripe/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ gameId: game.id }),
+        body: JSON.stringify({ gameId: game.id, amountCents }),
       })
       if (!res.ok) throw new Error((await res.json()).error || 'Failed')
       const { url } = await res.json()
@@ -69,25 +76,29 @@ export function BuyButton({ game, userId, hasPurchased }: Props) {
   return (
     <div className="text-center">
       <button
-        onClick={handleBuy}
+        onClick={openPicker}
         disabled={loading}
         className="btn-primary"
         style={{ fontSize: 16, letterSpacing: '3px', padding: '16px 48px', opacity: loading ? 0.6 : 1 }}
       >
-        {loading
-          ? 'REDIRECTING…'
-          : !userId
-          ? `BUY · $${(game.price_cents / 100).toFixed(2)}`
-          : `BUY FOR $${(game.price_cents / 100).toFixed(2)}`}
+        {loading ? 'REDIRECTING…' : 'UNLOCK — PAY WHAT YOU WANT'}
       </button>
-      {error && (
+      {error && !picking && (
         <p className="mt-2 text-[10px] tracking-[2px]" style={{ color: '#e04b3c' }}>
           {error.toUpperCase()}
         </p>
       )}
       <p className="mt-3 text-[9px] tracking-[2.5px] uppercase" style={{ color: '#6e6a60' }}>
-        One-time purchase · Instant access · No installs
+        One-time payment · $2 minimum · Instant access · No installs
       </p>
+      {picking && (
+        <DonationAmountPicker
+          loading={loading}
+          error={error}
+          onConfirm={handleConfirm}
+          onCancel={() => { if (!loading) setPicking(false) }}
+        />
+      )}
     </div>
   )
 }

@@ -1,10 +1,11 @@
 import Link from 'next/link'
 import Image from 'next/image'
+import { MIN_DONATION_CENTS } from '@/lib/donation'
 import type { Game } from '@/types/database'
 
 export function formatPrice(cents: number): string {
   if (cents === 0) return 'Free'
-  return `$${(cents / 100).toFixed(2)}`
+  return `$${(MIN_DONATION_CENTS / 100).toFixed(0)}+`
 }
 
 export function GameCard({ game, owned }: { game: Game; owned?: boolean }) {

@@ -51,6 +51,7 @@ async function requestAs(user, paid, path, completed, failed) {
   const middlewareCode = ts.transpileModule(fs.readFileSync('src/middleware.ts', 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText
   new Function('exports', 'require', middlewareCode)(middlewareExports, name => {
     if (name === './lib/game-access') return exportsObject
+    if (name === './lib/rate-limit') return { middlewareLimiter: null, checkLimit: async () => ({ success: true }) }
     if (name === '@supabase/ssr') return { createServerClient: () => db }
     if (name === 'next/server') return { NextResponse }
     throw new Error('Unexpected import: ' + name)

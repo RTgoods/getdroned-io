@@ -3,6 +3,7 @@
 import { useSiteLanguage } from '@/lib/use-site-language'
 
 import { EquipmentGuide } from './EquipmentGuide'
+import { DonationAmountPicker } from './DonationAmountPicker'
 import { useState } from 'react'
 import type { Game } from '@/types/database'
 import type { User } from '@supabase/supabase-js'
@@ -35,20 +36,22 @@ interface Props {
 
 export function GameLanding({ game, user, hasPurchased, onPlay, continueLevel = 1, completedCount = 0, accessReady = true }: Props) {
   const { t } = useSiteLanguage()
-  const price = game.price_cents > 0
-    ? `$${(game.price_cents / 100).toFixed(2)}`
-    : 'FREE'
+  const [buyPicking, setBuyPicking] = useState(false)
   const [buyLoading, setBuyLoading] = useState(false)
   const [buyError, setBuyError] = useState('')
 
-  const handleBuy = async () => {
+  const openBuyPicker = () => {
     if (!user) { window.location.href = '/auth/login'; return }
+    setBuyError(''); setBuyPicking(true)
+  }
+
+  const handleBuyConfirm = async (amountCents: number) => {
     setBuyLoading(true); setBuyError('')
     try {
       const res = await fetch('/api/stripe/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ gameId: game.id }),
+        body: JSON.stringify({ gameId: game.id, amountCents }),
       })
       if (!res.ok) throw new Error((await res.json()).error || 'Failed')
       const { url } = await res.json()
@@ -142,7 +145,7 @@ export function GameLanding({ game, user, hasPurchased, onPlay, continueLevel = 
               </div>
               {/* ── UNLOCK: Full access — Ukraine yellow ── */}
               <button
-                onClick={handleBuy}
+                onClick={openBuyPicker}
                 disabled={buyLoading}
                 className="flex-1"
                 style={{
@@ -169,14 +172,23 @@ export function GameLanding({ game, user, hasPurchased, onPlay, continueLevel = 
                   fontSize: 12, fontWeight: 900, color: '#1a1000',
                   background: 'rgba(0,0,0,0.10)', borderRadius: 3,
                   padding: '2px 7px', letterSpacing: '0.5px', flexShrink: 0,
-                }}>{price}</span>
+                }}>{t('$2+')}</span>
               </button>
 
             </div>
-            <p style={{ margin: '6px 0 0', fontSize: 12, letterSpacing: '0.3px', lineHeight: 1.6, color: '#a9b9cb', textTransform: 'uppercase' }}>{t("100% of proceeds go to Ukraine relief · one-time payment. Complete each sector to unlock the next.")}</p></>
+            <p style={{ margin: '6px 0 0', fontSize: 12, letterSpacing: '0.3px', lineHeight: 1.6, color: '#a9b9cb', textTransform: 'uppercase' }}>{t("Pay what you want, $2 minimum · one-time payment. A portion supports Ukraine relief; the rest covers site running costs. Complete each sector to unlock the next.")}</p></>
           )}
 
-          {buyError && (
+          {buyPicking && (
+            <DonationAmountPicker
+              loading={buyLoading}
+              error={buyError}
+              onConfirm={handleBuyConfirm}
+              onCancel={() => { if (!buyLoading) setBuyPicking(false) }}
+            />
+          )}
+
+          {buyError && !buyPicking && (
             <p className="mt-2 text-[11px] font-black tracking-[2px] uppercase" style={{ color: '#e04b3c' }}>
               {t(buyError)}
             </p>

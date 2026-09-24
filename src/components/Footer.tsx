@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useSiteLanguage } from '@/lib/use-site-language'
 export function Footer() {
   const { t } = useSiteLanguage()
@@ -18,7 +19,13 @@ export function Footer() {
           </p>
           <p className="text-[11px] tracking-[2px] uppercase" style={{ color: '#a9b9cb' }}>{t("Original browser game · Buy once · Play forever")}</p>
         </div>
-        <p className="text-[11px] tracking-[2px] uppercase" style={{ color: '#a9b9cb' }}>{t("Payments secured by Stripe")}</p>
+        <div className="flex flex-col sm:items-end gap-2">
+          <p className="text-[11px] tracking-[2px] uppercase" style={{ color: '#a9b9cb' }}>{t("Payments secured by Stripe")}</p>
+          <div className="flex items-center gap-4">
+            <Link href="/terms" className="text-[11px] tracking-[2px] uppercase hover:underline" style={{ color: '#7a8590' }}>Terms</Link>
+            <Link href="/privacy" className="text-[11px] tracking-[2px] uppercase hover:underline" style={{ color: '#7a8590' }}>Privacy</Link>
+          </div>
+        </div>
       </div>
     </footer>
   )
