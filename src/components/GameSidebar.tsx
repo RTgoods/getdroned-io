@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { translate } from '../../public/get-droned/assets/js/language'
 import { createClient } from '@/lib/supabase/client'
 import { AvatarBadge } from './AvatarSelector'
 import type { Game } from '@/types/database'
@@ -60,7 +61,33 @@ export function GameSidebar({ game, user, hasPurchased, isAdmin = false, complet
   const [open, setOpen] = useState(false)
   const [mobile, setMobile] = useState(false)
   const [mounted, setMounted] = useState(false)
+  const [ukrainian, setUkrainian] = useState(false)
+
+  useEffect(() => {
+    const syncLanguage = () => {
+      try { setUkrainian(localStorage.getItem('gd_language') === 'uk') } catch {}
+    }
+    syncLanguage()
+    window.addEventListener('storage', syncLanguage)
+    window.addEventListener('gd:language', syncLanguage)
+    return () => {
+      window.removeEventListener('storage', syncLanguage)
+      window.removeEventListener('gd:language', syncLanguage)
+    }
+  }, [])
+
+  const toggleLanguage = () => {
+    const next = !ukrainian
+    setUkrainian(next)
+    const language = next ? 'uk' : 'en'
+    try { localStorage.setItem('gd_language', language) } catch {}
+    window.dispatchEvent(new Event('gd:language'))
+    document.querySelectorAll<HTMLIFrameElement>('iframe').forEach(frame => {
+      frame.contentWindow?.postMessage({ type: 'gd:language', language }, window.location.origin)
+    })
+  }
   const [expandedSector, setExpandedSector] = useState<number | null>(null)
+  const t = (text: string) => ukrainian ? translate(text) : text
   const supabase = createClient()
   const price = `$${(game.price_cents / 100).toFixed(2)}`
 
@@ -185,11 +212,11 @@ export function GameSidebar({ game, user, hasPurchased, isAdmin = false, complet
           label={
             user ? (
               <div>
-                <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: '2px', color: UA.yellow, textTransform: 'uppercase' }}>PILOT SETTINGS</div>
+                <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: '2px', color: UA.yellow, textTransform: 'uppercase' }}>{t('PILOT SETTINGS')}</div>
                 <div style={{ fontSize: 10, color: UA.textMuted, marginTop: 2 }}>{emailShort}</div>
               </div>
             ) : (
-              <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: '2px', color: UA.blueMid, textTransform: 'uppercase' }}>SIGN IN →</div>
+              <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: '2px', color: UA.blueMid, textTransform: 'uppercase' }}>{t('SIGN IN →')}</div>
             )
           }
           border
@@ -208,7 +235,7 @@ export function GameSidebar({ game, user, hasPurchased, isAdmin = false, complet
               background: UA.yellow, borderRadius: 1,
             }} />
             <span style={{ fontSize: 8, fontWeight: 900, letterSpacing: '3px', color: UA.yellow, textTransform: 'uppercase' }}>
-              SECTORS
+              {t('SECTORS')}
             </span>
           </div>
         ) : (
@@ -227,6 +254,7 @@ export function GameSidebar({ game, user, hasPurchased, isAdmin = false, complet
               <LevelRow
                 key={s.num}
                 sector={s}
+                ukrainian={ukrainian}
                 unlocked={unlocked}
                 done={done}
                 stat={stat}
@@ -288,8 +316,8 @@ export function GameSidebar({ game, user, hasPurchased, isAdmin = false, complet
             icon={<span style={{ fontSize: 12, color: UA.yellow, flexShrink: 0 }}>↩</span>}
             label={
               <div>
-                <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: '2px', color: UA.yellow, textTransform: 'uppercase' }}>NOW PLAYING</div>
-                <div style={{ fontSize: 9, color: UA.textMuted, letterSpacing: '1px', marginTop: 1, textTransform: 'uppercase' }}>← BACK TO INFO</div>
+                <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: '2px', color: UA.yellow, textTransform: 'uppercase' }}>{t('NOW PLAYING')}</div>
+                <div style={{ fontSize: 9, color: UA.textMuted, letterSpacing: '1px', marginTop: 1, textTransform: 'uppercase' }}>{t('← BACK TO INFO')}</div>
               </div>
             }
             hover
@@ -297,6 +325,30 @@ export function GameSidebar({ game, user, hasPurchased, isAdmin = false, complet
           />
         )}
 
+
+        <button
+          type="button"
+          role="switch"
+          aria-checked={ukrainian}
+          aria-label="Ukrainian language / Українська мова"
+          title={ukrainian ? 'Українська мова: увімкнено' : 'Ukrainian language: off'}
+          onClick={toggleLanguage}
+          style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%',
+            minHeight: 48, padding: '10px 13px', flexShrink: 0, cursor: 'pointer',
+            background: ukrainian ? UA.blueDim : 'transparent', border: 'none',
+            borderTop: `1px solid ${UA.border}`, color: UA.yellow, textAlign: 'left' }}
+        >
+          <span aria-hidden="true" style={{ width: 24, height: 16, flexShrink: 0, borderRadius: 2,
+            background: 'linear-gradient(#0057b7 50%, #ffd700 50%)' }} />
+          {open && <>
+            <span style={{ flex: 1, fontSize: 9, fontWeight: 900, lineHeight: 1.5 }}>
+              {ukrainian ? 'УКРАЇНСЬКА МОВА' : 'UKRAINIAN LANGUAGE'}
+            </span>
+            <span style={{ fontSize: 9, fontWeight: 900, color: ukrainian ? UA.yellow : UA.blueLight }}>
+              {ukrainian ? 'УВІМК.' : 'OFF'}
+            </span>
+          </>}
+        </button>
 
         {/* ── Admin ────────────────────────────────────────── */}
         {isAdmin && (
@@ -316,7 +368,7 @@ export function GameSidebar({ game, user, hasPurchased, isAdmin = false, complet
             open={open}
             onClick={signOut}
             icon={<span style={{ fontSize: 12, color: UA.textMuted, flexShrink: 0 }}>→</span>}
-            label={<span style={{ fontSize: 9, fontWeight: 900, letterSpacing: '2px', color: UA.textMuted, textTransform: 'uppercase' }}>SIGN OUT</span>}
+            label={<span style={{ fontSize: 9, fontWeight: 900, letterSpacing: '2px', color: UA.textMuted, textTransform: 'uppercase' }}>{t('SIGN OUT')}</span>}
             hover
           />
         ) : (
@@ -324,7 +376,7 @@ export function GameSidebar({ game, user, hasPurchased, isAdmin = false, complet
             open={open}
             href="/auth/login"
             icon={<span style={{ fontSize: 12, color: UA.blueMid, flexShrink: 0 }}>→</span>}
-            label={<span style={{ fontSize: 9, fontWeight: 900, letterSpacing: '2px', color: UA.blueMid, textTransform: 'uppercase' }}>SIGN IN</span>}
+            label={<span style={{ fontSize: 9, fontWeight: 900, letterSpacing: '2px', color: UA.blueMid, textTransform: 'uppercase' }}>{t('SIGN IN')}</span>}
             hover
           />
         )}
@@ -368,6 +420,7 @@ const OBJECTIVES: Record<number, string[]> = {
 
 // ── Level row ─────────────────────────────────────────────────────────────────
 interface LevelRowProps {
+  ukrainian: boolean
   sector: { num: number; name: string; cover: string }
   unlocked: boolean
   done: boolean
@@ -385,8 +438,9 @@ interface LevelRowProps {
 
 function fmtTime(s: number) { const m = Math.floor(s / 60); return m > 0 ? `${m}m ${s % 60}s` : `${s}s` }
 
-function LevelRow({ sector, unlocked, done, stat, open, expanded, onToggle, onPlay, price, hasUser, hasPurchased, prevDone, liveCompleted }: LevelRowProps) {
+function LevelRow({ ukrainian, sector, unlocked, done, stat, open, expanded, onToggle, onPlay, price, hasUser, hasPurchased, prevDone, liveCompleted }: LevelRowProps) {
   const [hovered, setHovered] = useState(false)
+  const t = (text: string) => ukrainian ? translate(text) : text
   const objectives = OBJECTIVES[sector.num] ?? []
 
   // Pill: done=yellow, unlocked/active=blue, locked-idle=dim
@@ -402,7 +456,7 @@ function LevelRow({ sector, unlocked, done, stat, open, expanded, onToggle, onPl
         onClick={open ? onToggle : (unlocked ? onPlay : undefined)}
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
-        title={sector.num === 1 && !hasUser ? 'Play Sector 1 free — sign in to start' : !unlocked ? (hasUser && !prevDone ? `Complete Sector ${sector.num - 1} to unlock Sector ${sector.num}` : `Buy to unlock Sector ${sector.num}`) : done ? `Sector ${sector.num} complete` : `Sector ${sector.num} — ${sector.name}`}
+        title={sector.num === 1 && !hasUser ? 'Play Sector 1 free — sign in to start' : !unlocked ? (hasUser && !prevDone ? `Complete Sector ${sector.num - 1} to unlock Sector ${sector.num}` : `Buy to unlock Sector ${sector.num}`) : done ? `Sector ${sector.num} complete` : `Sector ${sector.num} — ${t(sector.name)}`}
         style={{
           width: '100%', display: 'flex', alignItems: 'center',
           gap: open ? 10 : 0, padding: open ? '7px 12px' : '7px 0',
@@ -434,14 +488,14 @@ function LevelRow({ sector, unlocked, done, stat, open, expanded, onToggle, onPl
               color: done ? UA.yellow : active ? UA.blueMid : UA.textDim,
               textTransform: 'uppercase', marginBottom: 2,
             }}>
-              {done ? '✓ CLEARED' : `SECTOR ${sector.num}`}
+              {t(done ? '✓ CLEARED' : `SECTOR ${sector.num}`)}
             </div>
             <div style={{
               fontSize: 9, fontWeight: 900, letterSpacing: '1px',
               color: done ? 'rgba(255,215,0,0.7)' : active ? UA.textPrimary : UA.textDim,
               textTransform: 'uppercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
             }}>
-              {sector.name}
+              {t(sector.name)}
             </div>
           </div>
         )}
@@ -482,7 +536,7 @@ function LevelRow({ sector, unlocked, done, stat, open, expanded, onToggle, onPl
                 textTransform: 'capitalize',
                 transition: 'color 300ms',
               }}>
-                {obj}
+                {t(obj)}
               </span>
             </div>
             )
@@ -503,7 +557,7 @@ function LevelRow({ sector, unlocked, done, stat, open, expanded, onToggle, onPl
                 ['SQUAD LOST', `${stat.squadLost}/5`],
               ].map(([label, val]) => (
                 <div key={label} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
-                  <span style={{ fontSize: 7, letterSpacing: '1.5px', color: UA.textMuted, textTransform: 'uppercase' }}>{label}</span>
+                  <span style={{ fontSize: 7, letterSpacing: '1.5px', color: UA.textMuted, textTransform: 'uppercase' }}>{t(label)}</span>
                   <span style={{ fontSize: 7, fontWeight: 900, color: UA.yellow }}>{val}</span>
                 </div>
               ))}
@@ -525,7 +579,7 @@ function LevelRow({ sector, unlocked, done, stat, open, expanded, onToggle, onPl
             onMouseEnter={e => (e.currentTarget.style.filter = 'brightness(1.15)')}
             onMouseLeave={e => (e.currentTarget.style.filter = 'none')}
             >
-              SIGN IN · SECTOR 1 FREE
+              {t('SIGN IN · SECTOR 1 FREE')}
             </a>
           ) : unlocked ? (
             <button
@@ -545,7 +599,7 @@ function LevelRow({ sector, unlocked, done, stat, open, expanded, onToggle, onPl
               onMouseEnter={e => (e.currentTarget.style.filter = 'brightness(1.15)')}
               onMouseLeave={e => (e.currentTarget.style.filter = 'none')}
             >
-              {sector.num === 1 ? (hasUser && hasPurchased ? 'PLAY' : '▶ PLAY SECTOR 1 FREE') : done ? '↺ REPLAY' : '▶ PLAY'}
+              {t(sector.num === 1 ? (hasUser && hasPurchased ? 'PLAY' : '▶ PLAY SECTOR 1 FREE') : done ? '↺ REPLAY' : '▶ PLAY')}
             </button>
           ) : hasUser && !prevDone ? (
             <button
@@ -559,7 +613,7 @@ function LevelRow({ sector, unlocked, done, stat, open, expanded, onToggle, onPl
                 lineHeight: 1.5, textAlign: 'center', cursor: 'not-allowed',
               }}
             >
-              COMPLETE SECTOR {sector.num - 1} TO UNLOCK
+              {t(`COMPLETE SECTOR ${sector.num - 1} TO UNLOCK`)}
             </button>
           ) : !hasPurchased ? (
             <a
@@ -578,7 +632,7 @@ function LevelRow({ sector, unlocked, done, stat, open, expanded, onToggle, onPl
               onMouseEnter={e => (e.currentTarget.style.filter = 'brightness(1.1)')}
               onMouseLeave={e => (e.currentTarget.style.filter = 'none')}
             >
-              Unlock all Sectors
+              {t('Unlock all Sectors')}
             </a>
           ) : null}
         </div>

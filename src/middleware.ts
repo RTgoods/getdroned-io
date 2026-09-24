@@ -55,6 +55,7 @@ export async function middleware(request: NextRequest) {
       }
       if (request.nextUrl.searchParams.has('solvedPreview') && !access.isAdmin) return privateResponse(new NextResponse('Admin access required', { status: 403 }))
       if (request.nextUrl.searchParams.has('basePreview') && !access.isAdmin) return privateResponse(new NextResponse('Admin access required', { status: 403 }))
+      if ((request.nextUrl.searchParams.has('bot') || request.nextUrl.searchParams.has('rec')) && !access.isAdmin) return privateResponse(new NextResponse('Admin access required', { status: 403 }))
       if (request.nextUrl.searchParams.has('boss') && !access.isAdmin) return privateResponse(new NextResponse('Admin access required', { status: 403 }))
       if (path.endsWith('index.html') && !access.isAdmin && ! /^[1-6]$/.test(request.nextUrl.searchParams.get('autostart') || '')) {
         const url = request.nextUrl.clone()

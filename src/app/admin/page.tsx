@@ -1,4 +1,5 @@
 import { AdminSignups } from '@/components/AdminSignups'
+import { AdminBotConsole } from '@/components/AdminBotConsole'
 import { AdminRecToggle } from '@/components/AdminRecToggle'
 import { GameSidebar } from '@/components/GameSidebar'
 import Link from 'next/link'
@@ -65,6 +66,8 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
           <p style={{ marginTop: 4, fontSize: 10, letterSpacing: '1.5px', color: UA.muted }}>{user.email}</p>
         </div>
 
+        <AdminBotConsole />
+
         {/* Recording section */}
         <section style={{
           marginBottom: 24, padding: '20px 24px',
@@ -84,7 +87,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
               <div style={{ fontSize: 7, fontWeight: 900, letterSpacing: '2px', color: UA.blueMid, textTransform: 'uppercase', marginBottom: 10 }}>KEYS</div>
               {[
                 { key: 'B', label: 'Toggle bot', desc: 'AI takes control — approaches enemies, dodges bullets, patrols objectives' },
-                { key: 'V', label: 'Manual record', desc: 'Start / stop — downloads highlight-manual.webm on stop' },
+                { key: 'V', label: 'Manual record', desc: 'Start / stop — downloads get-droned-run.webm on stop' },
               ].map(({ key, label, desc }) => (
                 <div key={key} style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
                   <span style={{

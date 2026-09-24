@@ -245,3 +245,10 @@ h1 small{display:block;font-size:11px;letter-spacing:6px;color:#79b9f1;margin-to
 .solvedContinueWrap .levelIntroStart{width:100%;display:block}
 /* Hide HUD and controls while a solved/complete screen is active */
 #wrap.in-solved .hud,#wrap.in-solved #act,#wrap.in-solved #nade,#wrap.in-solved #mute,#wrap.in-solved #joyZone,#wrap.in-solved #banner,#wrap.in-solved #dmgFlash{display:none!important}
+
+/* Ukrainian labels use Cyrillic-capable system fonts and tighter control spacing. */
+html[lang="uk"] #act,html[lang="uk"] #nade{font-family:Arial,sans-serif;letter-spacing:0;font-size:10px}
+html[lang="uk"] #statusBars span{font-family:Arial,sans-serif;font-size:5.5px;letter-spacing:0;overflow-wrap:anywhere}
+html[lang="uk"] #banner{box-sizing:border-box;padding:0 16px}
+html[lang="uk"] #banner b{font-family:Arial,sans-serif;font-size:clamp(17px,4vw,28px);letter-spacing:1px}
+html[lang="uk"] #banner small{font-family:Arial,sans-serif;letter-spacing:.6px;line-height:1.5}

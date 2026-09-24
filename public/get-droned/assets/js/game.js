@@ -1,12 +1,12 @@
 (function(){
 'use strict';
 // Fail closed: only the authenticated server response grants this account feature.
-var godModeAllowed=false;
+var godModeAllowed=false,adminToolAllowed=false;
 function refreshGodModeAccess(){
   fetch('/api/access',{credentials:'same-origin',cache:'no-store'})
     .then(function(response){if(!response.ok)throw new Error('Access check failed');return response.json();})
-    .then(function(access){godModeAllowed=access.canUseGodMode===true;})
-    .catch(function(){godModeAllowed=false;});
+    .then(function(access){godModeAllowed=access.canUseGodMode===true;adminToolAllowed=access.isAdmin===true;window._recEnabled=adminToolAllowed&&(new URLSearchParams(location.search).get('rec')==='1');})
+    .catch(function(){godModeAllowed=false;adminToolAllowed=false;window._recEnabled=false;});
 }
 refreshGodModeAccess();
 window.addEventListener('focus',refreshGodModeAccess);
@@ -1287,18 +1287,24 @@ function paintRefineryYards(c){
     for(var seam=1;seam<6;seam++)gearLine(c,x+seam*w/6,y,x+seam*w/6,y+h,'#686f63',1);
     for(var row=1;row<5;row++)gearLine(c,x,y+row*h/5,x+w,y+row*h/5,'#6d7467',1);
     c.strokeStyle='#c8bc73';c.lineWidth=2;c.setLineDash([9,7]);c.strokeRect(x+10,y+10,w-20,h-20);c.setLineDash([]);
-    // Parallel process pipes link the tank farms beneath the equipment.
-    for(var pipe=0;pipe<3;pipe++){
-      var py=r.cy-25+pipe*11;
-      gearLine(c,x+22,py,x+w-22,py,'#364643',7);
-      gearLine(c,x+22,py,x+w-22,py,pipe===1?'#aa995e':'#adb3a7',4);
-      for(var clamp=0;clamp<8;clamp++)gearLine(c,x+30+clamp*(w-60)/7,py-4,x+30+clamp*(w-60)/7,py+4,'#5d6c60',2);
+    // A shared manifold and branch elbows connect the actual equipment layout.
+    var manifoldY=r.cy+10;
+    for(var line=0;line<2;line++){
+      var my=manifoldY+line*7;
+      gearLine(c,x+22,my,x+w-22,my,'#45594f',6);
+      gearLine(c,x+22,my-1,x+w-22,my-1,line?'#92917a':'#8e9b86',3);
     }
-    gearLine(c,r.cx+36,y+25,r.cx+36,y+h-25,'#354943',9);
-    gearLine(c,r.cx+36,y+25,r.cx+36,y+h-25,'#a2ada0',5);
-    for(var valve=0;valve<3;valve++){
-      var vy=y+40+valve*(h-80)/2;c.strokeStyle='#9b4534';c.lineWidth=2;c.beginPath();c.arc(r.cx+36,vy,6,0,6.3);c.stroke();gearLine(c,r.cx+31,vy,r.cx+41,vy,'#9b4534',1);
-    }
+    props.filter(function(p){return p.refinerySite===r.i;}).forEach(function(p){
+      var px=(p.x+p.w/2)*TILE,py=(p.y+p.h/2)*TILE;
+      gearLine(c,px+3,manifoldY+5,px+3,py+4,'rgba(27,38,31,.25)',7);
+      gearLine(c,px,manifoldY,px,py,'#4e6354',6);
+      gearLine(c,px-1,manifoldY,px-1,py,'#919d86',3);
+      for(var clamp=0;clamp<3;clamp++){
+        var jy=manifoldY+(py-manifoldY)*clamp/3;
+        gearLine(c,px-4,jy,px+4,jy,'#687965',1.5);
+      }
+      c.strokeStyle='#8f6849';c.lineWidth=1.5;c.beginPath();c.arc(px,manifoldY,4,0,6.3);c.stroke();
+    });
     // Weathered inspection covers, rust streaks and industrial hazard markings.
     for(var grate=0;grate<4;grate++){
       var gx=x+20+grate*(w-50)/4,gy=y+h-35;
@@ -1313,6 +1319,86 @@ function paintRefineryYards(c){
     c.fillStyle='#3f4943';c.font='bold 8px Arial';c.fillText('HIGH PRESSURE',x+16,y+23);
     c.restore();
   });
+}
+
+// All refinery vessels share the same cached paint pass, palette and perspective.
+function drawRefineryVessel(c,o){
+  var x=(o.x+o.w/2)*TILE,y=(o.y+o.h/2)*TILE;
+  var column=o.kind==='stack',r=column?12:Math.min(o.w,o.h)*TILE*.43;
+  var height=column?(o.towerHeight||64):22,top=y-height,ry=column?6:r*.64;
+  c.save();
+  c.fillStyle='rgba(20,25,21,.28)';c.beginPath();c.ellipse(x+10,y+9,r+8,ry+5,0,0,6.3);c.fill();
+  gearBox(c,x-r-5,y-ry*.5,r*2+10,ry+8,'#77796a','#555f53',2);
+  var body=c.createLinearGradient(x-r,0,x+r,0);body.addColorStop(0,'#59675e');body.addColorStop(.35,'#93998a');body.addColorStop(.7,'#7c897a');body.addColorStop(1,'#4d5e55');
+  c.fillStyle=body;c.beginPath();c.moveTo(x-r,top);c.lineTo(x-r,y);c.ellipse(x,y,r,ry,0,Math.PI,0,true);c.lineTo(x+r,top);c.closePath();c.fill();outl(c,'#35443b',1.4);
+  c.fillStyle='#a0a491';c.beginPath();c.ellipse(x,top,r,ry,0,0,6.3);c.fill();outl(c,'#4c5b4f',1.3);
+  c.strokeStyle='rgba(63,77,65,.4)';c.lineWidth=1;
+  if(!column){
+    // Welded roof sectors, a vent hatch and a railed maintenance bridge.
+    for(var i=0;i<8;i++){var a=i*Math.PI/4;c.beginPath();c.moveTo(x,top);c.lineTo(x+Math.cos(a)*r*.93,top+Math.sin(a)*ry*.93);c.stroke();}
+    gearLine(c,x-r*.85,top,x+r*.8,top,'#6f7867',5);
+    gearLine(c,x-r*.85,top-4,x+r*.8,top-4,'#aaa587',1);
+    for(var post=-1;post<=1;post++)gearLine(c,x+post*r*.75,top-4,x+post*r*.75,top,'#858b72',1);
+    gearBox(c,x-5,top-5,10,8,'#808c79','#546858',2);
+    c.fillStyle='#485e4e';c.font='bold 6px Arial';c.textAlign='center';c.fillText('TK '+(o.refinerySite+1)+'-'+o.vesselId,x,y+ry*.6);
+  }else{
+    for(var deck=0;deck<3;deck++){
+      var dy=y-12-deck*(height-16)/3;
+      c.strokeStyle='#59695a';c.beginPath();c.ellipse(x,dy,r,ry,0,0,Math.PI);c.stroke();
+      gearBox(c,x-r-4,dy,2*r+8,3,'#898e79','#566652',1);
+      gearLine(c,x-r-4,dy-6,x+r+4,dy-6,'#aaa17c',1);
+      gearLine(c,x-r-4,dy-6,x-r-4,dy,'#898d70',1);gearLine(c,x+r+4,dy-6,x+r+4,dy,'#898d70',1);
+    }
+    gearLine(c,x,top-4,x,top-13,'#748472',4);
+  }
+  // Matching ladders and restrained weathering on both tanks and towers.
+  var lx=x+r*.72;
+  gearLine(c,lx,top+3,lx,y+ry*.8,'#a19e7d',1.4);gearLine(c,lx+5,top+3,lx+5,y+ry*.8,'#a19e7d',1.4);
+  for(var rung=top+5;rung<y+ry*.8;rung+=6)gearLine(c,lx,rung,lx+5,rung,'#8f9477',1);
+  for(var stain=0;stain<6;stain++){
+    var sx=x-r*.8+hs(o.x*7+o.y+stain)*r*1.6;
+    gearLine(c,sx,top+ry*.75,sx,top+ry*.75+4+hs(stain+o.y)*height*.3,'rgba(99,68,44,.25)',1.5);
+  }
+  c.restore();
+}
+
+function drawRefineryNet(c,R){
+  if(!R.droneNet)return;
+  var x=R.cx-112,y=R.cy-108,w=224,h=154;
+  c.save();
+  // Four guyed steel posts hold a translucent, sagging diamond-mesh canopy.
+  [[x,y],[x+w,y],[x,y+h],[x+w,y+h]].forEach(function(p,i){
+    var top=R.dead?14:61;
+    gearLine(c,p[0]-8,p[1]+13,p[0],p[1]-top,'#59675c',1);
+    gearLine(c,p[0]+12,p[1]+8,p[0],p[1]-top,'#89907b',1);
+    gearBox(c,p[0]-5,p[1]-2,10,7,'#8d9380','#3e4e46',1);
+    gearLine(c,p[0],p[1],p[0]+(R.dead?(i%2?14:-14):0),p[1]-top,'#465d58',4);
+    gearLine(c,p[0]-1,p[1],p[0]-1,p[1]-top,'#acb6a2',1);
+  });
+  if(R.dead){
+    for(var scrap=0;scrap<5;scrap++){
+      c.strokeStyle='rgba(77,91,67,.65)';c.lineWidth=1;c.beginPath();
+      for(var j=0;j<8;j++){var px=x+scrap*45+j*5,py=y+h*.6+Math.sin(j*1.8+scrap)*12;c.lineTo(px,py);}
+      c.stroke();
+    }
+    c.restore();return;
+  }
+  y-=61;
+  c.beginPath();c.moveTo(x,y);c.quadraticCurveTo(x+w/2,y+16,x+w,y);c.lineTo(x+w,y+h);c.quadraticCurveTo(x+w/2,y+h+14,x,y+h);c.closePath();
+  c.fillStyle='rgba(63,80,49,.09)';c.fill();c.strokeStyle='#7f8b69';c.lineWidth=2;c.stroke();c.clip();
+  // The centre drops below the tensioned edges; slight wind motion affects mesh only.
+  for(var direction=-1;direction<=1;direction+=2){
+    for(var line=-h;line<w+h;line+=14){
+      c.beginPath();
+      for(var sample=0;sample<=12;sample++){
+        var t=sample/12,px=x+line+direction*t*h,py=y+t*h;
+        var sag=Math.sin(Math.max(0,Math.min(1,(px-x)/w))*Math.PI)*Math.sin(t*Math.PI)*(12+Math.sin(now*1.1+R.i)*1.5);
+        if(sample===0)c.moveTo(px,py+sag);else c.lineTo(px,py+sag);
+      }
+      c.strokeStyle=direction===1?'rgba(154,164,126,.53)':'rgba(34,51,33,.57)';c.lineWidth=.85;c.stroke();
+    }
+  }
+  c.restore();
 }
 
 // Burnt Humvee at the level-one base. Local coordinates face west.
@@ -1368,6 +1454,7 @@ function drawBaseHumvee(c,o){
   c.restore();
 }
 function drawProp(c,o){
+  if(o.refinerySite!==undefined){drawRefineryVessel(c,o);return;}
   if(o.kind==='busShelter'){drawCityBusShelter(c,o);return;}
   if(o.kind==='hotdogTruck'){drawHotdogTruck(c,o);return;}
 
@@ -1754,7 +1841,11 @@ function drawProp(c,o){
   } else if(k==='oiltank'){
     var ox0=x+w/2, oy0=y+h/2, rr0=Math.min(w,h)*.44;
     c.fillStyle='rgba(0,0,0,.4)'; c.beginPath(); c.ellipse(ox0+3,oy0+5,rr0,rr0*.8,0,0,6.3); c.fill();
-    c.fillStyle='#8d9298'; c.beginPath(); c.arc(ox0,oy0,rr0,0,6.3); c.fill(); outl(c,'#1c2126',2.4);
+    var tankWall=c.createLinearGradient(ox0-rr0,0,ox0+rr0,0);
+    tankWall.addColorStop(0,'#485b5b');tankWall.addColorStop(.3,'#9ca9a1');tankWall.addColorStop(.65,'#718780');tankWall.addColorStop(1,'#344b4c');
+    c.fillStyle=tankWall;c.beginPath();c.ellipse(ox0,oy0+15,rr0,rr0*.8,0,0,Math.PI);c.lineTo(ox0-rr0,oy0);c.ellipse(ox0,oy0,rr0,rr0*.8,0,Math.PI,Math.PI*2);c.closePath();c.fill();outl(c,'#263a39',2);
+    for(var seam=0;seam<7;seam++){var sx=ox0-rr0*.85+seam*rr0*.28;gearLine(c,sx,oy0+rr0*.4,sx,oy0+rr0*.65+13,'rgba(34,53,51,.45)',1);}
+    c.fillStyle='#b1b8a8';c.beginPath();c.ellipse(ox0,oy0-2,rr0,rr0*.8,0,0,6.3);c.fill();outl(c,'#d1d3b9',1.6);
     c.fillStyle='#a7adb3'; c.beginPath(); c.arc(ox0,oy0-2,rr0*.82,0,6.3); c.fill();
     c.strokeStyle='rgba(40,46,52,.55)'; c.lineWidth=1.4;
     for(var rg2=1;rg2<3;rg2++){ c.beginPath(); c.arc(ox0,oy0-2,rr0*.82*rg2/3,0,6.3); c.stroke(); }
@@ -1943,6 +2034,7 @@ var CARDS=[
   {k:'t',id:'flamer', rar:2,wt:8, name:'FLAMETHROWER',  desc:'15s of fire · to belt'},
   {k:'t',id:'emp',    rar:1,wt:9, name:'DRONE JAMMER',  desc:'electronic burst · to belt'},
   {k:'t',id:'stim',   rar:1,wt:7, name:'COMBAT STIM',   desc:'to belt'},
+  {k:'t',id:'reinforcements',rar:2,wt:4,name:'CALL THE REINFORCEMENTS',desc:'5 soldiers · 15s · can be killed'},
   {k:'t',id:'repair', rar:1,wt:6, name:'REPAIR KIT',    desc:'+25% base integrity · use inside base'},
   {k:'p',id:'vest',   rar:2,wt:8, name:'BODY ARMOUR',   desc:'+45 armour'}
 ];
@@ -1974,9 +2066,10 @@ var TOOLS={
   emp   :{n:'DRONE JAMMER', c:'#7fe8ff', wt:9},
   med   :{n:'FIELD KIT',   c:'#e0483c', wt:14},
   plate :{n:'ARMOUR PLATE',c:'#8fb6c8', wt:11},
+  reinforcements:{n:'CALL THE REINFORCEMENTS',c:'#ffd700',wt:4,dur:15,desc:'5 SOLDIERS · 15 SECONDS'},
   repair:{n:'REPAIR KIT',  c:'#c8b87a', wt:7}
 };
-var TKEYS=['droneS','drone','droneL','usv','sentry','strike','stim','smoke','incend','flamer','emp','med','plate','repair'];
+var TKEYS=['droneS','drone','droneL','usv','sentry','strike','stim','smoke','incend','flamer','emp','med','plate','repair','reinforcements'];
 // Shared handling across every level. Speeds are world pixels per second;
 // response/brake are seconds to close 63% of the velocity difference.
 var DRONE_HANDLING={
@@ -2251,6 +2344,7 @@ var SHOP=[
   {id:'t_stim', n:'COMBAT STIM',  p:150, d:'to belt'},
   {id:'t_flamer',n:'FLAMETHROWER', p:280, d:'15s of fire'},
   {id:'t_emp',  n:'DRONE JAMMER',  p:190, d:'burst kills drones'},
+  {id:'t_reinforcements',n:'CALL THE REINFORCEMENTS',p:350,d:'5 soldiers · 15s · can be killed'},
   {id:'t_repair',n:'REPAIR KIT',  p:130, d:'+25% integrity · anywhere inside base'},
   {id:'u_armor',n:'HEAVY PLATE',  p:400, d:'armour cap 120', once:1},
   {id:'u_hp',   n:'COMBAT VEST',  p:450, d:'health 140', once:1},
@@ -2402,10 +2496,10 @@ function drawShop(){
     // Name
     ctx.textAlign='left';
     ctx.fillStyle=own?'#96caff':(can?'#edf2f5':'#a7b5c4'); ctx.font='bold 10px Arial';
-    ctx.fillText(it.n,R.x+48,R.y+16);
+    ctx.fillText(it.n,R.x+48,R.y+16,Math.max(50,vRuleX-R.x-62));
     // Description
     ctx.fillStyle=own?'#86b4de':(can?'#b1c1d0':'#8a9caf'); ctx.font='9px Arial';
-    ctx.fillText(it.id==='t_repair'?'+25% integrity · use inside base':it.d,R.x+48,R.y+29);
+    ctx.fillText(it.id==='t_repair'?'+25% integrity · use inside base':it.d,R.x+48,R.y+29,Math.max(50,vRuleX-R.x-62));
     // Price / status (right-aligned, 4 px gap left of arrow column)
     ctx.textAlign='right';
     if(own){
@@ -2476,9 +2570,101 @@ function aimPoint(range){
   if(t) return {x:t.x,y:t.y};
   return {x:player.x+Math.cos(player.face)*range, y:player.y+Math.sin(player.face)*range};
 }
+var reinforcements=[],reinforcementFragCD=0;
+function deployReinforcements(){
+  var spots=[];
+  for(var radius=34;radius<=238&&spots.length<5;radius+=34)for(var i=0;i<16&&spots.length<5;i++){
+    var a=i*Math.PI/8,x=player.x+Math.cos(a)*radius,y=player.y+Math.sin(a)*radius;
+    if(hitBox(x,y,12)||spots.some(function(p){return Math.hypot(p.x-x,p.y-y)<27;})||reinforcements.some(function(s){return s.hp>0&&Math.hypot(s.x-x,s.y-y)<27;}))continue;
+    if(!findPath(Math.floor(player.x/TILE),Math.floor(player.y/TILE),Math.floor(x/TILE),Math.floor(y/TILE)))continue;
+    spots.push({x:x,y:y});
+  }
+  if(spots.length<5){banner('NO ROOM FOR REINFORCEMENTS','MOVE TO OPEN GROUND',2);return false;}
+  spots.forEach(function(p,i){reinforcements.push({x:p.x,y:p.y,r:10,hp:80,mx:80,t:15,cd:i*.12,burst:3,frags:2,fragCD:1.5+i*.7,
+    ang:player.face,walk:0,amt:0,sid:1200+i,kit:PKITS[i%PKITS.length],routeT:0,path:null,pi:1});});
+  banner('REINFORCEMENTS INBOUND','5 SOLDIERS · 15 SECONDS',2);sfx('card');return true;
+}
+function hurtReinforcement(s,damage){
+  if(s.hp<=0)return;s.hp=Math.max(0,s.hp-damage);
+  if(s.hp===0){bakeCorpse(s.x,s.y,s.ang,s.kit.col,s.kit.band,'rifle',false);sfx('hit',.4);}
+}
+function reinforcementTarget(enemy,range){
+  var best=null,dist=range;
+  reinforcements.forEach(function(s){var d=Math.hypot(s.x-enemy.x,s.y-enemy.y);
+    if(s.hp>0&&s.t>0&&d<dist&&los(enemy.x,enemy.y,s.x,s.y)&&!smokeBlocked(enemy.x,enemy.y,s.x,s.y)){best=s;dist=d;}});
+  return best;
+}
+function updateReinforcements(dt){
+  if(!reinforcements.length)return;
+  reinforcementFragCD=Math.max(0,reinforcementFragCD-dt);
+  for(var i=reinforcements.length-1;i>=0;i--){
+    var s=reinforcements[i];s.t-=dt;s.cd-=dt;s.routeT-=dt;s.fragCD=(s.fragCD||0)-dt;
+    if(s.hp<=0||s.t<=0){reinforcements.splice(i,1);continue;}
+    var target=null,range=520;
+    enemies.forEach(function(e){var d=Math.hypot(e.x-s.x,e.y-s.y);if(e.hp>0&&d<range&&los(s.x,s.y,e.x,e.y)&&!smokeBlocked(s.x,s.y,e.x,e.y)){target=e;range=d;}});
+    if(target){
+      s.ang=Math.atan2(target.y-s.y,target.x-s.x);
+      if(s.cd<=0){s.burst=(s.burst||3)-1;s.cd=s.burst>0?.14:.65+hs(s.sid)*.15;var a=s.ang+rr(-.045,.045);
+        bullets.push({x:s.x+Math.cos(a)*16,y:s.y+Math.sin(a)*16,vx:Math.cos(a)*720,vy:Math.sin(a)*720,dmg:15,life:.85,pierce:0,trail:12});
+        fx.push({t:'flash',x:s.x,y:s.y,a:a,life:.05,max:.05,s:.7});sfx('enemy',.25);
+      }
+    }
+    // Stagger frag throws and keep blast markers clear of friendly soldiers.
+    if(target&&s.frags>0&&s.fragCD<=0&&reinforcementFragCD<=0&&range>125&&range<320){
+      var tx=target.x,ty=target.y;
+      var safe=Math.hypot(player.x-tx,player.y-ty)>115&&
+        reinforcements.every(function(ally){return ally.hp<=0||Math.hypot(ally.x-tx,ally.y-ty)>110;})&&
+        crew.every(function(ally){return Math.hypot(ally.x-tx,ally.y-ty)>110;})&&!inBase(tx,ty);
+      if(safe){
+        nades.push({x:s.x,y:s.y,sx:s.x,sy:s.y,tx:tx,ty:ty,t:0,dur:.72,spin:0});
+        s.frags--;s.fragCD=4.5;reinforcementFragCD=.85;sfx('reload',.4);
+      }
+    }
+    // Seek combat independently, including enemies obscured by a wall.
+    var advance=target;
+    if(!advance){
+      var pursuit=650;
+      enemies.forEach(function(e){var d=Math.hypot(e.x-s.x,e.y-s.y);
+        if(e.hp>0&&d<pursuit&&Math.hypot(e.x-player.x,e.y-player.y)<900){advance=e;pursuit=d;}});
+    }
+    s.amt=0;
+    if((advance&&(!target||range>185))||(!advance&&Math.hypot(s.x-player.x,s.y-player.y)>240)){
+
+      if(s.routeT<=0){
+        s.routeT=.9+i*.07;
+        var gx=advance?advance.x:player.x+Math.cos(i*1.256)*140,gy=advance?advance.y:player.y+Math.sin(i*1.256)*140;
+        s.path=findPath(Math.floor(s.x/TILE),Math.floor(s.y/TILE),Math.floor(gx/TILE),Math.floor(gy/TILE));s.pi=1;
+      }
+      if(s.path&&s.pi<s.path.length){var p=s.path[s.pi],dx=p.x-s.x,dy=p.y-s.y,d=Math.hypot(dx,dy);
+        if(d<7)s.pi++;else {var ox=s.x,oy=s.y,step=Math.min(d,165*dt);moveEnt(s,dx/d*step,dy/d*step);
+          var moved=Math.hypot(s.x-ox,s.y-oy);s.amt=Math.min(1,moved/(step||1));s.walk+=moved*.09;
+          if(!target)s.ang=Math.atan2(dy,dx);if(moved<.1)s.routeT=0;
+        }
+      }
+    }
+    for(var f=0;f<fires.length;f++)if(Math.hypot(s.x-fires[f].x,s.y-fires[f].y)<fires[f].r)hurtReinforcement(s,12*dt);
+  }
+  // Enemies can engage the squad even when the player is out of sight.
+  enemies.forEach(function(e){
+    e.supportCD=Math.max(0,(e.supportCD||0)-dt);
+    if(e.hp<=0||e.boss||e.supportCD>0)return;
+    var seesPlayer=Math.hypot(e.x-player.x,e.y-player.y)<e.d.range&&!inBase(player.x,player.y)&&los(e.x,e.y,player.x,player.y)&&!smokeBlocked(e.x,e.y,player.x,player.y);
+    if(seesPlayer)return;
+    var target=reinforcementTarget(e,Math.min(e.d.range,380));
+    if(target){e.ang=Math.atan2(target.y-e.y,target.x-e.x);enemyShot(e,e.d);e.supportCD=Math.max(.65,e.d.rof);}
+  });
+}
+function drawReinforcement(c,s){
+  c.save();c.globalAlpha=Math.min(1,s.t);
+  drawUnit(c,s.x,s.y,s.ang,s.kit.col,s.kit.band,s.walk,s.amt,null,'rifle',false,false,false,s.sid,0,null,false,s.kit);
+  c.fillStyle='#122739';c.fillRect(s.x-14,s.y-52,28,4);c.fillStyle='#4a9eff';c.fillRect(s.x-14,s.y-52,28*s.hp/s.mx,4);
+  c.fillStyle='#ffd700';c.font='bold 8px Arial';c.textAlign='center';c.fillText(Math.ceil(s.t)+'s',s.x,s.y-56);c.restore();
+}
+
 function useTool(i){
   if(state!=='play'||piloting||i>=belt.length) return;
   var k=belt[i]; if(k==='god'&&!godModeAllowed){belt.splice(i,1);return;}
+  if(k==='reinforcements'){if(deployReinforcements())belt.splice(i,1);return;}
   if(k!=='god')belt.splice(i,1);
   var T2=TOOLS[k];
   if(k==='god'){
@@ -2649,10 +2835,26 @@ function updateDroneThreats(dt){
     fx.push({t:'flash',x:e.x,y:e.y,a:a,life:.05,max:.05,s:.8});
   }
 }
+var pendingFlightLeader=null;
+function resumeDroneFormation(){
+  var lost=pendingFlightLeader;pendingFlightLeader=null;
+  if(!lost||drone)return;
+  var next=null;
+  while(wingmen.length&&!next){var candidate=wingmen.shift();if(candidate.hp>0)next=candidate;}
+  if(!next){lost.pad.inFlight=false;lost.pad.cd=lost.pad.cool||7;return;}
+  drone={x:next.x,y:next.y,r:10,vx:next.vx,vy:next.vy,ang:lost.ang,
+    t:Math.max(1,lost.t),rot:next.rot,kind:lost.kind,hp:next.hp,mx:next.mx,pad:lost.pad,flight:1};
+  piloting=true;firing=false;droneCam=null;
+  wingmen.forEach(function(w,i){w.off={dx:i%2?-46:46,dy:34};});
+  banner('DRONE CONTROL TRANSFERRED',(wingmen.length+1)+' DRONES REMAIN',1.5);hud();
+}
 function rebuildDroneBay(craft){
-  if(!craft||!craft.pad) return;
+  if(!craft||!craft.pad)return;
+  if(craft.flight&&wingmen.some(function(w){return w.hp>0;})){
+    pendingFlightLeader=craft;return;
+  }
   craft.pad.inFlight=false;
-  craft.pad.cd=craft.kind==='dog'?12:(craft.pad.clearStand?7:0);
+  craft.pad.cd=craft.flight?(craft.pad.cool||7):craft.kind==='dog'?12:(craft.pad.clearStand?7:0);
 }
 function dogAim(D){
   D.gunAngle=D.ang;D.aimAssisted=false;
@@ -2831,16 +3033,10 @@ function droneBoom(x,y){
     else droneCam={x:x,y:y,t:(dk==='droneL'||dk==='usv')?2.9:2.2};
     banner('IMPACT','',1);
   }
-  for(var wq=0;wq<wingmen.length;wq++){                              // the flight goes in on the mark
-    var WQ=wingmen[wq];
-    var wa=Math.atan2(y-WQ.y,x-WQ.x), wd=Math.hypot(x-WQ.x,y-WQ.y);
-    var lead=Math.min(wd,170);
-    wingBoom({x:WQ.x+Math.cos(wa)*lead,y:WQ.y+Math.sin(wa)*lead});
-  }
-  if(wingmen.length){ shake=Math.min(30,shake+14); droneCam={x:x,y:y,t:5.2}; }
-  wingmen.length=0;
-  if(drone&&!drone.flight) rebuildDroneBay(drone);
+  // Detonate only the controlled craft; surviving formation members stay flyable.
+  rebuildDroneBay(drone);
   drone=null; piloting=false; firing=false; actBtn.classList.remove('on');
+  resumeDroneFormation();
   if(mapKind==='sea'&&seaBridge&&seaBridge.dead&&seaBridge.fall>9){droneCam={x:seaBridge.trainBlast?seaBridge.trainX:(seaBridge.x0+seaBridge.x1)/2,y:seaBridge.y,t:10};banner(seaBridge.trainBlast?'OIL TRAIN DETONATED':'BRIDGE COLLAPSING','KERCH CROSSING DESTROYED',3);}
 }
 
@@ -3579,7 +3775,7 @@ function buildOil(){
   props=props.filter(function(p){return !(p.x>=3&&p.x<=9&&p.y>=3&&p.y<=8);});
   setupTruck([[6,5],[6,5]]);
   if(truck){truck.parked=true;truck.ang=0;}
-  var mobile=padList.find(function(p){return p.mobile;});mobile.x=6.5*TILE;mobile.y=7.5*TILE;
+  var mobile=padList.find(function(p){return p.mobile;});mobile.x=15.5*TILE;mobile.y=47.5*TILE;
   dronePad=padList[0];
   // defences
   addProp(2,34,3,1,'sand',true);  addProp(23,34,3,1,'sand',true);
@@ -3599,11 +3795,20 @@ function buildOil(){
     });
     for(var cy2=ry-3;cy2<=ry+3;cy2++) for(var cx2=rx-4;cx2<=rx+4;cx2++)
       if(T(cx2,cy2)===WATER) setT(cx2,cy2,EXT);
-    addProp(rx-4,ry-3,3,3,'oiltank');  addProp(rx-1,ry-3,2,2,'oiltank');
-    addProp(rx+2,ry-1,2,2,'oiltank');  addProp(rx-3,ry+1,2,2,'oiltank');
-    addProp(rx+1,ry+2,3,3,'oiltank');
-    addProp(rx,ry,1,2,'stack');        addProp(rx-2,ry-1,1,1,'pipes');
-    addProp(rx+3,ry+2,1,1,'pipes');
+    // Distinct process islands with walkable service aisles between vessels.
+    // [x offset, y offset, tile width, tile height, optional column height]
+    var layouts=[
+      [[-4,-3,3,3],[1,-3,3,3],[-4,2,2,2],[2,2,2,2],[-1,0,1,2,68],[1,0,1,2,52]],
+      [[-4,-3,2,2],[-4,1,2,2],[1,-3,3,3],[1,2,3,3],[-1,-2,1,2,78],[-1,2,1,2,58]],
+      [[-4,-3,3,3],[-4,2,3,3],[1,2,3,3],[2,-3,2,2],[0,-2,1,2,62],[0,1,1,2,82]],
+      [[-4,-3,2,2],[-1,-3,2,2],[2,-3,2,2],[-4,2,3,3],[2,2,2,2],[-1,1,1,2,74],[1,1,1,2,56]],
+      [[-4,-3,3,3],[1,-3,3,3],[-4,2,3,3],[1,2,3,3],[-1,-1,1,2,84],[1,0,1,1,48]],
+      [[-4,-3,2,2],[0,-3,2,2],[3,-3,2,2],[-4,2,2,2],[2,2,3,3],[-1,1,1,2,60],[1,0,1,2,76]]
+    ];
+    layouts[ri2].forEach(function(v,vi){
+      addProp(rx+v[0],ry+v[1],v[2],v[3],v[4]?'stack':'oiltank');
+      var vessel=props[props.length-1];vessel.refinerySite=ri2;vessel.vesselId=vi+1;vessel.towerHeight=v[4];
+    });
     refineries.push({i:ri2,cx:(rx+.5)*TILE,cy:(ry+.5)*TILE,x0:rx-5,y0:ry-4,x1:rx+5,y1:ry+4,
       hp:420,mx:420,dead:0,burn:0,msl:rr(20,50)});
     // Two destructible machine-gun towers guard each process yard.
@@ -3625,6 +3830,12 @@ function buildOil(){
   }
 
   SPAWNS=[[22,12],[46,10],[60,18],[20,30],[52,34],[34,46],[40,20],[30,20]];
+  // Closest yard to the home perimeter gets the experimental overhead net canopy.
+  var nearestYard=refineries.reduce(function(best,site){
+    function distance(r){var x=r.cx/TILE,y=r.cy/TILE;return Math.hypot(x-Math.max(BASE.x0,Math.min(BASE.x1,x)),y-Math.max(BASE.y0,Math.min(BASE.y1,y)));}
+    return !best||distance(site)<distance(best)?site:best;
+  },null);
+  if(nearestYard)nearestYard.droneNet=true;
   prepareOilAccess();
   seedOilPatrolTanks();
   placeFires(); buildStatic(); initWallHP();
@@ -4036,6 +4247,49 @@ function findPath(sx,sy,tx,ty,avoidBase){
   path.reverse();
   return path.length>1?path:null;
 }
+// Refinery guards choose reachable, body-clear aisles instead of steering into vessels.
+function refineryGuardSpots(site,r){
+  var spots=[];
+  for(var y=Math.max(1,site.y0);y<=Math.min(MH-2,site.y1);y++)
+    for(var x=Math.max(1,site.x0);x<=Math.min(MW-2,site.x1);x++){
+      var px=(x+.5)*TILE,py=(y+.5)*TILE;
+      if(!inBase(px,py)&&!hitBox(px,py,r))spots.push({x:px,y:py});
+    }
+  return spots;
+}
+function moveRefineryGuard(en,dt,see){
+  var site=en.home,spots=refineryGuardSpots(site,en.r);
+  if(!spots.length){en.amt=0;return;}
+  // Correct invalid placement only; ordinary blocked routes never teleport a soldier.
+  if(hitBox(en.x,en.y,en.r)){
+    spots.sort(function(a,b){return Math.hypot(a.x-en.x,a.y-en.y)-Math.hypot(b.x-en.x,b.y-en.y);});
+    en.x=spots[0].x;en.y=spots[0].y;en.refPath=null;
+  }
+  en.refRouteT=(en.refRouteT||0)-dt;
+  var distance=Math.hypot(player.x-en.x,player.y-en.y);
+  if(see&&distance>100&&distance<en.d.range*.85){en.amt=Math.max(0,(en.amt||0)-dt*6);en.ang=Math.atan2(player.y-en.y,player.x-en.x);return;}
+  if(!en.refPath||en.refRouteT<=0){
+    en.refRouteT=see?1.2:4;en.refPath=null;
+    if(see)spots.sort(function(a,b){return Math.abs(Math.hypot(a.x-player.x,a.y-player.y)-en.d.pref)-Math.abs(Math.hypot(b.x-player.x,b.y-player.y)-en.d.pref);});
+    else {var offset=Math.floor(rnd()*spots.length);spots=spots.slice(offset).concat(spots.slice(0,offset));}
+    for(var i=0;i<Math.min(24,spots.length);i++){
+      var target=spots[i];if(Math.hypot(target.x-en.x,target.y-en.y)<TILE)continue;
+      var route=findPath(Math.floor(en.x/TILE),Math.floor(en.y/TILE),Math.floor(target.x/TILE),Math.floor(target.y/TILE),true);
+      if(route&&route.every(function(p){return !hitBox(p.x,p.y,en.r)&&p.x>=(site.x0-2)*TILE&&p.x<=(site.x1+3)*TILE&&p.y>=(site.y0-2)*TILE&&p.y<=(site.y1+3)*TILE;})){en.refPath=route;en.refPi=1;break;}
+    }
+  }
+  if(!en.refPath||en.stag>0){en.amt=0;return;}
+  var goal=en.refPath[en.refPi],dx=goal.x-en.x,dy=goal.y-en.y,d=Math.hypot(dx,dy);
+  if(d<7){en.refPi++;if(en.refPi>=en.refPath.length)en.refPath=null;en.amt=0;return;}
+  var step=Math.min(d,en.d.spd*(see?1:.6)*dt),ox=en.x,oy=en.y;
+  moveEnt(en,dx/d*step,dy/d*step);
+  var moved=Math.hypot(en.x-ox,en.y-oy);
+  en.refJam=moved<step*.2?(en.refJam||0)+dt:0;
+  if(en.refJam>.5){en.refPath=null;en.refJam=0;}
+  en.amt=moved>.1?Math.min(1,(en.amt||0)+dt*6):0;
+  en.walk+=moved*.09;en.ang=see?Math.atan2(player.y-en.y,player.x-en.x):Math.atan2(dy,dx);
+}
+
 function randWalk(){
   for(var i=0;i<250;i++){
     var x=ri(2,MW-3), y=ri(2,MH-3);
@@ -4784,7 +5038,7 @@ var reducedMotion=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 var autoAimEnabled=false;
 try{autoAimEnabled=(localStorage.getItem('gd_autoAim')||localStorage.getItem('gd_autoFire'))==='1';}catch(e){}
 window.addEventListener('storage',function(e){if(e.key==='gd_autoAim')autoAimEnabled=e.newValue==='1';});
-function manualAim(){ return !autoAimEnabled&&mouseAim.active&&player&&!player.dead&&!piloting&&!aboard; }
+function manualAim(){ return (!autoAimEnabled||(bot&&bot.on))&&mouseAim.active&&player&&!player.dead&&!piloting&&!aboard; }
 // Mouse aims at the visible firing plane, 18 pixels above world collision coordinates.
 function aimAngle(){ return Math.atan2(mouseAim.y+Math.round(cam.y)+18-player.y,mouseAim.x+Math.round(cam.x)-player.x); }
 window.addEventListener('pointermove',function(e){
@@ -4884,7 +5138,7 @@ window.addEventListener('keydown',function(e){
   var key=controlKey(e);
   // Bot + recorder keys — admin only (requires ?rec=1 in URL)
   if(window._recEnabled){
-    if(key==='b'&&!e.repeat){ bot.on=!bot.on; if(!bot.on){ mv.x=0;mv.y=0;mv.m=0;firing=false; } }
+    if(key==='b'&&!e.repeat&&level===1){bot.session=true;bot.on=!bot.on;if(!bot.on)botStop('Paused');}
     if(key==='v'&&!e.repeat){ REC.manActive?REC.stopManual():REC.startManual(); }
   }
   if(state!=='play') return;
@@ -5180,6 +5434,7 @@ function fragExplosion(x,y,r,damage){
   });
 }
 function explode(x,y,r,dmg,fromPlayer,depotBlast){
+  if(!fromPlayer&&dmg>0)reinforcements.forEach(function(s){var d=Math.hypot(s.x-x,s.y-y);if(d<r)hurtReinforcement(s,dmg*(1-d/r));});
   if(!depotBlast) fx.push({t:'boom',x:x,y:y,life:.5,max:.5,r:r});
   blastWalls(x,y,r,dmg);
   if(fromPlayer&&dmg>0)for(var vehicle=0;vehicle<motorcade.length;vehicle++){
@@ -5335,7 +5590,7 @@ function continueSector(){
       carryGod=player.godMode, carryGodInv=player.godInventory;
   var fromLevel=level;
   // Report completion to parent (fire-and-forget)
-  try{ window.parent.postMessage({type:'gd:sectorComplete',sector:fromLevel,kills:totalKills,squadLost:squadLost,moneyEnd:money,timeAlive:Math.floor(timeAlive),belt:belt.slice()},'*'); }catch(ex){}
+  try{ window.parent.postMessage({type:bot&&bot.session?'gd:botSectorComplete':'gd:sectorComplete',sector:fromLevel,kills:totalKills,squadLost:squadLost,moneyEnd:money,timeAlive:Math.floor(timeAlive),belt:belt.slice()},'*'); }catch(ex){}
   function doStart(){
     clearing=false;
     startSector(fromLevel+1);
@@ -5433,7 +5688,8 @@ function showLevelSolvedScreen(previewAdvance){
     document.getElementById('wrap').classList.remove('in-solved');
     continueSector();
   };
-  if(level===1)solvedAdvanceTimer=setTimeout(previewAdvance||continueSector,4000);
+  if(level===1&&bot.session){botStop('Sector 1 complete');setTimeout(function(){REC.stopManual();adminBotStatus();},4000);}
+  else if(level===1)solvedAdvanceTimer=setTimeout(previewAdvance||continueSector,4000);
 }
 function showGameCompleteScreen(){
   var ov=document.getElementById('gameCompleteOverlay');
@@ -5494,7 +5750,7 @@ function killEnemy(e,ang,gib){
   if(COMMANDER_ENABLED&&e.squadId!==undefined) cmdCheckSquadWipe(e.squadId);
   if(e.finalBoss){ redBossDefeated=1; bossBarrels.length=0; banner('FINAL BOSS DEFEATED','RED SQUARE SECURED',2.5);
     postObj(OBJ_THRESHOLDS[level]?OBJ_THRESHOLDS[level].length:2);
-    try{ window.parent.postMessage({type:'gd:sectorComplete',sector:6,kills:totalKills,squadLost:squadLost,moneyEnd:money,timeAlive:Math.floor(timeAlive),belt:belt.slice()},'*'); }catch(ex){} }
+    try{ window.parent.postMessage({type:bot&&bot.session?'gd:botSectorComplete':'gd:sectorComplete',sector:6,kills:totalKills,squadLost:squadLost,moneyEnd:money,timeAlive:Math.floor(timeAlive),belt:belt.slice()},'*'); }catch(ex){} }
   if(e.airfieldBoss){
     airfieldBossDefeated=1; miniNukes.length=0; killed++; totalKills++;
     postObj(OBJ_THRESHOLDS[level]?OBJ_THRESHOLDS[level].length:2);
@@ -5574,6 +5830,7 @@ function downPlayer(){
   droneCam={x:player.x,y:player.y,t:2.6};
   shake=Math.min(18,shake+8); sfx('hurt',1); screenSplat(ri(8,14));
   firing=false; actBtn.classList.remove('on');
+  wingmen.length=0;pendingFlightLeader=null;
   rebuildDroneBay(drone); piloting=false; drone=null;
   respawnT=2.8;
   banner('MAN DOWN', crew.length? crew.length+' STILL STANDING':'NO ONE LEFT',2.2);
@@ -5670,7 +5927,7 @@ function update(dt,realDt){
     for(var di=0;piloting&&di<enemies.length;di++){
       if(Math.hypot(enemies[di].x-drone.x,enemies[di].y-drone.y)<19){ droneBoom(drone.x,drone.y); break; }
     }
-    for(var wm=wingmen.length-1;wm>=0;wm--){
+    for(var wm=wingmen.length-1;drone&&wm>=0;wm--){
       var W=wingmen[wm];
       if(W.hurt>0) W.hurt-=dt;
       var ca=Math.cos(drone.ang), sa=Math.sin(drone.ang);
@@ -5773,6 +6030,7 @@ function update(dt,realDt){
       }
     }
   }
+  updateReinforcements(realDt||dt);
   // --- sentries
   for(var sy=sentries.length-1;sy>=0;sy--){
     var SY=sentries[sy]; SY.t-=dt; SY.cd-=dt;
@@ -6215,6 +6473,7 @@ function update(dt,realDt){
     }
     // steering
     var mvx=0,mvy=0;
+    if(en.refineryGuard){moveRefineryGuard(en,dt,see);}else{
     // Airfield cargo crews shuttle weapon cases from the aircraft to the apron piles.
     if(en.airWorker){
       var workPlane=aircraft[en.guardAircraft];
@@ -6431,6 +6690,7 @@ function update(dt,realDt){
     else if(en.ang2!==undefined&&en.jam===0) en.ang=en.ang2;
     else if(ml>0.01) en.ang=Math.atan2(mvy,mvx);
 
+    } // standard movement; refinery guards use reachable aisle routes above
     // firing
     if(see&&en.acq>0){ en.acq-=dt; }
     else if(see){
@@ -6587,6 +6847,8 @@ function update(dt,realDt){
         if(e2b.life<.06){ done=true; break; }
         continue;
       }
+      var supportHit=reinforcements.find(function(s){return s.hp>0&&Math.hypot(s.x-e2b.x,s.y-e2b.y)<s.r+(e2b.shell?14:3);});
+      if(supportHit){if(e2b.shell)explode(e2b.x,e2b.y,96,58,false);else hurtReinforcement(supportHit,e2b.dmg);done=true;break;}
       if(Math.hypot(player.x-e2b.x,player.y-e2b.y)<player.r+(e2b.shell?14:3)){
         if(e2b.shell) explode(e2b.x,e2b.y,96,58,false); else hurtPlayer(e2b.dmg,e2b.baseAssault);
         done=true; break; }
@@ -6718,7 +6980,7 @@ function update(dt,realDt){
     player.dHold=(player.dHold||0)+dt/(firing?.4:.85);
     if(player.dHold>=1){
       player.dHold=0; onPad.cd=onPad.clearStand?0:onPad.cool;
-      if(onPad.clearStand||onPad.kind==='dog') onPad.inFlight=true;
+      if(onPad.clearStand||onPad.kind==='dog'||onPad.mobile) onPad.inFlight=true;
       var kk0=onPad.kind, hp0=droneMaxHealth(kk0);
       var extra=kk0==='dog'?0:((mapKind==='oil')?14:4);
       var lx0=(onPad.table||kk0==='dog')?onPad.x:player.x, ly0=(onPad.table||kk0==='dog')?onPad.y:player.y, from='';
@@ -7022,6 +7284,8 @@ function enemyNade(en,pw){
 }
 function enemyShot(en,d,spreadOverride,dmgMul){
   if(COMMANDER_ENABLED){ CMD._lastDmgX=en.x; CMD._lastDmgY=en.y; }
+  var supportAim=reinforcementTarget(en,Math.min(d.range,Math.hypot(player.x-en.x,player.y-en.y)));
+  if(supportAim)en.ang=Math.atan2(supportAim.y-en.y,supportAim.x-en.x);
   var pel=d.pel||1, spr=(spreadOverride===undefined)?d.spread:spreadOverride;
   for(var i=0;i<pel;i++){
     var a=en.ang+rr(-spr,spr);
@@ -8920,7 +9184,7 @@ function startSector(n){
   impactMarks.length=0;
   enemies.length=0; bullets.length=0; eb.length=0; fx.length=0; nades.length=0; smoke.length=0;
   chunks.length=0; mist.length=0; splat.length=0; pools.length=0; corpses.length=0; crawlers.length=0;
-  civs.length=0; baseGuards.length=0;
+  civs.length=0; baseGuards.length=0; pendingFlightLeader=null;reinforcements.length=0;reinforcementFragCD=0;
   if(level===1||level===2||level===3||level===4||level===6){
     // The same veteran and companion patrol each sector's home base.
     var veteranSpot=level===1?freeSpot((homeSpawn.x+1)*TILE,homeSpawn.y*TILE):level===6?freeSpot(6.5*TILE,45.5*TILE):level===4?freeSpot((homeSpawn.x+1)*TILE,homeSpawn.y*TILE):level===3?freeSpot(12.5*TILE,62.5*TILE):{x:4.5*TILE,y:31.5*TILE};
@@ -8978,8 +9242,11 @@ function startSector(n){
   if(mapKind==='oil'){
     refineries.forEach(function(site){
       for(var guard=0;guard<3;guard++){
-        var sp=freeSpot(site.cx+(guard-1)*100,site.cy+105);
-        spawnEnemy(guard===0?'heavy':'rifleman',sp.x,sp.y,true,site,false);
+        var positions=refineryGuardSpots(site,12);
+        if(!positions.length)continue;
+        var sp=positions[Math.floor((guard+.5)*positions.length/3)];
+        spawnEnemy(guard===0?'heavy':'rifleman',sp.x,sp.y,false,site,false);
+        enemies[enemies.length-1].refineryGuard=true;
       }
     });
   }
@@ -9074,7 +9341,7 @@ async function sectorClear(){
     }catch(e){clearing=false;banner('CONNECTION LOST','RECONNECT TO CONTINUE',3);setTimeout(function(){sectorClear();},3000);return;}
   }
   // Notify parent window (Next.js) that this sector was completed
-  try{ window.parent.postMessage({type:'gd:sectorComplete',sector:level,kills:totalKills,squadLost:squadLost,moneyEnd:money,timeAlive:Math.floor(timeAlive),belt:belt.slice()},'*'); }catch(e){}
+  try{ window.parent.postMessage({type:bot&&bot.session?'gd:botSectorComplete':'gd:sectorComplete',sector:level,kills:totalKills,squadLost:squadLost,moneyEnd:money,timeAlive:Math.floor(timeAlive),belt:belt.slice()},'*'); }catch(e){}
   banner('SECTOR CLEAR','ADVANCING · SECTOR '+(level+1),1.2);
   setTimeout(function(){
     clearing=false;
@@ -9362,6 +9629,17 @@ function paintMilitaryDrone(c,kind,spin){
   gearLens(c,0,-8,heavy?1.8:2.5,'#91b7b0');
 }
 function paintTool(c,k){
+  if(k==='reinforcements'){
+    gearBox(c,-16,-15,32,30,'#253d50','#101f2d',3);
+    [[-10,-4],[10,-4],[-6,4],[6,4],[0,-6]].forEach(function(p){
+      gearBox(c,p[0]-4,p[1]+2,8,9,'#82916b','#45553d',2);
+      c.fillStyle='#cfaa83';c.beginPath();c.arc(p[0],p[1],3,0,6.3);c.fill();
+      c.fillStyle='#647450';c.beginPath();c.ellipse(p[0],p[1]-1.5,4,2.6,0,Math.PI,Math.PI*2);c.fill();
+      gearLine(c,p[0]+3,p[1]+3,p[0]+5,p[1]+9,'#252e31',2);
+    });
+    gearLine(c,-13,13,13,13,'#ffd700',2);return;
+  }
+
   if(k==='god'){
     gearBox(c,-12,-14,24,28,'#182c3a','#ffd700',3);
     c.save();rrect(c,-11,-13,22,26,2);c.clip();c.scale(1.45,1.45);
@@ -11771,6 +12049,7 @@ function draw(){
   for(var civIndex=0;civIndex<civs.length;civIndex++) units.push(civs[civIndex]);
   for(var bg=0;bg<baseGuards.length;bg++) units.push(baseGuards[bg]);
   for(var cw=0;cw<crew.length;cw++) units.push(crew[cw]);
+  for(var support=0;support<reinforcements.length;support++)if(reinforcements[support].hp>0)units.push(reinforcements[support]);
   if(tank) units.push(tank);
   for(var tr=0;tr<props.length;tr++)if((props[tr].kind==='fieldTree'||props[tr].kind==='snowTree'))
     units.push({x:(props[tr].x+.5)*TILE,y:(props[tr].y+.5)*TILE,treeProp:props[tr]});
@@ -11786,6 +12065,7 @@ function draw(){
     if(U.captive){ drawCaptive(ctx,U); continue; }
     if(U.depotWorker){ drawDepotWorker(ctx,U); continue; }
     if(U===tank){ drawTank(ctx,U); continue; }
+    if(reinforcements.indexOf(U)!==-1){drawReinforcement(ctx,U);continue;}
     if(U.kit){ drawCrew(ctx,U); continue; }
     if(U.pet){ drawAnimal(ctx,U); continue; }
     if(U.baseGuard){ drawBaseGuard(ctx,U); continue; }
@@ -12097,16 +12377,17 @@ function draw(){
       ctx.fillStyle='#f2ead2'; ctx.font='bold 9px Arial'; ctx.textAlign='center'; ctx.fillText(RW.name,RW.cx,redLabelY-5); ctx.textAlign='start';
       continue;
     }
+    drawRefineryNet(ctx,RW);
     if(RW.dead){
       ctx.fillStyle='rgba(12,9,7,.5)';
       ctx.beginPath(); ctx.ellipse(RW.cx,RW.cy,150,110,0,0,6.3); ctx.fill();
       continue;
     }
-    ctx.fillStyle='rgba(0,0,0,.55)'; rrect(ctx,RW.cx-52,RW.cy-84,104,9,3); ctx.fill();
+    ctx.fillStyle='rgba(0,0,0,.55)'; rrect(ctx,RW.cx-52,RW.cy-190,104,9,3); ctx.fill();
     ctx.fillStyle=RW.hp>RW.mx*.5?'#4fd08a':(RW.hp>RW.mx*.25?'#e2b13c':'#d84a34');
-    rrect(ctx,RW.cx-50.5,RW.cy-82.5,101*(RW.hp/RW.mx),6,2); ctx.fill();
+    rrect(ctx,RW.cx-50.5,RW.cy-188.5,101*(RW.hp/RW.mx),6,2); ctx.fill();
     ctx.fillStyle='#cfd8e0'; ctx.font='bold 9px Arial'; ctx.textAlign='center';
-    ctx.fillText('REFINERY '+(RW.i+1),RW.cx,RW.cy-88); ctx.textAlign='start';
+    ctx.fillText('REFINERY '+(RW.i+1),RW.cx,RW.cy-194); ctx.textAlign='start';
   }
   for(var sw=0;sw<sams.length;sw++){
     var SW=sams[sw];
@@ -13103,11 +13384,11 @@ function drawObjectives(){
     // Label text
     ctx.textAlign='left'; ctx.font=(O.done?'9px':'bold 9px')+' Arial';
     ctx.fillStyle=O.done?'#6a8c30':'#e8e0c8';
-    ctx.fillText(O.t, cx+pad+18, oy+10);
+    ctx.fillText(O.t, cx+pad+18, oy+10,pw-pad*2-18);
     // Strike-through
     if(O.done){
       ctx.strokeStyle='rgba(106,140,48,.6)'; ctx.lineWidth=1;
-      var tw=ctx.measureText(O.t).width;
+      var tw=Math.min(ctx.measureText(O.t).width,pw-pad*2-18);
       ctx.beginPath(); ctx.moveTo(cx+pad+18,oy+5); ctx.lineTo(cx+pad+18+tw,oy+5); ctx.stroke();
     }
   }
@@ -13911,8 +14192,10 @@ function frame(t){
     else dt=raw*(1-.58*Math.min(1,droneCam.t/1.1));
   }
   if(state==='card'){ cardT+=dt; if(!pendingCard||!cardData) closeCard(); }
-  if(state==='play'&&bot.on&&player&&!player.dead&&!piloting) botStep(dt);
+  if(bot.on&&player&&!piloting) botStep(dt);
+  if(bot.session&&state==='over'&&bot.on){botStop('Run failed');REC.stopManual();}
   if(state==='play') update(dt,raw);
+  resumeDroneFormation();
   if(player) draw();
   REC.tick(dt);
   requestAnimationFrame(frame);
@@ -14024,8 +14307,8 @@ bindTap(document.getElementById('go'),function(){
   var sc=parseInt(params.get('coins')||'0',10);
   if(sc>0&&sc<=99999) startCoins=sc;
   var beltParam=params.get('belt');
-  if(beltParam){ var VALID_TOOLS={droneS:1,drone:1,droneL:1,usv:1,sentry:1,strike:1,stim:1,smoke:1,incend:1,flamer:1,emp:1,med:1,plate:1,repair:1}; var bids=beltParam.split(',').filter(function(b){return VALID_TOOLS[b];}).slice(0,6); if(bids.length) belt=bids; }
-  window._recEnabled = params.get('rec')==='1';
+  if(beltParam){ var VALID_TOOLS={droneS:1,drone:1,droneL:1,usv:1,sentry:1,strike:1,stim:1,smoke:1,incend:1,flamer:1,emp:1,med:1,plate:1,repair:1,reinforcements:1}; var bids=beltParam.split(',').filter(function(b){return VALID_TOOLS[b];}).slice(0,6); if(bids.length) belt=bids; }
+  window._recEnabled = adminToolAllowed&&params.get('rec')==='1';
   if(params.get('mute')==='1'){ muted=true; var mb=document.getElementById('mute'); if(mb){mb.textContent='✕';mb.style.opacity=.5;} }
   var autolvl=parseInt(params.get('autostart')||'0',10);
   if(!params.has('boss')&&autolvl>=1&&autolvl<=6){
@@ -14181,73 +14464,128 @@ window.addEventListener('message',function(e){
    Reads game state each frame and drives mv / firing so the game looks like
    a skilled human: approach enemy, hold distance, dodge incoming bullets.
    ========================================================================= */
-var bot = { on: false, dodgeX: 0, dodgeY: 0, dodgeT: 0 };
-
-function botStep(dt) {
-  var tgt = nearestTarget();
-
-  /* fire whenever there is a visible target */
-  firing = !!tgt;
-
-  /* --- bullet dodge --- */
-  bot.dodgeT = Math.max(0, bot.dodgeT - dt);
-  if (bot.dodgeT < 0.05) {
-    for (var bi = 0; bi < eb.length; bi++) {
-      var B = eb[bi];
-      var bx = B.x - player.x, by = B.y - player.y;
-      var bd = Math.hypot(bx, by);
-      if (bd > 220 || bd < 4) continue;
-      var bvl = Math.hypot(B.vx, B.vy) || 1;
-      /* dot > 0 means bullet is travelling toward player */
-      if ((B.vx * bx + B.vy * by) / (bvl * bd) > 0.6) {
-        /* choose perpendicular that isn't a wall */
-        var p1x =  B.vy / bvl, p1y = -B.vx / bvl;
-        var p2x = -p1x,        p2y = -p1y;
-        var t1ok = !blocksMove(T(Math.floor((player.x + p1x * 40) / TILE), Math.floor((player.y + p1y * 40) / TILE)));
-        bot.dodgeX = t1ok ? p1x : p2x;
-        bot.dodgeY = t1ok ? p1y : p2y;
-        bot.dodgeT = 0.32 + Math.random() * 0.14;
-        break;
-      }
+var bot = { on:false, session:false, phase:'Ready', path:null, pathT:0, goalKey:'', stuck:0, lastX:0, lastY:0, error:'', elapsed:0 };
+function botRelease(){ mv.x=mv.y=mv.m=0;firing=false;mouseAim.active=false;keys={}; }
+function botStop(reason){bot.on=false;bot.phase=reason||'Stopped';botRelease();}
+function botNavigate(goal,stopRadius,dt){
+  var distance=Math.hypot(goal.x-player.x,goal.y-player.y);
+  if(distance<(stopRadius||16)){mv.m=0;return true;}
+  bot.pathT-=dt;
+  var gx=Math.floor(goal.x/TILE),gy=Math.floor(goal.y/TILE),key=gx+','+gy;
+  if(bot.pathT<=0||key!==bot.goalKey){
+    bot.goalKey=key;bot.pathT=1.2;bot.path=null;
+    // Search accessible tiles around solid targets (HQ, vehicles), then route through doors.
+    var candidates=[];
+    for(var radius=0;radius<=5;radius++)for(var ox=-radius;ox<=radius;ox++)for(var oy=-radius;oy<=radius;oy++){
+      if(Math.max(Math.abs(ox),Math.abs(oy))!==radius||blocksMove(T(gx+ox,gy+oy)))continue;
+      candidates.push({x:gx+ox,y:gy+oy});
+    }
+    for(var i=0;i<candidates.length;i++){
+      var p=candidates[i];
+      bot.path=findPath(Math.floor(player.x/TILE),Math.floor(player.y/TILE),p.x,p.y);
+      if(bot.path){bot.pi=bot.path.length>1?1:0;break;}
     }
   }
-
-  /* --- approach / orbit nearest enemy --- */
-  var mx = 0, my = 0, mm = 0;
-  if (tgt) {
-    var ex = tgt.x - player.x, ey = tgt.y - player.y;
-    var ed = Math.hypot(ex, ey) || 1;
-    var approach = Math.max(-0.8, Math.min(1, (ed - 160) / 110));
-    mx = ex / ed * approach;
-    my = ey / ed * approach;
-    mm = Math.abs(approach);
-  } else {
-    /* no enemies visible — drift toward nearest unflagged objective */
-    var bfd = 1e9, bf = null;
-    for (var fi = 0; fi < flags.length; fi++) {
-      if (flags[fi].state === 'done') continue;
-      var fd = Math.hypot(flags[fi].x - player.x, flags[fi].y - player.y);
-      if (fd < bfd) { bfd = fd; bf = flags[fi]; }
-    }
-    if (bf && bfd > 40) {
-      var fdx = bf.x - player.x, fdy = bf.y - player.y, fdd = Math.hypot(fdx, fdy) || 1;
-      mx = fdx / fdd; my = fdy / fdd; mm = 0.7;
-    }
-  }
-
-  /* blend dodge into movement vector */
-  if (bot.dodgeT > 0) {
-    var ds = Math.min(1, bot.dodgeT / 0.28);
-    mx = mx * (1 - ds) + bot.dodgeX * ds;
-    my = my * (1 - ds) + bot.dodgeY * ds;
-    mm = Math.max(mm, ds * 0.9);
-  }
-
-  var ml = Math.hypot(mx, my);
-  if (ml > 0.001) { mx /= ml; my /= ml; } else { mm = 0; }
-  mv.x = mx; mv.y = my; mv.m = mm;
-  mouseAim.active = false;
+  if(!bot.path){mv.m=0;bot.phase='No route — seeking another approach';return false;}
+  while(bot.pi<bot.path.length-1&&Math.hypot(bot.path[bot.pi].x-player.x,bot.path[bot.pi].y-player.y)<10)bot.pi++;
+  var step=bot.path[bot.pi],dx=step.x-player.x,dy=step.y-player.y,d=Math.hypot(dx,dy)||1;
+  mv.x=dx/d;mv.y=dy/d;mv.m=d>4?1:0;
+  if(Math.hypot(player.x-bot.lastX,player.y-bot.lastY)<.4&&mv.m)bot.stuck+=dt;else bot.stuck=0;
+  bot.lastX=player.x;bot.lastY=player.y;
+  if(bot.stuck>1){bot.pathT=0;mv.x=-dy/d;mv.y=dx/d;bot.stuck=0;}
+  return false;
 }
+function botAim(target){
+  player.face=Math.atan2(target.y-player.y,target.x-player.x);
+  // Use the normal mouse aiming path so guns, grenades and structure hits agree.
+  mouseAim.active=true;mouseAim.x=target.x-Math.round(cam.x);mouseAim.y=target.y-Math.round(cam.y)-18;
+  firing=player.mag>0&&los(player.x,player.y,target.x,target.y);
+}
+function botStep(dt){
+  if(!adminToolAllowed||level!==1){botStop('Sector 1 only');return;}
+  bot.elapsed+=dt;botRelease();
+  if(player.dead){bot.phase='Waiting for next squad member';return;}
+  if(state==='card'){if(cardT>.5)takeCard();return;}
+  if(state==='shop'){
+    ['ammo','t_med','plate','t_repair'].forEach(function(id){
+      if(id==='t_med'&&player.hp>65||id==='plate'&&player.ap>30||id==='t_repair'&&baseHP>baseMX*.7)return;
+      var i=SHOP.findIndex(function(item){return item.id===id;});if(i>=0&&money>=SHOP[i].p)buy(i);
+    });
+    state='play';shopCD=5;bot.pathT=0;bot.supply=false;return;
+  }
+  if(state!=='play')return;
+  if(player.hp<60&&belt.indexOf('med')>=0)useTool(belt.indexOf('med'));
+  if(inBase(player.x,player.y)&&baseHP<baseMX*.8&&belt.indexOf('repair')>=0)useTool(belt.indexOf('repair'));
+  if(player.mag<=0&&player.res>0&&player.reload<=0)startReload();
+  if(player.mag+player.res===0){
+    var armed=player.guns.findIndex(function(g){return g.mag+g.res>0;});if(armed>=0)equipGun(armed);
+  }
+  var needsAmmo=player.mag+player.res<12;
+  if((needsAmmo||player.hp<35)&&money>=110)bot.supply=true;
+  var target=nearestTarget(true),goal=null;
+  if(bot.supply){bot.phase='Returning to quartermaster';goal=shopPad;}
+  else {
+    var flagGoal=flags.filter(function(f){return f.state!=='done';}).sort(function(a,b){return Math.hypot(a.x-player.x,a.y-player.y)-Math.hypot(b.x-player.x,b.y-player.y);})[0];
+    var hub=compoundDroneHub;
+    if(hub&&!hub.dead){bot.phase='Destroying enemy drone hub';goal=hub;}
+    else if(flagGoal){
+      bot.phase='Capturing base '+(flags.indexOf(flagGoal)+1);goal=flagGoal;
+      if(flagGoal.state==='idle'){var guard=enemies.find(function(e){return e.home&&e.home.i===flags.indexOf(flagGoal);});if(guard)goal=guard;}
+    }
+    else {bot.phase=compoundBossSpawned?'Fighting Sector 1 boss':'Clearing remaining enemies';goal=target||enemies[0];}
+    // Local defenders take priority, but hold the flag during its capture countdown.
+    var holding=flagGoal&&goal===flagGoal&&flagGoal.state!=='idle'&&Math.hypot(player.x-flagGoal.x,player.y-flagGoal.y)<32;
+    if(target){
+      botAim(target);
+      if(!holding&&Math.hypot(target.x-player.x,target.y-player.y)>250)goal=target;
+      else if(!holding&&Math.hypot(target.x-player.x,target.y-player.y)<110){
+        var away=freeSpot(player.x+(player.x-target.x)*.5,player.y+(player.y-target.y)*.5);goal=away;
+      }
+    } else if(hub&&!hub.dead&&Math.hypot(hub.x-player.x,hub.y-player.y)<330&&los(player.x,player.y,hub.x,hub.y)){
+      botAim(hub);goal=null;
+    }
+    if(holding)goal=null;
+    if(needsAmmo&&!bot.supply){
+      var ammoDrop=drops.filter(function(d){return d.landed&&(d.ammo||d.gun);}).sort(function(a,b){return Math.hypot(a.x-player.x,a.y-player.y)-Math.hypot(b.x-player.x,b.y-player.y);})[0];
+      if(ammoDrop){goal=ammoDrop;bot.phase='Collecting ammunition';}
+      else {var crate=crates.find(function(c){return !c.open;});if(crate){goal=crate;bot.phase='Opening supply crate';if(Math.hypot(crate.x-player.x,crate.y-player.y)<TILE)firing=true;}}
+    }
+  }
+  if(goal)botNavigate(goal,goal===shopPad?12:18,dt);
+  // Dodge only approaching bullets; the old bot tested the dot product backwards.
+  if(!goal||goal!==shopPad)for(var i=0;i<eb.length;i++){
+    var b=eb[i],dx=b.x-player.x,dy=b.y-player.y,d=Math.hypot(dx,dy),speed=Math.hypot(b.vx,b.vy)||1;
+    if(d>12&&d<100&&(dx*b.vx+dy*b.vy)/(d*speed)<-.8){
+      var nx=b.vy/speed,ny=-b.vx/speed;
+      if(!solidAt(player.x+nx*28,player.y+ny*28)){mv.x=nx;mv.y=ny;mv.m=1;}break;
+    }
+  }
+}
+function adminBotStatus(){
+  if(!adminToolAllowed)return;
+  window.parent.postMessage({type:'gd:botStatus',ready:!!player&&level===1&&!levelIntroActive,
+    running:bot.on,phase:bot.phase,recording:REC.manActive,error:bot.error,elapsed:Math.floor(bot.elapsed),
+    kills:totalKills||0,flags:flags.filter(function(f){return f.state==='done';}).length,
+    hubDestroyed:!!(compoundDroneHub&&compoundDroneHub.dead),health:player?Math.ceil(player.hp):0,
+    base:Math.round(baseHP/baseMX*100),recordSupported:typeof MediaRecorder!=='undefined'&&typeof cv.captureStream==='function'},window.location.origin);
+}
+window.addEventListener('message',function(event){
+  if(event.origin!==window.location.origin||event.source!==window.parent||!adminToolAllowed||!event.data||event.data.type!=='gd:botControl')return;
+  var action=event.data.action;
+  if(action==='status'){adminBotStatus();return;}
+  if(action==='recordStop'){REC.stopManual();adminBotStatus();return;}
+  if(action==='stop'){botStop('Stopped');REC.stopManual();adminBotStatus();return;}
+  if(action==='pause'){botStop('Paused');if(state==='play')state='pause';adminBotStatus();return;}
+  if(level!==1||!player||levelIntroActive)return;
+  if(action==='start'&&!compoundBossDefeated&&state!=='over'){
+    bot.session=true;bot.on=true;bot.phase='Running';bot.error='';bot.pathT=0;
+    if(state==='pause')state='play';
+    if(event.data.record)REC.startManual();
+  }
+  if(action==='recordStart')REC.startManual();
+  adminBotStatus();
+});
+setInterval(adminBotStatus,500);
 
 /* =========================================================================
    RECORDER  (V to manual record · auto-highlights always on during play)
@@ -14282,20 +14620,26 @@ var REC = (function () {
   var manMR = null, manChunks = [], _manActive = false;
 
   function startManual() {
-    if (_manActive || typeof MediaRecorder === 'undefined') return;
-    _manActive = true; manChunks = [];
-    var stream = vc.captureStream(60);
-    try { manMR = new MediaRecorder(stream, { mimeType: bestMime(), videoBitsPerSecond: 6000000 }); }
-    catch (e) { manMR = new MediaRecorder(stream); }
-    manMR.ondataavailable = function (e) { if (e.data && e.data.size > 0) manChunks.push(e.data); };
-    manMR.onstop = function () { saveBlob(new Blob(manChunks, { type: bestMime() || 'video/webm' }), 'get-droned-run.webm'); };
-    manMR.start(500);
-    notice('⏺ RECORDING  ·  V to stop');
+    if (_manActive || !window._recEnabled || !adminToolAllowed) return;
+    var stream;
+    try {
+      if(typeof MediaRecorder==='undefined'||typeof vc.captureStream!=='function')throw new Error('Recording is unavailable in this browser.');
+      stream=vc.captureStream(60);manChunks=[];
+      manMR=new MediaRecorder(stream,{mimeType:bestMime(),videoBitsPerSecond:6000000});
+      var recorder=manMR,chunks=manChunks;
+      recorder.ondataavailable=function(e){if(e.data&&e.data.size)chunks.push(e.data);};
+      recorder.onstop=function(){
+        stream.getTracks().forEach(function(track){track.stop();});
+        if(chunks.length)saveBlob(new Blob(chunks,{type:recorder.mimeType||'video/webm'}),'get-droned-run.webm');
+      };
+      recorder.onerror=function(){bot.error='Recording failed. Stop and try again.';_manActive=false;stream.getTracks().forEach(function(track){track.stop();});};
+      recorder.start(500);_manActive=true;bot.error='';notice('⏺ RECORDING  ·  V to stop');
+    }catch(e){if(stream)stream.getTracks().forEach(function(track){track.stop();});_manActive=false;manMR=null;bot.error=e.message||'Could not start recording.';}
   }
-
   function stopManual() {
     if (!_manActive || !manMR) return;
-    _manActive = false; manMR.stop(); manMR = null;
+    _manActive=false;
+    if(manMR.state!=='inactive')manMR.stop();manMR=null;
     notice('⬇ DOWNLOADING VIDEO…');
   }
 
@@ -14352,7 +14696,7 @@ var REC = (function () {
     if (!window._recEnabled) return; // recording features admin-only
     blitVert();
     /* manage highlight buffer lifecycle */
-    if (state === 'play' && !hlMR) startHL();
+    if (state === 'play' && !hlMR && new URLSearchParams(location.search).get('bot')!=='1') startHL();
     if (state !== 'play' && hlMR) stopHL();
     _noticeTTL = Math.max(0, _noticeTTL - dt);
     if (state !== 'play' || !player || player.dead) return;
