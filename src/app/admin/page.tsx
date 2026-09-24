@@ -1,7 +1,7 @@
 import { AdminSignups } from '@/components/AdminSignups'
 import { AdminBotConsole } from '@/components/AdminBotConsole'
 import { AdminRecToggle } from '@/components/AdminRecToggle'
-import { GameSidebar } from '@/components/GameSidebar'
+import { AdminGameSidebar } from '@/components/AdminGameSidebar'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
@@ -50,7 +50,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
 
   return (
     <div style={{ display: 'flex', height: '100dvh', overflow: 'hidden', background: UA.bg }}>
-      <GameSidebar game={game} user={user as User} hasPurchased={access.allowed} isAdmin={true} />
+      <AdminGameSidebar game={game} user={user as User} hasPurchased={access.allowed} recEnabled={recEnabled} />
       <main style={{ flex: 1, minWidth: 0, height: '100dvh', overflowY: 'auto', color: UA.text, padding: '32px 16px' }}>
       <div style={{ maxWidth: 900, margin: '0 auto' }}>
 

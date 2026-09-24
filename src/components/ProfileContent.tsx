@@ -286,7 +286,10 @@ export function ProfileContent({ game, user, hasPurchased, isAdmin, completedSec
                 <button
                   disabled={resetting}
                   onClick={async () => {
-                    if (localStorage.getItem(`gd:pending-progress:${user.id}:${gameId}`) && localStorage.getItem(`gd:pending-progress:${user.id}:${gameId}`) !== '[]') { setResetMsg('SAVE PENDING'); return }
+                    try {
+                      const pending = localStorage.getItem(`gd:pending-progress:${user.id}:${gameId}`)
+                      if (pending && pending !== '[]') { setResetMsg('SAVE PENDING'); return }
+                    } catch {}
                     if (!confirm('Reset all sector progress and start from Sector 1?')) return
                     setResetting(true)
                     setResetMsg(null)

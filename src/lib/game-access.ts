@@ -12,7 +12,7 @@ export async function gameAccess(db: ReturnType<typeof createServerClient<Databa
   const isAdmin = isGameAdmin(user)
   const { data: rawGame, error } = await db.from('games').select('id').eq('slug', 'get-droned').eq('is_published', true).single()
   const game = rawGame as { id: string } | null
-  if (isAdmin) return { allowed: true, isAdmin: true, gameId: game?.id ?? null }
+  if (isAdmin) return { allowed: true, isAdmin: true, gameId: game?.id ?? null, unavailable: !!error }
   if (error || !game) return { allowed: false, isAdmin: false, gameId: null, unavailable: true }
   const { data: purchase, error: purchaseError } = await db.from('purchases').select('id').eq('user_id', user.id).eq('game_id', game.id).eq('status', 'completed').maybeSingle()
   return { unavailable: !!purchaseError, allowed: !purchaseError && !!purchase, isAdmin: false, gameId: game.id }

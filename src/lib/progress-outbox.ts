@@ -23,8 +23,8 @@ export function createProgressOutbox(
       while (queue.length && !stopped) {
         const entry = [...queue].sort((a, b) => a.sector - b.sector)[0]
         await send(entry)
-        if (stopped) return
         queue.splice(queue.indexOf(entry), 1); persist()
+        if (stopped) return
       }
       if (!stopped) status('Progress saved')
     } catch {

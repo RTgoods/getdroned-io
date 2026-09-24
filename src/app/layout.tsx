@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className="bg-[#0c0d0b] text-[#e8e4d8] antialiased min-h-screen flex flex-col">
+      <body className="bg-[#0c0d0b] text-[#d8e8ff] antialiased min-h-screen flex flex-col">
         <ScrollToTop />
         <main className="flex-1">{children}</main>
         <Footer />

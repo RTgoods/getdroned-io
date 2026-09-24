@@ -456,7 +456,7 @@ function LevelRow({ ukrainian, sector, unlocked, done, stat, open, expanded, onT
         onClick={open ? onToggle : (unlocked ? onPlay : undefined)}
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
-        title={sector.num === 1 && !hasUser ? 'Play Sector 1 free — sign in to start' : !unlocked ? (hasUser && !prevDone ? `Complete Sector ${sector.num - 1} to unlock Sector ${sector.num}` : `Buy to unlock Sector ${sector.num}`) : done ? `Sector ${sector.num} complete` : `Sector ${sector.num} — ${t(sector.name)}`}
+        title={sector.num === 1 && !hasUser ? 'Play Sector 1 free — sign in to start' : !unlocked ? (hasPurchased && !prevDone ? `Complete Sector ${sector.num - 1} to unlock Sector ${sector.num}` : `Buy to unlock Sector ${sector.num}`) : done ? `Sector ${sector.num} complete` : `Sector ${sector.num} — ${t(sector.name)}`}
         style={{
           width: '100%', display: 'flex', alignItems: 'center',
           gap: open ? 10 : 0, padding: open ? '7px 12px' : '7px 0',
@@ -601,7 +601,7 @@ function LevelRow({ ukrainian, sector, unlocked, done, stat, open, expanded, onT
             >
               {t(sector.num === 1 ? (hasUser && hasPurchased ? 'PLAY' : '▶ PLAY SECTOR 1 FREE') : done ? '↺ REPLAY' : '▶ PLAY')}
             </button>
-          ) : hasUser && !prevDone ? (
+          ) : hasPurchased && !prevDone ? (
             <button
               type="button"
               disabled

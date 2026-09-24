@@ -37,10 +37,16 @@ test('only trusted app metadata grants admin access', async () => {
   assert.equal(isGameAdmin({ ...user, user_metadata: { role: 'admin' }, email: 'g00dsman@yahoo.com' }), false)
   assert.equal((await gameAccess(database(), { ...user, app_metadata: { role: 'admin' } })).allowed, true)
 })
+test('admin access flags unavailable instead of silently dropping gameId on a transient DB error', async () => {
+  const result = await gameAccess(database({ missingGame: true }), { ...user, app_metadata: { role: 'admin' } })
+  assert.equal(result.allowed, true)
+  assert.equal(result.gameId, null)
+  assert.equal(result.unavailable, true)
+})
 const { NextRequest, NextResponse } = require('next/server')
-async function requestAs(user, paid, path, completed) {
+async function requestAs(user, paid, path, completed, failed) {
   const middlewareExports = {}
-  const db = database({ paid, completed })
+  const db = database({ paid, completed, failed })
   db.auth = { getUser: async () => ({ data: { user } }) }
   const middlewareCode = ts.transpileModule(fs.readFileSync('src/middleware.ts', 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText
   new Function('exports', 'require', middlewareCode)(middlewareExports, name => {
@@ -78,4 +84,8 @@ test('paid players must finish the previous sector before launching', async () =
  assert.equal((await requestAs(user, true, '/get-droned/index.html?autostart=2', [])).status, 403)
  assert.equal((await requestAs(user, true, '/get-droned/index.html?autostart=2', [1])).status, 200)
  assert.equal((await requestAs(user, true, '/get-droned/index.html?autostart=3', [1])).status, 403)
+})
+
+test('a transient purchase-lookup error is reported as unavailable, not purchase-required', async () => {
+  assert.equal((await requestAs(user, false, '/get-droned/index.html?autostart=2', [], true)).status, 503)
 })
