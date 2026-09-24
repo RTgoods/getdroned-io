@@ -47,6 +47,23 @@ The app's sign-in button and `/auth/callback` route already handle Google OAuth 
 5. Confirm Authentication → URL Configuration (step 2.4 above) includes your production `/auth/callback` URL
 6. Test: `/auth/login` → "Continue with Google" → should return signed in, both locally and in production
 
+> **Gotcha:** Site URL / Redirect URLs are pasted into plain text fields — a stray character (backtick, quote, extra whitespace) makes the value an invalid URL. Supabase will still redirect there after the OAuth handshake, and the browser fails with something like "address is invalid" (Safari) or a silent stall (Chrome). If login breaks right after editing these fields, that's the first thing to check.
+
+---
+
+## 2c · Discord login
+
+Same pattern as Google — the login page already has a "Continue with Discord" button wired to `signInWithOAuth({ provider: 'discord' })`, reusing the same `/auth/callback` route. Only the provider needs configuring.
+
+1. **Discord Developer Portal** ([discord.com/developers/applications](https://discord.com/developers/applications)) → New Application.
+2. **OAuth2 → General**
+   - Add a redirect: **your Supabase project's callback**, not your app's —
+     `https://xxx.supabase.co/auth/v1/callback` (same URL used for Google, above)
+   - Copy the **Client ID** and (under Client Secret) **reset/copy the Client Secret**
+3. **Supabase Dashboard → Authentication → Providers → Discord**
+   - Enable it, paste the Client ID and Client Secret, save
+4. Test: `/auth/login` → "Continue with Discord" → should return signed in, both locally and in production
+
 ---
 
 ## 3 · Stripe
