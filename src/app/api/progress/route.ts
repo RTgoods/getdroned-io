@@ -35,13 +35,14 @@ export async function GET(req: NextRequest) {
   const gameId = req.nextUrl.searchParams.get('gameId')
   if (!gameId || gameId !== access.gameId) return NextResponse.json({ error: 'Invalid game' }, { status: 400 })
 
-  const { data } = await adminClient()
+  const { data, error } = await adminClient()
     .from('progress')
     .select('completed_sectors, sector_stats')
     .eq('user_id', user.id)
     .eq('game_id', gameId)
     .maybeSingle()
 
+  if (error) return NextResponse.json({ error: 'Progress unavailable' }, { status: 503 })
   const completedSectors: number[] = data?.completed_sectors ?? []
   const sectorStats: Record<string, SectorStat> = data?.sector_stats ?? {}
 
@@ -82,13 +83,14 @@ export async function POST(req: NextRequest) {
   const db = adminClient()
 
   // Fetch existing
-  const { data: existing } = await db
+  const { data: existing, error: readError } = await db
     .from('progress')
     .select('completed_sectors, sector_stats')
     .eq('user_id', user.id)
     .eq('game_id', gameId)
     .maybeSingle()
 
+  if (readError) return NextResponse.json({ error: 'Progress unavailable' }, { status: 503 })
   const current: number[] = existing?.completed_sectors ?? []
   if (!access.isAdmin && sector > 1 && !current.includes(sector - 1)) return NextResponse.json({ error: `Complete Sector ${sector - 1} first` }, { status: 403 })
   const updated = current.includes(sector) ? current : [...current, sector].sort((a, b) => a - b)
@@ -142,11 +144,12 @@ export async function DELETE(req: NextRequest) {
   const gameId = req.nextUrl.searchParams.get('gameId')
   if (!gameId || gameId !== access.gameId) return NextResponse.json({ error: 'Invalid game' }, { status: 400 })
 
-  await adminClient()
+  const { error } = await adminClient()
     .from('progress')
     .delete()
     .eq('user_id', user.id)
     .eq('game_id', gameId)
 
+  if (error) return NextResponse.json({ error: 'Could not reset progress' }, { status: 503 })
   return NextResponse.json({ completedSectors: [], sectorStats: {}, carryMoney: 0, carryBelt: [] })
 }

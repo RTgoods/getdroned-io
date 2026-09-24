@@ -2,6 +2,34 @@
 (function(root){
 'use strict';
 var pairs = `
+FULL BODY ARMOUR|ПОВНИЙ БРОНЕКОМПЛЕКТ
+RESTORE 100% ARMOUR|ВІДНОВИТИ 100% БРОНІ
+100% armour · to belt|100% броні · на пояс
+100% ARMOUR|100% БРОНІ
+ARMOUR ALREADY FULL|БРОНЯ ВЖЕ ПОВНА
+FULL BODY ARMOUR SAVED|БРОНЕКОМПЛЕКТ ЗБЕРЕЖЕНО
+Capture all three bases|Захопіть усі три бази
+Clear all hostiles|Знищте всіх ворогів
+Destroy the enemy drone base|Знищте ворожу базу дронів
+Defeat the compound boss|Переможіть боса комплексу
+Capture both enemy headquarters|Захопіть обидва ворожі штаби
+Rescue the allied soldiers|Врятуйте союзних бійців
+Destroy both weapons depots|Знищте обидва склади зброї
+Defeat General Grakov|Переможіть генерала Гракова
+Sink all seven fleet ships|Потопіть усі сім кораблів флоту
+Eliminate shore troops|Знищте берегові війська
+Destroy the Kerch road / rail bridge|Зруйнуйте Керченський автомобільний і залізничний міст
+Destroy the sea boss|Знищте морського боса
+Destroy all six refineries|Знищте всі шість нафтопереробних об’єктів
+Neutralise SAM sites|Знищте зенітні ракетні комплекси
+Destroy all six patrol tanks|Знищте всі шість патрульних танків
+Defeat the Oil Baron|Переможіть нафтового барона
+Destroy all cargo planes|Знищте всі вантажні літаки
+Repel both assault waves|Відбийте обидві хвилі штурму
+Defeat the airfield commander|Переможіть командира аеродрому
+Capture both flags and destroy the drone base|Захопіть обидва прапори та знищте базу дронів
+Defeat the final boss|Переможіть фінального боса
+
 CALL THE REINFORCEMENTS|ВИКЛИКАТИ ПІДКРІПЛЕННЯ
 REINFORCEMENTS|ПІДКРІПЛЕННЯ
 REINFORCEMENTS ACTIVE|ПІДКРІПЛЕННЯ ВЖЕ В БОЮ

@@ -28,8 +28,8 @@ const UA = {
   blue:    '#0068cc',
   blueMid: '#4a9eff',
   text:    '#d8e8ff',
-  muted:   '#4a6080',
-  dim:     '#243040',
+  muted:   '#9aafc8',
+  dim:     '#879bb4',
   green:   '#9db35a',
 }
 
@@ -116,7 +116,7 @@ export function ProfileContent({ game, user, hasPurchased, isAdmin, completedSec
               onClick={onReturnToGame ? (event) => { event.preventDefault(); onReturnToGame() } : undefined}
               style={{
                 display: 'inline-flex', alignItems: 'center', gap: 7,
-                fontSize: 8, fontWeight: 900, letterSpacing: '2px', textTransform: 'uppercase',
+                fontSize: 11, fontWeight: 900, letterSpacing: '2px', textTransform: 'uppercase',
                 color: UA.muted, textDecoration: 'none',
                 padding: '7px 14px', borderRadius: 3,
                 border: `1px solid ${UA.borderFaint}`,
@@ -134,7 +134,7 @@ export function ProfileContent({ game, user, hasPurchased, isAdmin, completedSec
           <div style={{ marginBottom: 28 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
               <span style={{ display: 'inline-block', width: 12, height: 2, background: UA.yellow, borderRadius: 1 }} />
-              <span style={{ fontSize: 8, fontWeight: 900, letterSpacing: '3px', color: UA.yellow, textTransform: 'uppercase' }}>PILOT FILE</span>
+              <span style={{ fontSize: 11, fontWeight: 900, letterSpacing: '3px', color: UA.yellow, textTransform: 'uppercase' }}>PILOT FILE</span>
             </div>
 
             {/* Avatar + title side by side */}
@@ -160,7 +160,7 @@ export function ProfileContent({ game, user, hasPurchased, isAdmin, completedSec
                 </h1>
                 <p style={{ marginTop: 4, fontSize: 10, letterSpacing: '1.5px', color: UA.muted }}>{user.email}</p>
                 {kit && (
-                  <p style={{ marginTop: 3, fontSize: 7, letterSpacing: '2px', fontWeight: 900, color: UA.blue, textTransform: 'uppercase' }}>
+                  <p style={{ marginTop: 3, fontSize: 11, letterSpacing: '2px', fontWeight: 900, color: UA.blue, textTransform: 'uppercase' }}>
                     PILOT · {kit.label}
                   </p>
                 )}
@@ -182,7 +182,7 @@ export function ProfileContent({ game, user, hasPurchased, isAdmin, completedSec
                 border: `1px solid ${UA.border}`,
                 borderRadius: 4,
               }}>
-                <div style={{ fontSize: 6, fontWeight: 900, letterSpacing: '2px', color: UA.muted, textTransform: 'uppercase', marginBottom: 6 }}>{label}</div>
+                <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '2px', color: UA.muted, textTransform: 'uppercase', marginBottom: 6 }}>{label}</div>
                 <div style={{ fontSize: 20, fontWeight: 900, color: UA.yellow }}>{value}</div>
               </div>
             ))}
@@ -200,12 +200,12 @@ export function ProfileContent({ game, user, hasPurchased, isAdmin, completedSec
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span style={{ display: 'inline-block', width: 10, height: 2, background: UA.yellow, borderRadius: 1 }} />
-                <span style={{ fontSize: 8, fontWeight: 900, letterSpacing: '3px', color: UA.yellow, textTransform: 'uppercase' }}>CHOOSE PILOT</span>
+                <span style={{ fontSize: 11, fontWeight: 900, letterSpacing: '3px', color: UA.yellow, textTransform: 'uppercase' }}>CHOOSE PILOT</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 {saveMsg && (
                   <span style={{
-                    fontSize: 7, fontWeight: 900, letterSpacing: '2px',
+                    fontSize: 11, fontWeight: 900, letterSpacing: '2px',
                     color: saveMsg === 'SAVED' ? UA.green : '#e04b3c',
                     textTransform: 'uppercase',
                   }}>{saveMsg}</span>
@@ -231,7 +231,7 @@ export function ProfileContent({ game, user, hasPurchased, isAdmin, completedSec
           <div style={{ marginBottom: 28, background: UA.surface, border: `1px solid ${UA.border}`, borderRadius: 4, overflow: 'hidden' }}>
             <div style={{ padding: '14px 20px 10px', borderBottom: `1px solid ${UA.borderFaint}`, display: 'flex', alignItems: 'center', gap: 8 }}>
               <span style={{ display: 'inline-block', width: 10, height: 2, background: UA.yellow, borderRadius: 1 }} />
-              <span style={{ fontSize: 8, fontWeight: 900, letterSpacing: '3px', color: UA.yellow, textTransform: 'uppercase' }}>PILOT SETTINGS</span>
+              <span style={{ fontSize: 11, fontWeight: 900, letterSpacing: '3px', color: UA.yellow, textTransform: 'uppercase' }}>PILOT SETTINGS</span>
             </div>
 
             <button type="button" role="switch" aria-checked={autoAim} aria-label="Auto Aim"
@@ -256,7 +256,7 @@ export function ProfileContent({ game, user, hasPurchased, isAdmin, completedSec
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <span style={{ fontSize: 15, color: musicMuted ? UA.dim : UA.muted }}>{musicMuted ? '✕' : '♪'}</span>
-                <span style={{ fontSize: 9, fontWeight: 900, letterSpacing: '2px', color: musicMuted ? UA.dim : UA.text, textTransform: 'uppercase' }}>
+                <span style={{ fontSize: 11, fontWeight: 900, letterSpacing: '2px', color: musicMuted ? UA.dim : UA.text, textTransform: 'uppercase' }}>
                   MUSIC {musicMuted ? 'OFF' : 'ON'}
                 </span>
               </div>
@@ -280,18 +280,20 @@ export function ProfileContent({ game, user, hasPurchased, isAdmin, completedSec
             {hasPurchased && gameId && (
               <div style={{ padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div>
-                  <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: '2px', color: UA.yellow, textTransform: 'uppercase', marginBottom: 3 }}>RESET PROGRESS</div>
-                  <div style={{ fontSize: 8, color: UA.text, letterSpacing: '0.5px' }}>Erase all sector data and restart from Sector 1</div>
+                  <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '2px', color: UA.yellow, textTransform: 'uppercase', marginBottom: 3 }}>RESET PROGRESS</div>
+                  <div style={{ fontSize: 11, color: UA.text, letterSpacing: '0.5px' }}>Erase all sector data and restart from Sector 1</div>
                 </div>
                 <button
                   disabled={resetting}
                   onClick={async () => {
+                    if (localStorage.getItem(`gd:pending-progress:${user.id}:${gameId}`) && localStorage.getItem(`gd:pending-progress:${user.id}:${gameId}`) !== '[]') { setResetMsg('SAVE PENDING'); return }
                     if (!confirm('Reset all sector progress and start from Sector 1?')) return
                     setResetting(true)
                     setResetMsg(null)
                     try {
                       const res = await fetch(`/api/progress?gameId=${gameId}`, { method: 'DELETE' })
                       if (res.ok) {
+                        localStorage.removeItem(`gd:pending-progress:${user.id}:${gameId}`)
                         setResetMsg('RESET')
                         setTimeout(() => window.location.reload(), 800)
                       } else {
@@ -310,7 +312,7 @@ export function ProfileContent({ game, user, hasPurchased, isAdmin, completedSec
                     background: UA.blue,
                     border: `1px solid ${UA.blueMid}`,
                     borderRadius: 3, cursor: resetting ? 'default' : 'pointer',
-                    fontSize: 8, fontWeight: 900, letterSpacing: '2px',
+                    fontSize: 11, fontWeight: 900, letterSpacing: '2px',
                     color: resetMsg === 'RESET' ? UA.green : resetMsg === 'ERROR' ? '#e04b3c' : UA.yellow,
                     textTransform: 'uppercase',
                     opacity: resetting ? 0.75 : 1,
@@ -326,7 +328,7 @@ export function ProfileContent({ game, user, hasPurchased, isAdmin, completedSec
           {/* Sector breakdown */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
             <span style={{ display: 'inline-block', width: 12, height: 2, background: UA.blue, borderRadius: 1 }} />
-            <span style={{ fontSize: 8, fontWeight: 900, letterSpacing: '3px', color: UA.blueMid, textTransform: 'uppercase' }}>SECTOR INTEL</span>
+            <span style={{ fontSize: 11, fontWeight: 900, letterSpacing: '3px', color: UA.blueMid, textTransform: 'uppercase' }}>SECTOR INTEL</span>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 28 }}>
@@ -343,7 +345,7 @@ export function ProfileContent({ game, user, hasPurchased, isAdmin, completedSec
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: done && stat ? 10 : 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <span style={{ fontSize: 7, fontWeight: 900, letterSpacing: '2px', color: done ? UA.yellow : UA.muted, textTransform: 'uppercase' }}>
+                      <span style={{ fontSize: 11, fontWeight: 900, letterSpacing: '2px', color: done ? UA.yellow : UA.muted, textTransform: 'uppercase' }}>
                         {done ? '✓' : '○'} S{num}
                       </span>
                       <span style={{ fontSize: 10, fontWeight: 900, letterSpacing: '1px', color: done ? UA.text : UA.dim, textTransform: 'uppercase' }}>
@@ -351,7 +353,7 @@ export function ProfileContent({ game, user, hasPurchased, isAdmin, completedSec
                       </span>
                     </div>
                     {done && stat && (
-                      <span style={{ fontSize: 8, color: UA.muted }}>{new Date(stat.completedAt).toLocaleDateString('en-CA', { timeZone: 'UTC', year: 'numeric', month: 'short', day: 'numeric' })}</span>
+                      <span style={{ fontSize: 11, color: UA.muted }}>{new Date(stat.completedAt).toLocaleDateString('en-CA', { timeZone: 'UTC', year: 'numeric', month: 'short', day: 'numeric' })}</span>
                     )}
                   </div>
 
@@ -364,7 +366,7 @@ export function ProfileContent({ game, user, hasPurchased, isAdmin, completedSec
                         ['SQUAD LOST', `${stat.squadLost}/5`],
                       ].map(([label, val]) => (
                         <div key={label} style={{ padding: '6px 8px', background: 'rgba(255,215,0,0.04)', borderRadius: 3 }}>
-                          <div style={{ fontSize: 6, fontWeight: 900, letterSpacing: '1.5px', color: UA.muted, textTransform: 'uppercase', marginBottom: 3 }}>{label}</div>
+                          <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '1.5px', color: UA.muted, textTransform: 'uppercase', marginBottom: 3 }}>{label}</div>
                           <div style={{ fontSize: 11, fontWeight: 900, color: UA.yellow }}>{val}</div>
                         </div>
                       ))}
@@ -372,7 +374,7 @@ export function ProfileContent({ game, user, hasPurchased, isAdmin, completedSec
                   )}
 
                   {!done && (
-                    <div style={{ fontSize: 7, letterSpacing: '1.5px', color: UA.dim, textTransform: 'uppercase', marginTop: 2 }}>NOT YET CLEARED</div>
+                    <div style={{ fontSize: 11, letterSpacing: '1.5px', color: UA.dim, textTransform: 'uppercase', marginTop: 2 }}>NOT YET CLEARED</div>
                   )}
                 </div>
               )
@@ -388,16 +390,16 @@ export function ProfileContent({ game, user, hasPurchased, isAdmin, completedSec
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
                   <span style={{ display: 'inline-block', width: 12, height: 2, background: UA.blue, borderRadius: 1 }} />
-                  <span style={{ fontSize: 8, fontWeight: 900, letterSpacing: '3px', color: UA.blueMid, textTransform: 'uppercase' }}>LAST LOADOUT</span>
+                  <span style={{ fontSize: 11, fontWeight: 900, letterSpacing: '3px', color: UA.blueMid, textTransform: 'uppercase' }}>LAST LOADOUT</span>
                 </div>
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                   {belt.map((tool, i) => (
                     <span key={i} style={{
-                      padding: '5px 12px', fontSize: 8, fontWeight: 900, letterSpacing: '1.5px',
+                      padding: '5px 12px', fontSize: 11, fontWeight: 900, letterSpacing: '1.5px',
                       textTransform: 'uppercase', color: UA.blueMid,
                       background: 'rgba(0,104,204,0.12)', border: `1px solid rgba(0,104,204,0.25)`,
                       borderRadius: 3,
-                    }}>{tool}</span>
+                    }}>{tool === 'fullArmour' ? 'Full Body Armour' : tool}</span>
                   ))}
                 </div>
               </div>

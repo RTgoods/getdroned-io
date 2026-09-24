@@ -43,8 +43,8 @@ const UA = {
   border:     'rgba(0,104,204,0.16)',
   borderFaint:'rgba(0,104,204,0.08)',
   textPrimary:'#d8e8ff',
-  textMuted:  '#4a6080',
-  textDim:    '#243040',
+  textMuted:  '#9aafc8',
+  textDim:    '#879bb4',
   locked:     '#1e2a3a',
 }
 
@@ -148,7 +148,7 @@ export function GameSidebar({ game, user, hasPurchased, isAdmin = false, complet
           borderRight: `1px solid ${UA.border}`,
           display: 'flex',
           flexDirection: 'column',
-          height: '100vh',
+          height: '100dvh',
           overflow: 'hidden',
           position: mobile ? 'fixed' : 'relative',
           top: 0, left: 0,
@@ -181,7 +181,7 @@ export function GameSidebar({ game, user, hasPurchased, isAdmin = false, complet
             <Link href="/" aria-label="Get Droned — main page" onClick={() => { onBack?.(); if (mobile) setOpen(false) }} style={{ fontWeight: 900, letterSpacing: '3px', fontSize: 11,
               color: UA.textPrimary, textDecoration: 'none', whiteSpace: 'nowrap' }}>
               GET DRONED
-              <span style={{ display: 'block', fontSize: 7, letterSpacing: '2.5px', color: UA.yellow, marginTop: 2, fontWeight: 700 }}>
+              <span style={{ display: 'block', fontSize: 11, letterSpacing: '2.5px', color: UA.yellow, marginTop: 2, fontWeight: 700 }}>
                 Slava Ukraini
               </span>
             </Link>
@@ -212,11 +212,11 @@ export function GameSidebar({ game, user, hasPurchased, isAdmin = false, complet
           label={
             user ? (
               <div>
-                <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: '2px', color: UA.yellow, textTransform: 'uppercase' }}>{t('PILOT SETTINGS')}</div>
+                <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '2px', color: UA.yellow, textTransform: 'uppercase' }}>{t('PILOT SETTINGS')}</div>
                 <div style={{ fontSize: 10, color: UA.textMuted, marginTop: 2 }}>{emailShort}</div>
               </div>
             ) : (
-              <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: '2px', color: UA.blueMid, textTransform: 'uppercase' }}>{t('SIGN IN →')}</div>
+              <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '2px', color: UA.blueMid, textTransform: 'uppercase' }}>{t('SIGN IN →')}</div>
             )
           }
           border
@@ -234,7 +234,7 @@ export function GameSidebar({ game, user, hasPurchased, isAdmin = false, complet
               display: 'inline-block', width: 12, height: 2,
               background: UA.yellow, borderRadius: 1,
             }} />
-            <span style={{ fontSize: 8, fontWeight: 900, letterSpacing: '3px', color: UA.yellow, textTransform: 'uppercase' }}>
+            <span style={{ fontSize: 11, fontWeight: 900, letterSpacing: '3px', color: UA.yellow, textTransform: 'uppercase' }}>
               {t('SECTORS')}
             </span>
           </div>
@@ -273,7 +273,7 @@ export function GameSidebar({ game, user, hasPurchased, isAdmin = false, complet
 
           {!hasPurchased && !open && (
             <div style={{ padding: '6px 0', display: 'flex', justifyContent: 'center' }}>
-              <span style={{ fontSize: 9, color: UA.textDim }}>◼</span>
+              <span style={{ fontSize: 11, color: UA.textDim }}>◼</span>
             </div>
           )}
 
@@ -286,17 +286,17 @@ export function GameSidebar({ game, user, hasPurchased, isAdmin = false, complet
               borderRadius: 4,
             }}>
               <div style={{
-                fontSize: 8, fontWeight: 900, letterSpacing: '2px',
+                fontSize: 11, fontWeight: 900, letterSpacing: '2px',
                 color: UA.yellow, textTransform: 'uppercase', marginBottom: 4,
               }}>
                 UNLOCK ALL SECTORS
               </div>
-              <div style={{ fontSize: 9, color: UA.textMuted, marginBottom: 8, lineHeight: 1.5 }}>
+              <div style={{ fontSize: 11, color: UA.textMuted, marginBottom: 8, lineHeight: 1.5 }}>
                 ${(game.price_cents / 100).toFixed(2)} · One-Time · 100% To Ukraine
               </div>
               <a id="sidebar-unlock-btn" href="/auth/login" style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                gap: 6, textAlign: 'center', fontSize: 8, fontWeight: 900,
+                gap: 6, textAlign: 'center', fontSize: 11, fontWeight: 900,
                 letterSpacing: '2px', textTransform: 'uppercase', textDecoration: 'none',
                 padding: '6px 0', borderRadius: 3,
                 background: `linear-gradient(180deg, ${UA.yellow} 0%, #c8a000 100%)`,
@@ -316,8 +316,8 @@ export function GameSidebar({ game, user, hasPurchased, isAdmin = false, complet
             icon={<span style={{ fontSize: 12, color: UA.yellow, flexShrink: 0 }}>↩</span>}
             label={
               <div>
-                <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: '2px', color: UA.yellow, textTransform: 'uppercase' }}>{t('NOW PLAYING')}</div>
-                <div style={{ fontSize: 9, color: UA.textMuted, letterSpacing: '1px', marginTop: 1, textTransform: 'uppercase' }}>{t('← BACK TO INFO')}</div>
+                <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '2px', color: UA.yellow, textTransform: 'uppercase' }}>{t('NOW PLAYING')}</div>
+                <div style={{ fontSize: 11, color: UA.textMuted, letterSpacing: '1px', marginTop: 1, textTransform: 'uppercase' }}>{t('← BACK TO INFO')}</div>
               </div>
             }
             hover
@@ -341,10 +341,10 @@ export function GameSidebar({ game, user, hasPurchased, isAdmin = false, complet
           <span aria-hidden="true" style={{ width: 24, height: 16, flexShrink: 0, borderRadius: 2,
             background: 'linear-gradient(#0057b7 50%, #ffd700 50%)' }} />
           {open && <>
-            <span style={{ flex: 1, fontSize: 9, fontWeight: 900, lineHeight: 1.5 }}>
+            <span style={{ flex: 1, fontSize: 11, fontWeight: 900, lineHeight: 1.5 }}>
               {ukrainian ? 'УКРАЇНСЬКА МОВА' : 'UKRAINIAN LANGUAGE'}
             </span>
-            <span style={{ fontSize: 9, fontWeight: 900, color: ukrainian ? UA.yellow : UA.blueLight }}>
+            <span style={{ fontSize: 11, fontWeight: 900, color: ukrainian ? UA.yellow : UA.blueLight }}>
               {ukrainian ? 'УВІМК.' : 'OFF'}
             </span>
           </>}
@@ -356,7 +356,7 @@ export function GameSidebar({ game, user, hasPurchased, isAdmin = false, complet
             open={open}
             href="/admin"
             icon={<span style={{ fontSize: 11, color: UA.textDim, flexShrink: 0 }}>⚙</span>}
-            label={<span style={{ fontSize: 9, fontWeight: 900, letterSpacing: '2px', color: UA.textDim, textTransform: 'uppercase' }}>ADMIN · STAGE SELECT</span>}
+            label={<span style={{ fontSize: 11, fontWeight: 900, letterSpacing: '2px', color: UA.textDim, textTransform: 'uppercase' }}>ADMIN · STAGE SELECT</span>}
             hover
             border
           />
@@ -368,7 +368,7 @@ export function GameSidebar({ game, user, hasPurchased, isAdmin = false, complet
             open={open}
             onClick={signOut}
             icon={<span style={{ fontSize: 12, color: UA.textMuted, flexShrink: 0 }}>→</span>}
-            label={<span style={{ fontSize: 9, fontWeight: 900, letterSpacing: '2px', color: UA.textMuted, textTransform: 'uppercase' }}>{t('SIGN OUT')}</span>}
+            label={<span style={{ fontSize: 11, fontWeight: 900, letterSpacing: '2px', color: UA.textMuted, textTransform: 'uppercase' }}>{t('SIGN OUT')}</span>}
             hover
           />
         ) : (
@@ -376,7 +376,7 @@ export function GameSidebar({ game, user, hasPurchased, isAdmin = false, complet
             open={open}
             href="/auth/login"
             icon={<span style={{ fontSize: 12, color: UA.blueMid, flexShrink: 0 }}>→</span>}
-            label={<span style={{ fontSize: 9, fontWeight: 900, letterSpacing: '2px', color: UA.blueMid, textTransform: 'uppercase' }}>{t('SIGN IN')}</span>}
+            label={<span style={{ fontSize: 11, fontWeight: 900, letterSpacing: '2px', color: UA.blueMid, textTransform: 'uppercase' }}>{t('SIGN IN')}</span>}
             hover
           />
         )}
@@ -392,7 +392,7 @@ export function GameSidebar({ game, user, hasPurchased, isAdmin = false, complet
             position: 'fixed', top: 14, left: 14, zIndex: 60,
             background: `rgba(9,16,31,0.92)`,
             border: `1px solid rgba(255,215,0,0.35)`,
-            borderRadius: 4, width: 38, height: 38,
+            borderRadius: 4, width: 44, height: 44,
             display: 'flex', flexDirection: 'column', alignItems: 'center',
             justifyContent: 'center', gap: 4.5, cursor: 'pointer',
             backdropFilter: 'blur(8px)',
@@ -410,12 +410,12 @@ export function GameSidebar({ game, user, hasPurchased, isAdmin = false, complet
 
 // Per-sector objectives
 const OBJECTIVES: Record<number, string[]> = {
-  1: ['Breach 3 compound perimeters', 'Neutralize enemy forces', 'Destroy the enemy drone base (top-left house)', 'Eliminate Level One Boss'],
-  2: ['Push through enemy trenches', 'Clear the front-line network', 'Secure the trench boss'],
-  3: ['Establish naval dominance', 'Destroy the Black Sea fleet', 'Defeat the sea commander'],
-  4: ['Disrupt enemy supply lines', 'Destroy oil infrastructure', 'Take out the field boss'],
-  5: ['Suppress air defenses', 'Ground the enemy air force', 'Neutralize the airfield boss'],
-  6: ['Breach the inner circle', 'Push to Red Square', 'Final confrontation — finish it'],
+  1: ['Capture all three bases', 'Clear all hostiles', 'Destroy the enemy drone base', 'Defeat the compound boss'],
+  2: ['Capture both enemy headquarters', 'Rescue the allied soldiers', 'Destroy both weapons depots', 'Defeat General Grakov'],
+  3: ['Sink all seven fleet ships', 'Eliminate shore troops', 'Destroy the Kerch road / rail bridge', 'Destroy the sea boss'],
+  4: ['Destroy all six refineries', 'Neutralise SAM sites', 'Destroy all six patrol tanks', 'Defeat the Oil Baron'],
+  5: ['Destroy all cargo planes', 'Repel both assault waves', 'Defeat the airfield commander'],
+  6: ['Capture both flags and destroy the drone base', 'Defeat the final boss'],
 }
 
 // ── Level row ─────────────────────────────────────────────────────────────────
@@ -474,26 +474,26 @@ function LevelRow({ ukrainian, sector, unlocked, done, stat, open, expanded, onT
           display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
           background: pillBg, border: `1px solid ${pillBdr}`,
         }}>
-          <span style={{ fontSize: 8, fontWeight: 900, color: pillColor, letterSpacing: '0.5px' }}>
+          <span style={{ fontSize: 11, fontWeight: 900, color: pillColor, letterSpacing: '0.5px' }}>
             {done ? '✓' : `S${sector.num}`}
           </span>
-          {!open && !unlocked && <span style={{ fontSize: 7, marginTop: 1, color: UA.textDim }}>◼</span>}
-          {!open && unlocked && !done && <span style={{ fontSize: 7, color: UA.blueMid, marginTop: 1 }}>▶</span>}
+          {!open && !unlocked && <span style={{ fontSize: 11, marginTop: 1, color: UA.textDim }}>◼</span>}
+          {!open && unlocked && !done && <span style={{ fontSize: 11, color: UA.blueMid, marginTop: 1 }}>▶</span>}
         </div>
 
         {open && (
           <div style={{ overflow: 'hidden', flex: 1 }}>
             <div style={{
-              fontSize: 7, fontWeight: 900, letterSpacing: '1.5px',
+              fontSize: 11, fontWeight: 900, letterSpacing: '1.5px',
               color: done ? UA.yellow : active ? UA.blueMid : UA.textDim,
               textTransform: 'uppercase', marginBottom: 2,
             }}>
               {t(done ? '✓ CLEARED' : `SECTOR ${sector.num}`)}
             </div>
             <div style={{
-              fontSize: 9, fontWeight: 900, letterSpacing: '1px',
+              fontSize: 11, fontWeight: 900, letterSpacing: '1px',
               color: done ? 'rgba(255,215,0,0.7)' : active ? UA.textPrimary : UA.textDim,
-              textTransform: 'uppercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+              textTransform: 'uppercase', whiteSpace: 'normal', lineHeight: 1.45,
             }}>
               {t(sector.name)}
             </div>
@@ -503,7 +503,7 @@ function LevelRow({ ukrainian, sector, unlocked, done, stat, open, expanded, onT
         {/* Chevron expand indicator */}
         {open && (
           <div style={{ flexShrink: 0, width: 16, textAlign: 'center', transition: 'transform 200ms', transform: expanded ? 'rotate(90deg)' : 'none' }}>
-            <span style={{ fontSize: 9, color: expanded ? UA.blueMid : UA.textMuted, transition: 'color 140ms' }}>▶</span>
+            <span style={{ fontSize: 11, color: expanded ? UA.blueMid : UA.textMuted, transition: 'color 140ms' }}>▶</span>
           </div>
         )}
       </button>
@@ -523,14 +523,14 @@ function LevelRow({ ukrainian, sector, unlocked, done, stat, open, expanded, onT
               marginBottom: i < objectives.length - 1 ? 5 : 10,
             }}>
               <span style={{
-                flexShrink: 0, marginTop: 1, fontSize: 8, fontWeight: 900,
+                flexShrink: 0, marginTop: 1, fontSize: 11, fontWeight: 900,
                 color: objDone ? UA.yellow : UA.textMuted,
                 transition: 'color 300ms',
               }}>
                 {objDone ? '✓' : '○'}
               </span>
               <span style={{
-                fontSize: 8, letterSpacing: '0.5px', lineHeight: 1.4,
+                fontSize: 11, letterSpacing: '0.5px', lineHeight: 1.4,
                 color: objDone ? 'rgba(255,215,0,0.6)' : '#5a7090',
                 textDecoration: objDone ? 'line-through' : 'none',
                 textTransform: 'capitalize',
@@ -557,8 +557,8 @@ function LevelRow({ ukrainian, sector, unlocked, done, stat, open, expanded, onT
                 ['SQUAD LOST', `${stat.squadLost}/5`],
               ].map(([label, val]) => (
                 <div key={label} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
-                  <span style={{ fontSize: 7, letterSpacing: '1.5px', color: UA.textMuted, textTransform: 'uppercase' }}>{t(label)}</span>
-                  <span style={{ fontSize: 7, fontWeight: 900, color: UA.yellow }}>{val}</span>
+                  <span style={{ fontSize: 11, letterSpacing: '1.5px', color: UA.textMuted, textTransform: 'uppercase' }}>{t(label)}</span>
+                  <span style={{ fontSize: 11, fontWeight: 900, color: UA.yellow }}>{val}</span>
                 </div>
               ))}
             </div>
@@ -571,7 +571,7 @@ function LevelRow({ ukrainian, sector, unlocked, done, stat, open, expanded, onT
               background: `linear-gradient(180deg, ${UA.blue} 0%, #004a99 100%)`,
               border: `1px solid ${UA.blueDim}`,
               borderRadius: 3, textAlign: 'center',
-              fontSize: 8, fontWeight: 900, letterSpacing: '2px',
+              fontSize: 11, fontWeight: 900, letterSpacing: '2px',
               color: '#e8f4ff', textTransform: 'uppercase',
               textDecoration: 'none', transition: 'filter 140ms',
               boxSizing: 'border-box' as const,
@@ -591,7 +591,7 @@ function LevelRow({ ukrainian, sector, unlocked, done, stat, open, expanded, onT
                   : `linear-gradient(180deg, ${UA.blue} 0%, #004a99 100%)`,
                 border: `1px solid ${done ? 'rgba(255,215,0,0.3)' : UA.blueDim}`,
                 borderRadius: 3, cursor: 'pointer',
-                fontSize: 8, fontWeight: 900, letterSpacing: '2px',
+                fontSize: 11, fontWeight: 900, letterSpacing: '2px',
                 color: done ? UA.yellow : '#e8f4ff',
                 textTransform: 'uppercase',
                 transition: 'filter 140ms',
@@ -609,7 +609,7 @@ function LevelRow({ ukrainian, sector, unlocked, done, stat, open, expanded, onT
               style={{
                 marginTop: 4, width: '100%', padding: '9px 8px', borderRadius: 3,
                 background: UA.blueDim, border: `1px solid ${UA.blueMid}`,
-                color: UA.yellow, fontSize: 8, fontWeight: 900, letterSpacing: '1px',
+                color: UA.yellow, fontSize: 11, fontWeight: 900, letterSpacing: '1px',
                 lineHeight: 1.5, textAlign: 'center', cursor: 'not-allowed',
               }}
             >
@@ -624,7 +624,7 @@ function LevelRow({ ukrainian, sector, unlocked, done, stat, open, expanded, onT
                 background: `linear-gradient(180deg, #f5c800 0%, #c89e00 100%)`,
                 border: '1px solid rgba(245,200,0,0.4)',
                 borderRadius: 3, cursor: 'pointer', textAlign: 'center',
-                fontSize: 8, fontWeight: 900, letterSpacing: '2px',
+                fontSize: 11, fontWeight: 900, letterSpacing: '2px',
                 color: '#1a1000', textTransform: 'uppercase',
                 textDecoration: 'none', transition: 'filter 140ms',
                 boxSizing: 'border-box' as const,

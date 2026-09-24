@@ -1,8 +1,11 @@
 'use client'
 
+import { useSiteLanguage } from '@/lib/use-site-language'
+
 import { useState } from 'react'
 
 const tools = [
+  ['fullArmour', 'Full Body Armour', '$250 · Protection', 'Stored in your tool belt when purchased. Activate it to refill your armour to 100% of its current capacity, including the Heavy Plate upgrade. Kept if your armour is already full.'],
   ['reinforcements', 'Call the Reinforcements', '$350 · Squad support', 'Call five allied soldiers to nearby open ground for 15 seconds. They push toward enemies, fire rapid bursts and each carry two frags. They regroup loosely rather than following closely. Each has 80 health and can be killed. Buy it at the quartermaster, then activate it from your tool belt. Use multiple tools to deploy more squads at once; each squad has its own 15-second timer.'],
   ['droneS', 'Scout Drone', 'Recon', 'A compact camera drone for scouting ahead, with a small blast when detonated.'],
   ['drone', 'FPV Drone', 'Precision strike', 'Pilot a fast attack drone into position, then detonate it against your target.'],
@@ -30,27 +33,29 @@ const weapons = [
 ]
 
 export function EquipmentGuide() {
+  const { t } = useSiteLanguage()
   const [view, setView] = useState<'tools' | 'weapons'>('tools')
-  const entries = view === 'tools' ? tools : weapons
+  const entries = (view === 'tools' ? tools : weapons).map(([id,name,role,description]) => [id,t(name),t(role),t(description)])
   return <section className="py-7 sm:py-10 border-b border-white/10" aria-labelledby="equipment-title">
-    <div className="flex items-center gap-3 mb-3"><span className="h-px w-8 bg-[#0057b7]" /><p className="text-[9px] font-black tracking-[3px] uppercase text-[#ffd700]">Field guide</p></div>
+    <div className="flex items-center gap-3 mb-3"><span className="h-px w-8 bg-[#0057b7]" /><p className="text-[9px] font-black tracking-[3px] uppercase text-[#ffd700]">{t("Field guide")}</p></div>
     <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-5">
-      <div><h2 id="equipment-title" className="text-2xl sm:text-3xl font-black text-[#f2ead2]">Know your equipment.</h2><p className="text-sm text-[#a9b4b9] mt-2 max-w-md leading-relaxed">Choose the right tool for the job. Get to know your drones, support gear and seven gun types before you deploy.</p></div>
+      <div><h2 id="equipment-title" className="text-2xl sm:text-3xl font-black text-[#f2ead2]">{t("Know your equipment.")}</h2><p className="text-sm text-[#a9b4b9] mt-2 max-w-md leading-relaxed">{t("Choose the right tool for the job. Get to know your drones, support gear and seven gun types before you deploy.")}</p></div>
       <div className="flex gap-2 shrink-0" aria-label="Equipment category">
-        {(['tools', 'weapons'] as const).map(tab => <button key={tab} type="button" aria-pressed={view === tab} onClick={() => setView(tab)} className="rounded px-4 py-3 text-[10px] font-black uppercase tracking-widest border transition-colors" style={{ color: view === tab ? '#ffd700' : '#b2c2cc', background: view === tab ? '#0057b7' : '#101c26', borderColor: view === tab ? '#287ac9' : '#283b49' }}>{tab} · {tab === 'tools' ? tools.length : weapons.length}</button>)}
+        {(['tools', 'weapons'] as const).map(tab => <button key={t(tab)} type="button" aria-pressed={view === tab} onClick={() => setView(tab)} className="rounded px-4 py-3 text-[10px] font-black uppercase tracking-widest border transition-colors" style={{ color: view === tab ? '#ffd700' : '#b2c2cc', background: view === tab ? '#0057b7' : '#101c26', borderColor: view === tab ? '#287ac9' : '#283b49' }}>{t(tab)}{t("·")}{tab === 'tools' ? tools.length : weapons.length}</button>)}
       </div>
     </div>
-    <div className="mt-5 mb-4 flex items-center justify-between gap-3 text-[10px] text-[#93a7b5] uppercase tracking-wider"><span>{view === 'tools' ? `${tools.length} tools · Six belt slots` : 'Seven gun types · Different strengths'}</span><span className="text-[#ffd700]">Equipment briefing</span></div>
+    <div className="mt-5 mb-4 flex items-center justify-between gap-3 text-[10px] text-[#93a7b5] uppercase tracking-wider"><span>{view === 'tools' ? `${tools.length} ${t('tools · Six belt slots')}` : t('Seven gun types · Different strengths')}</span><span className="text-[#ffd700]">{t("Equipment briefing")}</span></div>
     <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
       {entries.map(([id, name, role, description], index) => <article key={id} className="overflow-hidden rounded-lg border border-[#263746] bg-[#0d1720]">
         <div className="relative h-32 flex items-center justify-center border-b border-[#263746]" style={{ background: 'radial-gradient(ellipse at center, #20384b 0%, #101e2a 70%)' }}>
           <span className="absolute top-3 left-3 text-[9px] tracking-widest text-[#728b9d]">{String(index + 1).padStart(2, '0')}</span>
           {/* The adjacent title identifies the illustration. */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={id === 'reinforcements' ? '/equipment/reinforcements.svg' : `/equipment/${id}.png?v=4`} alt="" loading="lazy" width={400} height={240} className="w-full h-full object-contain px-6 py-2" />
+          <img src={id === 'fullArmour' ? '/equipment/fullArmour.svg' : id === 'reinforcements' ? '/equipment/reinforcements.png?v=1' : `/equipment/${id}.png?v=4`} alt="" loading="lazy" width={400} height={240} className="w-full h-full object-contain px-6 py-2" />
           <span className="absolute bottom-3 right-3 w-5 h-0.5 bg-[#ffd700]" />
         </div>
-        <div className="p-4"><p className="text-[9px] font-bold uppercase tracking-widest text-[#79b9f1] mb-2">{role}</p><h3 className="font-black text-base text-[#f2ead2]">{name}</h3><p className="mt-2 text-xs leading-relaxed text-[#b0bdc6]">{description}</p></div>
+        <div className="p-4"><p className="text-[9px] font-bold uppercase tracking-widest text-[#79b9f1] mb-2">{role}</p><h3 className="font-black text-base text-[#f2ead2]">{name}</h3><p className="mt-2 text-sm leading-relaxed text-[#b0bdc6]">{description.split('. ')[0]}{description.includes('. ') ? '.' : ''}</p>
+          {description.includes('. ') && <details className="mt-3 text-sm text-[#b0bdc6]"><summary className="cursor-pointer py-2 text-[#ffd700]">{t("How to use")}</summary><p className="mt-2 leading-relaxed">{description.split('. ').slice(1).join('. ')}</p></details>}</div>
       </article>)}
     </div>
   </section>

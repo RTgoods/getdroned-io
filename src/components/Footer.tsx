@@ -1,8 +1,12 @@
+'use client'
+
+import { useSiteLanguage } from '@/lib/use-site-language'
 export function Footer() {
+  const { t } = useSiteLanguage()
   return (
     <footer
       className="border-t mt-auto"
-      style={{ borderColor: 'rgba(226,177,60,0.15)', background: '#09090a' }}
+      style={{ borderColor: 'rgba(0,104,204,0.15)', background: '#09090a' }}
     >
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 flex flex-col sm:flex-row items-center justify-between gap-4">
         <div>
@@ -12,13 +16,9 @@ export function Footer() {
           >
             GET DRONED
           </p>
-          <p className="text-[9px] tracking-[2px] uppercase" style={{ color: '#6e6a60' }}>
-            Original browser game · Buy once · Play forever
-          </p>
+          <p className="text-[11px] tracking-[2px] uppercase" style={{ color: '#a9b9cb' }}>{t("Original browser game · Buy once · Play forever")}</p>
         </div>
-        <p className="text-[9px] tracking-[2px] uppercase" style={{ color: '#4a4740' }}>
-          Payments secured by Stripe
-        </p>
+        <p className="text-[11px] tracking-[2px] uppercase" style={{ color: '#a9b9cb' }}>{t("Payments secured by Stripe")}</p>
       </div>
     </footer>
   )

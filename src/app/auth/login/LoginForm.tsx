@@ -1,10 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import Link from 'next/link'
+import { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 
-type Mode = 'login' | 'signup'
+type Mode = 'login' | 'signup' | 'recovery'
 
 export function LoginForm() {
   const [mode, setMode] = useState<Mode>('login')
@@ -18,6 +19,7 @@ export function LoginForm() {
   const searchParams = useSearchParams()
   const requestedRedirect = searchParams.get('redirect') || '/'
   const redirectTo = requestedRedirect.startsWith('/') && !requestedRedirect.startsWith('//') && !requestedRedirect.includes('\\') ? requestedRedirect : '/'
+  useEffect(() => { if (searchParams.get('error') === 'callback_error') setError('That sign-in or reset link has expired. Please request a new one.') }, [searchParams])
   const supabase = createClient()
 
   const handleGoogle = async () => {
@@ -38,7 +40,12 @@ export function LoginForm() {
     setError('')
     setMessage('')
 
-    if (mode === 'signup') {
+    try {
+    if (mode === 'recovery') {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: `${window.location.origin}/auth/callback?redirect=/auth/reset-password` })
+      if (error) setError(error.message)
+      else setMessage('If an account exists for this email, a password reset link will arrive shortly.')
+    } else if (mode === 'signup') {
       const { error } = await supabase.auth.signUp({
         email,
         password,
@@ -53,7 +60,7 @@ export function LoginForm() {
       if (error) setError(error.message)
       else { router.push(redirectTo); router.refresh() }
     }
-    setLoading(false)
+    } catch { setError('Could not connect. Please try again.') } finally { setLoading(false) }
   }
 
   const inputStyle = {
@@ -63,7 +70,7 @@ export function LoginForm() {
     border: '1px solid rgba(0,87,183,0.25)',
     borderRadius: '2px',
     color: '#e8e4d8',
-    fontSize: '13px',
+    fontSize: '16px',
     letterSpacing: '0.5px',
     outline: 'none',
   }
@@ -74,13 +81,14 @@ export function LoginForm() {
       style={{ background: '#0c0d0b' }}
     >
       <div className="w-full max-w-sm">
+        <Link href="/" className="inline-block mb-6 py-2 text-sm font-bold text-[#ffd700]">← Back to Main</Link>
         {/* Header */}
         <div className="text-center mb-8">
-          <div className="text-[8px] font-black tracking-[3px] mb-3" style={{ color: '#ffd700' }}>
+          <div className="text-[11px] font-black tracking-[3px] mb-3" style={{ color: '#ffd700' }}>
             🇺🇦 Slava Ukraini
           </div>
           <p className="label mb-3">
-            {mode === 'login' ? 'OPERATOR LOGIN' : 'CREATE ACCOUNT'}
+            {mode === 'login' ? 'OPERATOR LOGIN' : mode === 'recovery' ? 'RESET PASSWORD' : 'CREATE ACCOUNT'}
           </p>
           {mode === 'signup' && <h1
             className="font-black tracking-[5px] uppercase"
@@ -100,6 +108,7 @@ export function LoginForm() {
             background: '#0057b7',
           }} />
 
+          {mode !== 'recovery' && <>
           {/* Google OAuth */}
           <button
             type="button"
@@ -134,17 +143,19 @@ export function LoginForm() {
 
           {/* Divider */}
           <div className="flex items-center gap-3 my-5">
-            <div className="flex-1 h-px" style={{ background: 'rgba(226,177,60,0.12)' }} />
-            <span className="text-[8px] tracking-[2px] uppercase font-black" style={{ color: '#4a4740' }}>or</span>
-            <div className="flex-1 h-px" style={{ background: 'rgba(226,177,60,0.12)' }} />
+            <div className="flex-1 h-px" style={{ background: 'rgba(0,104,204,0.12)' }} />
+            <span className="text-[11px] tracking-[2px] uppercase font-black" style={{ color: '#a9b9cb' }}>or</span>
+            <div className="flex-1 h-px" style={{ background: 'rgba(0,104,204,0.12)' }} />
           </div>
 
+          </>}
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <p className="text-[9px] tracking-[2.5px] uppercase font-black mb-2" style={{ color: '#ffd700' }}>
+              <label htmlFor="email" className="block text-[12px] tracking-[1px] uppercase font-black mb-2" style={{ color: '#ffd700' }}>
                 Email
-              </p>
+              </label>
               <input
+                id="email" autoComplete="email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -156,11 +167,12 @@ export function LoginForm() {
               />
             </div>
 
-            <div>
-              <p className="text-[9px] tracking-[2.5px] uppercase font-black mb-2" style={{ color: '#ffd700' }}>
+            {mode !== 'recovery' && <div>
+              <label htmlFor="password" className="block text-[12px] tracking-[1px] uppercase font-black mb-2" style={{ color: '#ffd700' }}>
                 Password
-              </p>
+              </label>
               <input
+                id="password" autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -173,6 +185,8 @@ export function LoginForm() {
               />
             </div>
 
+            }
+            {mode === 'login' && <button type="button" onClick={() => { setMode('recovery'); setError(''); setMessage('') }} className="py-2 text-sm text-[#ffd700]">Forgot password?</button>}
             {error && (
               <div
                 className="p-3 rounded-sm text-[10px] tracking-[1px] uppercase font-bold"
@@ -184,7 +198,7 @@ export function LoginForm() {
             {message && (
               <div
                 className="p-3 rounded-sm text-[10px] tracking-[1px] uppercase font-bold"
-                style={{ background: 'rgba(157,179,90,0.12)', border: '1px solid rgba(157,179,90,0.3)', color: '#9db35a' }}
+                style={{ background: 'rgba(157,179,90,0.12)', border: '1px solid rgba(157,179,90,0.3)', color: '#7bbeff' }}
               >
                 {message}
               </div>
@@ -209,18 +223,18 @@ export function LoginForm() {
               onMouseEnter={e => { if (!loading) (e.currentTarget as HTMLElement).style.filter = 'brightness(1.12)' }}
               onMouseLeave={e => { (e.currentTarget as HTMLElement).style.filter = 'none' }}
             >
-              {loading ? 'LOADING…' : mode === 'login' ? 'SIGN IN' : 'CREATE ACCOUNT'}
+              {loading ? 'LOADING…' : mode === 'login' ? 'SIGN IN' : mode === 'recovery' ? 'SEND RESET LINK' : 'CREATE ACCOUNT'}
             </button>
           </form>
 
-          <div className="mt-6 pt-4 text-center" style={{ borderTop: '1px solid rgba(226,177,60,0.1)' }}>
-            <p className="text-[9px] tracking-[1.5px] uppercase" style={{ color: '#6e6a60' }}>
-              {mode === 'login' ? 'No account? ' : 'Already enlisted? '}
+          <div className="mt-6 pt-4 text-center" style={{ borderTop: '1px solid rgba(0,104,204,0.1)' }}>
+            <p className="text-[11px] tracking-[1.5px] uppercase" style={{ color: '#a9b9cb' }}>
+              {mode === 'login' ? 'No account? ' : 'Back to '}
               <button
                 onClick={() => { setMode(mode === 'login' ? 'signup' : 'login'); setError(''); setMessage('') }}
                 className="font-black transition-colors"
                 style={{ color: '#ffd700' }}
-                onMouseEnter={e => (e.currentTarget.style.color = '#e2b13c')}
+                onMouseEnter={e => (e.currentTarget.style.color = '#ffd700')}
                 onMouseLeave={e => (e.currentTarget.style.color = '#ffd700')}
               >
                 {mode === 'login' ? 'SIGN UP' : 'SIGN IN'}
@@ -229,7 +243,7 @@ export function LoginForm() {
           </div>
         </div>
 
-        <p className="mt-4 text-center text-[8px] tracking-[1.5px] uppercase" style={{ color: '#4a4740' }}>
+        <p className="mt-4 text-center text-[11px] tracking-[1.5px] uppercase" style={{ color: '#a9b9cb' }}>
           100% of proceeds go to Ukraine relief
         </p>
       </div>

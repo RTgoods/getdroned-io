@@ -6,13 +6,14 @@ const output = ts.transpileModule(fs.readFileSync('src/lib/game-access.ts', 'utf
 const exportsObject = {}
 new Function('exports', output)(exportsObject)
 const { gameAccess, isGameAdmin } = exportsObject
-function database({ paid = false, failed = false, missingGame = false } = {}) {
+function database({ paid = false, failed = false, missingGame = false, completed = [1,2,3,4,5,6] } = {}) {
   return { from(table) {
     const filters = {}
     const query = {
       select() { return query }, eq(key, value) { filters[key] = value; return query },
       async single() { assert.equal(filters.slug, 'get-droned'); return { data: missingGame ? null : { id: 'real-game-id' }, error: missingGame ? {} : null } },
       async maybeSingle() {
+        if (table === 'progress') return { data: { completed_sectors: completed }, error: null }
         assert.equal(table, 'purchases'); assert.equal(filters.user_id, 'user-id'); assert.equal(filters.game_id, 'real-game-id'); assert.equal(filters.status, 'completed')
         return { data: paid ? { id: 'purchase' } : null, error: failed ? {} : null }
       }
@@ -37,9 +38,9 @@ test('only trusted app metadata grants admin access', async () => {
   assert.equal((await gameAccess(database(), { ...user, app_metadata: { role: 'admin' } })).allowed, true)
 })
 const { NextRequest, NextResponse } = require('next/server')
-async function requestAs(user, paid, path) {
+async function requestAs(user, paid, path, completed) {
   const middlewareExports = {}
-  const db = database({ paid })
+  const db = database({ paid, completed })
   db.auth = { getUser: async () => ({ data: { user } }) }
   const middlewareCode = ts.transpileModule(fs.readFileSync('src/middleware.ts', 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText
   new Function('exports', 'require', middlewareCode)(middlewareExports, name => {
@@ -71,4 +72,10 @@ test('paid players can select levels; boss shortcuts and admin page remain admin
   const admin = { ...user, app_metadata: { role: 'admin' } }
   assert.equal((await requestAs(admin, false, '/admin')).status, 200)
   assert.equal((await requestAs(admin, false, '/get-droned/index.html?autostart=6')).status, 200)
+})
+
+test('paid players must finish the previous sector before launching', async () => {
+ assert.equal((await requestAs(user, true, '/get-droned/index.html?autostart=2', [])).status, 403)
+ assert.equal((await requestAs(user, true, '/get-droned/index.html?autostart=2', [1])).status, 200)
+ assert.equal((await requestAs(user, true, '/get-droned/index.html?autostart=3', [1])).status, 403)
 })

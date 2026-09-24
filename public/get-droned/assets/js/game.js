@@ -395,6 +395,7 @@ function addProp(x,y,w,h,kind,cover){
 var compoundDroneHub=null;
 function buildMap(){
   compoundDroneHub=null;
+  motorcade.length=0;
   // Air defenses belong to their map; never carry launchers or live SAMs into another sector.
   sams.length=0;samShots.length=0;seaMines.length=0;
   aircraft.length=0;
@@ -2035,6 +2036,7 @@ var CARDS=[
   {k:'t',id:'emp',    rar:1,wt:9, name:'DRONE JAMMER',  desc:'electronic burst · to belt'},
   {k:'t',id:'stim',   rar:1,wt:7, name:'COMBAT STIM',   desc:'to belt'},
   {k:'t',id:'reinforcements',rar:2,wt:4,name:'CALL THE REINFORCEMENTS',desc:'5 soldiers · 15s · can be killed'},
+  {k:'t',id:'fullArmour',rar:2,wt:5,name:'FULL BODY ARMOUR',desc:'100% armour · to belt'},
   {k:'t',id:'repair', rar:1,wt:6, name:'REPAIR KIT',    desc:'+25% base integrity · use inside base'},
   {k:'p',id:'vest',   rar:2,wt:8, name:'BODY ARMOUR',   desc:'+45 armour'}
 ];
@@ -2066,10 +2068,11 @@ var TOOLS={
   emp   :{n:'DRONE JAMMER', c:'#7fe8ff', wt:9},
   med   :{n:'FIELD KIT',   c:'#e0483c', wt:14},
   plate :{n:'ARMOUR PLATE',c:'#8fb6c8', wt:11},
+  fullArmour:{n:'FULL BODY ARMOUR',c:'#c6cbd0',wt:6,desc:'RESTORE 100% ARMOUR'},
   reinforcements:{n:'CALL THE REINFORCEMENTS',c:'#ffd700',wt:4,dur:15,desc:'5 SOLDIERS · 15 SECONDS'},
   repair:{n:'REPAIR KIT',  c:'#c8b87a', wt:7}
 };
-var TKEYS=['droneS','drone','droneL','usv','sentry','strike','stim','smoke','incend','flamer','emp','med','plate','repair','reinforcements'];
+var TKEYS=['droneS','drone','droneL','usv','sentry','strike','stim','smoke','incend','flamer','emp','med','plate','fullArmour','repair','reinforcements'];
 // Shared handling across every level. Speeds are world pixels per second;
 // response/brake are seconds to close 63% of the velocity difference.
 var DRONE_HANDLING={
@@ -2331,6 +2334,7 @@ window.addEventListener('keydown',resumeGameAudio,{capture:true});
 document.addEventListener('visibilitychange',function(){if(!document.hidden)resumeGameAudio();});
 
 var SHOP=[
+  {id:'t_fullArmour',n:'FULL BODY ARMOUR',p:250,d:'100% armour · to belt'},
   {id:'plate',  n:'PLATE',        p:120, d:'+40 armour'},
   {id:'t_med',  n:'FIELD KIT',    p:90,  d:'+50 health · to belt'},
   {id:'frag',   n:'FRAGS x3',     p:150, d:'three grenades'},
@@ -2690,6 +2694,11 @@ function useTool(i){
     firing=false;sfx('card');banner('GOD MODE ACTIVATED','PLAYER RETURNED TO BASE · UNLIMITED AMMO & FRAGS',3);hud();return;
   }
   if(k==='med'){ player.hp=Math.min(player.mx,player.hp+50); sfx('card'); banner('PATCHED UP','',1); }
+  else if(k==='fullArmour'){
+    if(player.ap>=upgAP){belt.splice(i,0,k);banner('ARMOUR ALREADY FULL','FULL BODY ARMOUR SAVED',1.5);}
+    else{player.ap=upgAP;sfx('card');banner('FULL BODY ARMOUR','100% ARMOUR',1.5);}
+    hud();return;
+  }
   else if(k==='plate'){ player.ap=Math.min(upgAP,player.ap+40); sfx('card'); banner('PLATE ON','',1); }
   else if(k==='repair'){
     if(inBase(player.x,player.y)){
@@ -3211,6 +3220,10 @@ function buildTrench(){
 
   SPAWNS=[[5,TFRONT],[14,TFRONT],[23,TFRONT],[32,TFRONT],[41,TFRONT],
           [5,TSUP],[18,TSUP],[30,TSUP],[44,TSUP],[26,TFRONT]];
+  // Broad muddy armour lanes beside the trench network, clear of both headquarters.
+  fill(3,19,19,24,FLOOR);
+  fill(23,29,35,35,FLOOR);
+  props=props.filter(function(p){return !((p.x<20&&p.x+p.w>3&&p.y<25&&p.y+p.h>19)||(p.x<36&&p.x+p.w>23&&p.y<36&&p.y+p.h>29));});
   scatterTrenchTimber();
   placeFires(); buildStatic(); initWallHP();
 }
@@ -3867,6 +3880,27 @@ function prepareOilAccess(){
   [[40,24],[41,24],[42,24],[54,38],[55,38],[56,38]].forEach(function(p,i){
     if(T(p[0],p[1])!==EXT||aaGuns.some(function(g){return Math.hypot(g.x-(p[0]+.5)*TILE,g.y-(p[1]+.5)*TILE)<85;})||sams.some(function(g){return Math.hypot(g.x-(p[0]+.5)*TILE,g.y-(p[1]+.5)*TILE)<60;}))return;
     addProp(p[0],p[1],1,1,'fieldTree');var tree=props[props.length-1];tree.treeStyle=i%3===0?'broken':'leafy';tree.treeSeed=p[0]*37+p[1]*71;
+  });
+}
+// Reuse the city tanks' hull, gunner, damage and turret-toss wreck on early sectors.
+function seedEarlyPatrolTanks(){
+  var anchors=level===2?[[5.5,21.5],[25.5,32.5]]:[[45.5,40.5]];
+  anchors.forEach(function(anchor){
+    var candidates=[];
+    for(var y=2;y<MH-2;y++)for(var x=2;x<MW-2;x++){
+      var wx=(x+.5)*TILE,wy=(y+.5)*TILE;
+      if(!tankGroundClear(wx,wy)||motorcade.some(function(v){return Math.hypot(v.x-wx,v.y-wy)<190;}))continue;
+      candidates.push({x:wx,y:wy,d:Math.hypot(x+.5-anchor[0],y+.5-anchor[1])});
+    }
+    candidates.sort(function(a,b){return a.d-b.d;});
+    for(var i=0;i<candidates.length;i++){
+      var p=candidates[i],C={i:motorcade.length,x:p.x,y:p.y,ang:0,hp:420,mx:420,
+        patrolTank:true,gunCD:2,turret:0,trackPhase:0,dead:0,route:null,wp:0,stop:0,hurt:0};
+      motorcade.push(C);
+      if(tankRoamPath(C,true))return;
+      motorcade.pop();
+    }
+    throw new Error('No clear starting tank patrol for sector '+level);
   });
 }
 function seedOilPatrolTanks(){
@@ -5568,17 +5602,15 @@ function launchBossVictoryFireworks(){
   },4200);
 }
 var SOLVED_IMGS=['Level-1-solved.png','Level-2-solved.png','Level-3-Solved.png','Level-4-solved.png','Level-5-solved.png','Level-6-solved.png'];
-// Objective milestone kill thresholds per sector (non-boss objectives tick at these kill counts)
-var OBJ_THRESHOLDS={1:[8,20,35],2:[12,30],3:[10,22],4:[10,25],5:[10,25],6:[15,35]};
-var sentObjs={};
-function postObj(idx){
-  if(sentObjs[idx]) return;
-  sentObjs[idx]=true;
-  try{ window.parent.postMessage({type:'gd:objectiveComplete',sector:level,index:idx},'*'); }catch(ex){}
-}
+// Publish the actual objective state, including resets and newly spawned enemies.
+var objectiveSnapshot='',objectivePoll=0;
 function checkObjMilestones(){
-  var thr=OBJ_THRESHOLDS[level]; if(!thr) return;
-  for(var i=0;i<thr.length;i++){ if(totalKills>=thr[i]) postObj(i); }
+  var objectives=missionObjectives(),done=[];
+  objectives.forEach(function(o,i){if(o.done)done.push(i);});
+  var snapshot=level+':'+done.join(',');
+  if(snapshot===objectiveSnapshot)return;
+  objectiveSnapshot=snapshot;
+  try{window.parent.postMessage({type:'gd:objectives',sector:level,completed:done},window.location.origin);}catch(ex){}
 }
 function continueSector(){
   if(clearing) return; clearing=true;
@@ -5749,26 +5781,26 @@ function killEnemy(e,ang,gib){
   var idx=enemies.indexOf(e); if(idx>=0) enemies.splice(idx,1);
   if(COMMANDER_ENABLED&&e.squadId!==undefined) cmdCheckSquadWipe(e.squadId);
   if(e.finalBoss){ redBossDefeated=1; bossBarrels.length=0; banner('FINAL BOSS DEFEATED','RED SQUARE SECURED',2.5);
-    postObj(OBJ_THRESHOLDS[level]?OBJ_THRESHOLDS[level].length:2);
+    checkObjMilestones();
     try{ window.parent.postMessage({type:bot&&bot.session?'gd:botSectorComplete':'gd:sectorComplete',sector:6,kills:totalKills,squadLost:squadLost,moneyEnd:money,timeAlive:Math.floor(timeAlive),belt:belt.slice()},'*'); }catch(ex){} }
   if(e.airfieldBoss){
     airfieldBossDefeated=1; miniNukes.length=0; killed++; totalKills++;
-    postObj(OBJ_THRESHOLDS[level]?OBJ_THRESHOLDS[level].length:2);
+    checkObjMilestones();
     showAirfieldBossClear(e.x,e.y); hud(); return;
   }
   if(e.compoundBoss){
     compoundBossDefeated=1; bossHammers.length=0; killed++; totalKills++;
-    postObj(OBJ_THRESHOLDS[level]?OBJ_THRESHOLDS[level].length:2);
+    checkObjMilestones();
     fx.push({t:'ring',x:e.x,y:e.y,life:.5,max:.5}); showCompoundBossClear(e.x,e.y); hud(); return;
   }
   if(e.levelTwoBoss){
     levelTwoBossDefeated=1; meatShots.length=0; meatBits.length=0; killed++; totalKills++;
-    postObj(OBJ_THRESHOLDS[level]?OBJ_THRESHOLDS[level].length:2);
+    checkObjMilestones();
     showLevelTwoBossClear(e.x,e.y); hud(); return;
   }
   if(e.oilBoss){
     oilBossDefeated=1; fireBottles.length=0; killed++; totalKills++;
-    postObj(OBJ_THRESHOLDS[level]?OBJ_THRESHOLDS[level].length:2);
+    checkObjMilestones();
     showOilBossClear(e.x,e.y); hud(); return;
   }
   killed++; totalKills++; checkObjMilestones();
@@ -5868,6 +5900,7 @@ function hurtPlayer(dmg,baseAssault){
    UPDATE
    ========================================================================= */
 function update(dt,realDt){
+  objectivePoll-=dt;if(objectivePoll<=0){objectivePoll=.5;checkObjMilestones();}
   if(!godModeAllowed){
     if(player.godMode){
       player.godMode=false;
@@ -6731,7 +6764,7 @@ function update(dt,realDt){
         if(!defended){damageSeaBridge(bu.x,bu.y,bu.dmg||24,false);impact(bu.x,bu.y);bullets.splice(b,1);bu=null;break;}
       }
       var hitAny=false;
-      if(mapKind==='redSquare'||mapKind==='oil'||mapKind==='sea'||mapKind==='compound'){
+      if(motorcade.length){
         for(var mcb=0;mcb<motorcade.length;mcb++){
           var shotCar=motorcade[mcb]; if(shotCar.dead) continue;
           var crx=bu.x-shotCar.x,cry=bu.y-shotCar.y,cca=Math.cos(-shotCar.ang),csa=Math.sin(-shotCar.ang);
@@ -6932,6 +6965,7 @@ function update(dt,realDt){
   if(mapKind==='oil') updateOil(dt);
   if(mapKind==='airfield') updateAirfield(dt);
   if(mapKind==='redSquare') updateRedSquare(dt);
+  if(mapKind==='compound'||mapKind==='trench') updatePatrolTanks(dt);
   updateTruck(dt);
   updateDepotWorkers(dt);
   updateAA(dt);
@@ -7115,13 +7149,6 @@ function update(dt,realDt){
         banner('DRONE SORTIE','SHOOT IT DOWN OR JAM IT',1.8); sfx('ric',.5);
       }
     }
-  }
-
-  // --- waves keep the pressure up, the bases are the objective
-  if(!tank&&!tankSent&&!player.dead&&state==='play'&&mapKind==='compound'){
-    var taken0=0;
-    for(var tq=0;tq<flags.length;tq++) if(flags[tq].state==='done') taken0++;
-    if(taken0>=1){ tankSent=1; spawnTank(); hud(); }
   }
 
   // --- the three bases
@@ -7810,7 +7837,7 @@ function spawnSeaBoss(){
 function showSeaBossClear(){
   if(seaBossDefeated) return;
   seaBossDefeated=1;
-  postObj(OBJ_THRESHOLDS[level]?OBJ_THRESHOLDS[level].length:2);
+  checkObjMilestones();
   banner('LEVEL THREE CLEAR','ALEKSANDR MOISEYEV DEFEATED',3);
   setTimeout(function(){ var c=document.getElementById('seaBossVictory'); state='pause'; if(c) c.classList.add('show'); sfx('clear'); },1450);
   setTimeout(function(){ var c=document.getElementById('seaBossVictory'); if(c) c.classList.remove('show'); },5100);
@@ -9171,8 +9198,9 @@ function doSpawn(){
   hud();
 }
 function startSector(n){
+  objectiveSnapshot='';objectivePoll=0;
   baseHP=baseMX=400; baseFlash=0;
-  level=n; killed=0; sentObjs={}; baseCatsDone=0; compoundBossSpawned=0; compoundBossDefeated=0; levelTwoBossSpawned=0; levelTwoBossDefeated=0; oilBossSpawned=0; oilBossDefeated=0; airfieldBossSpawned=0; airfieldBossDefeated=0; seaBossSpawned=0; seaBossDefeated=0;
+  level=n; killed=0; baseCatsDone=0; compoundBossSpawned=0; compoundBossDefeated=0; levelTwoBossSpawned=0; levelTwoBossDefeated=0; oilBossSpawned=0; oilBossDefeated=0; airfieldBossSpawned=0; airfieldBossDefeated=0; seaBossSpawned=0; seaBossDefeated=0;
   document.getElementById('bossVictory').classList.remove('show');
   document.getElementById('levelTwoBossVictory').classList.remove('show');
   document.getElementById('airBossVictory').classList.remove('show');
@@ -9212,6 +9240,7 @@ function startSector(n){
   drops.length=0; twitchers.length=0; sentries.length=0; strikes.length=0; smokes.length=0; bossBarrels.length=0; bossHammers.length=0; meatShots.length=0; meatBits.length=0; fireBottles.length=0; miniNukes.length=0; drone=null; piloting=false;
   crates.length=0; seedCrates(9+Math.min(6,Math.floor(n/2)));
   seedCompoundWrecks();
+  if(level===1||level===2)seedEarlyPatrolTanks();
   wave=0; tank=null; tankSent=0; droneT=rr(30,50); seaCD=0;
   edrones.length=0; emps.length=0;
   for(var bg=0;bg<bases.length&&mapKind!=='sea';bg++){
@@ -9628,18 +9657,32 @@ function paintMilitaryDrone(c,kind,spin){
   }else{gearBox(c,-3,-11,6,5,'#4e5b48','#252f25',1);gearLine(c,2,5,5,13,'#444e3c',1);}
   gearLens(c,0,-8,heavy?1.8:2.5,'#91b7b0');
 }
+// Shared reinforcement artwork: the five playable characters, using their real renderer.
+function paintReinforcementBadge(c){
+  var poses=[[-10,0,.35,0],[10,0,2.8,1],[-6,6,.65,2],[6,6,2.5,3],[0,13,1.2,4]];
+  poses.forEach(function(p){
+    var kit=PKITS[p[3]];
+    c.save();c.translate(p[0],p[1]);c.scale(.32,.32);
+    drawUnit(c,0,0,p[2],kit.col,kit.band,1+p[3],.65,null,p[3]===4?'pistol':'rifle',false,false,false,1200+p[3],0,null,true,kit);
+    c.restore();
+  });
+}
+function paintFullArmour(c){
+  // Complete field kit: helmet, shoulder guards, plate carrier and lower protection.
+  gearBox(c,-15,-7,6,13,'#77816c','#27332d',2);gearBox(c,9,-7,6,13,'#77816c','#27332d',2);
+  gearPoly(c,[[-8,-11],[-3,-9],[3,-9],[8,-11],[11,-4],[10,12],[-10,12],[-11,-4]],'#78826d');
+  c.strokeStyle='#26332b';c.lineWidth=1.2;c.stroke();
+  gearBox(c,-7,-4,14,12,'#444f48','#202b25',2);
+  gearLine(c,-5,-2,5,-2,'#aab3a2',1);
+  for(var row=0;row<3;row++)gearLine(c,-6,row*3,6,row*3,'#87917e',1);
+  gearBox(c,-9,7,5,6,'#9a9f89','#354036',1);gearBox(c,4,7,5,6,'#9a9f89','#354036',1);
+  gearPoly(c,[[-5,12],[5,12],[4,17],[-4,17]],'#535e50');
+  c.fillStyle='#939d86';c.beginPath();c.ellipse(0,-14,7,5,0,Math.PI,Math.PI*2);c.lineTo(7,-11);c.lineTo(-7,-11);c.closePath();c.fill();c.strokeStyle='#28342b';c.stroke();
+  gearLine(c,-7,-11,7,-11,'#bec6ad',1);gearBox(c,-2,-17,4,2,'#535f51','#303c32',.5);
+  gearBox(c,-3,-6,6,2,'#0057b7','#0057b7',0);gearBox(c,-3,-4,6,2,'#ffd700','#ffd700',0);
+}
 function paintTool(c,k){
-  if(k==='reinforcements'){
-    gearBox(c,-16,-15,32,30,'#253d50','#101f2d',3);
-    [[-10,-4],[10,-4],[-6,4],[6,4],[0,-6]].forEach(function(p){
-      gearBox(c,p[0]-4,p[1]+2,8,9,'#82916b','#45553d',2);
-      c.fillStyle='#cfaa83';c.beginPath();c.arc(p[0],p[1],3,0,6.3);c.fill();
-      c.fillStyle='#647450';c.beginPath();c.ellipse(p[0],p[1]-1.5,4,2.6,0,Math.PI,Math.PI*2);c.fill();
-      gearLine(c,p[0]+3,p[1]+3,p[0]+5,p[1]+9,'#252e31',2);
-    });
-    gearLine(c,-13,13,13,13,'#ffd700',2);return;
-  }
-
+  if(k==='reinforcements'){paintReinforcementBadge(c);return;}
   if(k==='god'){
     gearBox(c,-12,-14,24,28,'#182c3a','#ffd700',3);
     c.save();rrect(c,-11,-13,22,26,2);c.clip();c.scale(1.45,1.45);
@@ -9732,6 +9775,8 @@ function paintTool(c,k){
     box(-12,-7,24,18,'#9da487','#4e624f',3);box(-6,-11,12,4,'#748575','#354c40',1.5);
     box(-9,-4,18,11,'#e2e1c7','#b3b9a1',1.5);c.fillStyle='#b8463d';c.fillRect(-1.5,-2,3,8);c.fillRect(-4,0.5,8,3);
     box(-12,-4,3,12,'#7e8a6c','#44593f');box(9,-4,3,12,'#7e8a6c','#44593f');line(-8,8,8,8,'#c4c7a5',.7);
+  }else if(k==='fullArmour'){
+    paintFullArmour(c);
   }else if(k==='plate'){
     gearPoly(c,[[-6,-13],[6,-13],[11,-7],[10,9],[5,13],[-5,13],[-10,9],[-11,-7]],'#425c68');
     gearPoly(c,[[-5,-10],[5,-10],[8,-5],[7,8],[0,11],[-7,8],[-8,-5]],'#829b9b');
@@ -12025,7 +12070,7 @@ function draw(){
 
   if(mapKind==='compound')for(var cw=0;cw<compoundWrecks.length;cw++)drawPatrolTank(ctx,compoundWrecks[cw]);
   if(mapKind==='sea')drawSeaExpansion(ctx);
-  if(mapKind==='redSquare'||mapKind==='oil'||mapKind==='sea'||mapKind==='compound') for(var mcd=0;mcd<motorcade.length;mcd++) drawMotorcadeCar(ctx,motorcade[mcd]);
+  if(motorcade.length) for(var mcd=0;mcd<motorcade.length;mcd++) drawMotorcadeCar(ctx,motorcade[mcd]);
   if(mapKind==='redSquare'&&redDroneBase){
     var integrity=redDroneBase.hp/redDroneBase.mx;
     drawBaseDamage(ctx,{stage:integrity<=.25?3:integrity<=.5?2:integrity<=.75?1:0,
@@ -13300,8 +13345,7 @@ function paintDamaged(c){
     }
   }
 }
-function drawObjectives(){
-  if(!player||state==='menu'||state==='shop'||state==='card') return;
+function missionObjectives(){
   // Build objective list for current map
   var objs=[];
   if(mapKind==='trench'){
@@ -13315,7 +13359,7 @@ function drawObjectives(){
   } else if(mapKind==='airfield'){
     var planesUp=0; for(var aq=0;aq<aircraft.length;aq++) if(!aircraft[aq].dead) planesUp++;
     objs.push({t:'DESTROY CARGO PLANES ('+( aircraft.length-planesUp)+'/'+aircraft.length+')', done:planesUp===0&&aircraft.length>0});
-    objs.push({t:'REPEL ASSAULT WAVES ('+airAssaultWave+'/2)',       done:airAssaultWave>=2});
+    objs.push({t:'REPEL ASSAULT WAVES ('+airAssaultWave+'/2)',       done:airAssaultWave>=2&&!enemies.some(function(e){return e.airSiege&&e.hp>0;})});
     objs.push({t:'DEFEAT THE AIRFIELD COMMANDER',                    done:!!airfieldBossDefeated});
   } else if(mapKind==='oil'){
     var rl=0; for(var rq6=0;rq6<refineries.length;rq6++) if(!refineries[rq6].dead) rl++;
@@ -13326,7 +13370,7 @@ function drawObjectives(){
   } else if(mapKind==='sea'){
     var afloat=0; for(var sq6=0;sq6<ships.length;sq6++) if(ships[sq6].hp>0) afloat++;
     objs.push({t:'SINK THE FLEET ('+(seaBridge?seaBridge.fleetSunk:0)+'/7)',done:!!seaBridge&&seaBridge.fleetSunk>=7});
-    objs.push({t:'ELIMINATE SHORE TROOPS',                           done:afloat===0&&enemies.length===0});
+    objs.push({t:'ELIMINATE SHORE TROOPS',                           done:!!seaBridge&&seaBridge.fleetSunk>=7&&enemies.length===0});
     objs.push({t:'DESTROY KERCH ROAD / RAIL BRIDGE',done:!!(seaBridge&&seaBridge.dead)});
     objs.push({t:'DESTROY THE SEA BOSS',                             done:!!seaBossDefeated});
   } else if(mapKind==='redSquare'){
@@ -13342,6 +13386,11 @@ function drawObjectives(){
     objs.push({t:'DESTROY ENEMY DRONE BASE',done:!!(compoundDroneHub&&compoundDroneHub.dead)});
     objs.push({t:'DEFEAT THE COMPOUND BOSS',                         done:!!compoundBossDefeated});
   }
+  return objs;
+}
+function drawObjectives(){
+  if(!player||state==='menu'||state==='shop'||state==='card') return;
+  var objs=missionObjectives();
   if(!objs.length) return;
   // Panel layout — left side, below gun rail
   var pw=182, lh=20, pad=10, cx=9, cy=344;
@@ -14307,7 +14356,7 @@ bindTap(document.getElementById('go'),function(){
   var sc=parseInt(params.get('coins')||'0',10);
   if(sc>0&&sc<=99999) startCoins=sc;
   var beltParam=params.get('belt');
-  if(beltParam){ var VALID_TOOLS={droneS:1,drone:1,droneL:1,usv:1,sentry:1,strike:1,stim:1,smoke:1,incend:1,flamer:1,emp:1,med:1,plate:1,repair:1,reinforcements:1}; var bids=beltParam.split(',').filter(function(b){return VALID_TOOLS[b];}).slice(0,6); if(bids.length) belt=bids; }
+  if(beltParam){ var VALID_TOOLS={droneS:1,drone:1,droneL:1,usv:1,sentry:1,strike:1,stim:1,smoke:1,incend:1,flamer:1,emp:1,med:1,plate:1,fullArmour:1,repair:1,reinforcements:1}; var bids=beltParam.split(',').filter(function(b){return VALID_TOOLS[b];}).slice(0,6); if(bids.length) belt=bids; }
   window._recEnabled = adminToolAllowed&&params.get('rec')==='1';
   if(params.get('mute')==='1'){ muted=true; var mb=document.getElementById('mute'); if(mb){mb.textContent='✕';mb.style.opacity=.5;} }
   var autolvl=parseInt(params.get('autostart')||'0',10);

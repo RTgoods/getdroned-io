@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { createProgressOutbox } from '@/lib/progress-outbox'
 import { createClient } from '@/lib/supabase/client'
 import { GameSidebar } from './GameSidebar'
 import { ProfileContent } from './ProfileContent'
@@ -18,19 +19,27 @@ export function GamePageClient({ game, solvedPreview = null }: { game: Game; sol
   const [allowed, setAllowed] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
   const [gameId, setGameId] = useState<string | null>(null)
-  const [ready, setReady] = useState(true) // show landing immediately; auth check runs in background
+  const [ready, setReady] = useState(false) // render the page immediately, but wait before showing account actions
   const [completedSectors, setCompletedSectors] = useState<number[]>([])
   const [sectorStats, setSectorStats] = useState<Record<string, SectorStat>>({})
   const [liveObjectives, setLiveObjectives] = useState<Record<number, number[]>>({})
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
   const [musicMuted, setMusicMuted] = useState(false)
+  const [connectionMessage, setConnectionMessage] = useState('')
+  const [saveMessage, setSaveMessage] = useState('')
+  const [progressReady, setProgressReady] = useState(false)
+  const outbox = useRef<ReturnType<typeof createProgressOutbox> | null>(null)
+  const accessRequest = useRef(0)
   const frame = useRef<HTMLIFrameElement>(null)
 
   const loadAccess = useCallback(async () => {
+    const request = ++accessRequest.current
     try {
-      const response = await fetch('/api/access', { cache: 'no-store' })
+      const response = await fetch('/api/access', { cache: 'no-store', signal: AbortSignal.timeout(12000) })
       if (!response.ok) throw new Error('Access check failed')
       const access = await response.json()
+      if (request !== accessRequest.current) return null
+      setConnectionMessage('')
       setUser(access.user); setAllowed(access.allowed); setIsAdmin(access.isAdmin); setGameId(access.gameId)
       if (!access.user) { setPlaying(false); setAvatarUrl(null) }
       else {
@@ -40,7 +49,7 @@ export function GamePageClient({ game, solvedPreview = null }: { game: Game; sol
       }
       return access
     } catch {
-      setUser(null); setAllowed(false); setIsAdmin(false); setPlaying(false)
+      if (request === accessRequest.current) setConnectionMessage('Connection interrupted — reconnecting. Your game stays open.')
       return null
     } finally { setReady(true) }
   }, [])
@@ -55,24 +64,70 @@ export function GamePageClient({ game, solvedPreview = null }: { game: Game; sol
     const { data: { subscription } } = db.auth.onAuthStateChange(() => { void loadAccess() })
     const refresh = () => { if (document.visibilityState === 'visible') void loadAccess() }
     document.addEventListener('visibilitychange', refresh)
+    window.addEventListener('online', refresh)
     const timer = setInterval(() => { void loadAccess() }, 60000)
-    return () => { subscription.unsubscribe(); document.removeEventListener('visibilitychange', refresh); clearInterval(timer) }
+    return () => { subscription.unsubscribe(); window.removeEventListener('online', refresh); document.removeEventListener('visibilitychange', refresh); clearInterval(timer) }
   }, [loadAccess])
 
-  // Load progress (completed sectors + stats + carry state) when access is granted
+  // Retry reads too: a temporary failure must not look like a new pilot.
   useEffect(() => {
-    setCompletedSectors([])
-    setSectorStats({})
-    if (user && gameId) {
-      fetch(`/api/progress?gameId=${gameId}`)
-        .then(r => r.json())
-        .then(d => {
-          if (Array.isArray(d.completedSectors)) setCompletedSectors(d.completedSectors)
-          if (d.sectorStats && typeof d.sectorStats === 'object') setSectorStats(d.sectorStats)
-        })
-        .catch(() => {})
+    let cancelled = false, loaded = false, reading = false
+    setCompletedSectors([]); setSectorStats({}); setProgressReady(false)
+    const read = async () => {
+      if (cancelled || loaded || reading || !user || !gameId) return
+      reading = true
+      try {
+        const response = await fetch(`/api/progress?gameId=${gameId}`, { signal: AbortSignal.timeout(12000) })
+        if (!response.ok) throw new Error('Progress unavailable')
+        const data = await response.json()
+        if (cancelled) return
+        loaded = true; setProgressReady(true); setConnectionMessage('')
+        if (Array.isArray(data.completedSectors)) setCompletedSectors(prev => [...new Set([...data.completedSectors, ...prev])] as number[])
+        if (data.sectorStats) setSectorStats(prev => ({ ...data.sectorStats, ...prev }))
+      } catch {
+        if (!cancelled) setConnectionMessage('Sector progress unavailable — retrying automatically.')
+      } finally { reading = false }
     }
+    if (user && gameId) void read()
+    else setProgressReady(true)
+    const timer = setInterval(() => { void read() }, 10000)
+    window.addEventListener('online', read)
+    return () => { cancelled = true; clearInterval(timer); window.removeEventListener('online', read) }
   }, [allowed, gameId, user?.id])
+
+  useEffect(() => {
+    if (saveMessage !== 'Progress saved') return
+    const timer = setTimeout(() => setSaveMessage(''), 5000)
+    return () => clearTimeout(timer)
+  }, [saveMessage])
+
+  useEffect(() => {
+    if (!user || !gameId) return
+    let active = true
+    const key = `gd:pending-progress:${user.id}:${gameId}`
+    const queue = createProgressOutbox({
+      getItem: key => localStorage.getItem(key),
+      setItem: (key, value) => localStorage.setItem(key, value),
+    }, key, async entry => {
+      const response = await fetch('/api/progress', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(entry), signal: AbortSignal.timeout(12000),
+      })
+      if (!response.ok) throw new Error('Save pending')
+      const saved = await response.json()
+      if (active) {
+        setProgressReady(true)
+        if (Array.isArray(saved.completedSectors)) setCompletedSectors(saved.completedSectors)
+        if (saved.sectorStats) setSectorStats(saved.sectorStats)
+      }
+    }, message => { if (active) setSaveMessage(message) })
+    outbox.current = queue
+    void queue.flush()
+    const retry = () => { void queue.flush() }
+    const timer = setInterval(retry, 10000)
+    window.addEventListener('online', retry)
+    return () => { active = false; queue.stop(); outbox.current = null; clearInterval(timer); window.removeEventListener('online', retry) }
+  }, [user?.id, gameId])
 
   // Listen for messages from the game iframe
   useEffect(() => {
@@ -80,15 +135,10 @@ export function GamePageClient({ game, solvedPreview = null }: { game: Game; sol
       if (event.origin !== window.location.origin || event.source !== frame.current?.contentWindow) return
       const { type } = event.data ?? {}
 
-      // Objective tick — update sidebar live without a DB write
-      if (type === 'gd:objectiveComplete') {
-        const { sector, index } = event.data
-        if (Number.isInteger(sector) && sector >= 1 && sector <= 6 && Number.isInteger(index) && index >= 0) {
-          setLiveObjectives(prev => {
-            const existing = prev[sector] ?? []
-            if (existing.includes(index)) return prev
-            return { ...prev, [sector]: [...existing, index] }
-          })
+      if (type === 'gd:objectives') {
+        const { sector, completed } = event.data
+        if (Number.isInteger(sector) && sector >= 1 && sector <= 6 && Array.isArray(completed)) {
+          setLiveObjectives(prev => ({ ...prev, [sector]: completed.filter((i: number) => Number.isInteger(i) && i >= 0 && i < 8) }))
         }
         return
       }
@@ -97,17 +147,7 @@ export function GamePageClient({ game, solvedPreview = null }: { game: Game; sol
       const { sector, kills, squadLost, moneyEnd, timeAlive, belt } = event.data
       if (!Number.isInteger(sector) || sector < 1 || sector > 6) return
 
-      // Save to DB and get carry state back
-      try {
-        const res = await fetch('/api/progress', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ gameId, sector, kills, squadLost, moneyEnd, timeAlive, belt }),
-        })
-        const d = await res.json()
-        if (Array.isArray(d.completedSectors)) setCompletedSectors(d.completedSectors)
-        if (d.sectorStats && typeof d.sectorStats === 'object') setSectorStats(d.sectorStats)
-      } catch { /* ignore — game continues in-engine */ }
+      outbox.current?.enqueue({ gameId, sector, kills, squadLost, moneyEnd, timeAlive, belt })
     }
     window.addEventListener('message', handler)
     return () => window.removeEventListener('message', handler)
@@ -115,7 +155,8 @@ export function GamePageClient({ game, solvedPreview = null }: { game: Game; sol
 
   const play = useCallback(async (level = 1) => {
     const access = await loadAccess()
-    if (!access?.user) { window.location.href = '/auth/login'; return }
+    if (!access) return
+    if (!access.user) { window.location.href = '/auth/login'; return }
 
     // Sector 1 is always free; sectors 2–6 require purchase + previous sector complete (unless admin)
     const prevDone = completedSectors.includes(level - 1)
@@ -138,6 +179,8 @@ export function GamePageClient({ game, solvedPreview = null }: { game: Game; sol
     }))
     setPlaying(true)
   }, [completedSectors, sectorStats, loadAccess])
+
+  const continueLevel = completedSectors.length === 6 ? 1 : [1,2,3,4,5,6].find(n => !completedSectors.includes(n)) || 1
 
   const reset = async () => {
     if (!allowed || !gameId) return
@@ -193,7 +236,8 @@ export function GamePageClient({ game, solvedPreview = null }: { game: Game; sol
           title={game.title}
           allow="autoplay; fullscreen; pointer-lock"
         />
-      ) : <GameLanding game={game} user={user} hasPurchased={allowed} onPlay={() => play(1)} />}
+      ) : <GameLanding game={game} user={user} hasPurchased={allowed} continueLevel={continueLevel} completedCount={completedSectors.length} accessReady={ready && progressReady} onPlay={() => play(allowed ? continueLevel : 1)} />}
+      {(connectionMessage || saveMessage) && <div role="status" aria-live="polite" style={{ position: 'absolute', bottom: playing ? 120 : 12, left: '50%', transform: 'translateX(-50%)', zIndex: 1100, maxWidth: '90%', width: 'max-content', padding: '8px 12px', borderRadius: 6, background: '#091a30', color: '#ffd700', border: '1px solid #3878b8', fontSize: 12, pointerEvents: 'none' }}>{connectionMessage || saveMessage}</div>}
       {settingsOpen && user && (
         <div role="dialog" aria-modal="true" aria-label="Pilot Settings" style={{ position: 'absolute', inset: 0, zIndex: 1000, background: '#09101f', overflowY: 'auto' }}>
           <ProfileContent game={game} user={user} hasPurchased={allowed} isAdmin={isAdmin} completedSectors={completedSectors} sectorStats={sectorStats} avatarUrl={avatarUrl} gameId={gameId}
