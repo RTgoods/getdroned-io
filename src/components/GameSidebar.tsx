@@ -406,6 +406,17 @@ export function GameSidebar({ game, user, hasPurchased, isAdmin = false, complet
           />
         )}
 
+        {open && (
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+            padding: '10px 13px', flexShrink: 0, borderTop: `1px solid ${UA.border}`,
+          }}>
+            <Link href="/terms" style={{ fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase', color: UA.textDim, textDecoration: 'none' }}>{t('Terms')}</Link>
+            <span style={{ color: UA.textDim, fontSize: 9 }} aria-hidden="true">·</span>
+            <Link href="/privacy" style={{ fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase', color: UA.textDim, textDecoration: 'none' }}>{t('Privacy')}</Link>
+          </div>
+        )}
+
       </aside>
 
       {/* Mobile hamburger — always visible on mobile when sidebar is closed */}
