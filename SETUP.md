@@ -27,6 +27,28 @@ npm install
 
 ---
 
+## 2b · Google login
+
+The app's sign-in button and `/auth/callback` route already handle Google OAuth — only external configuration is needed, no code or env vars.
+
+1. **Google Cloud Console** ([console.cloud.google.com](https://console.cloud.google.com)) → create/select a project.
+2. **APIs & Services → OAuth consent screen**
+   - User type: External
+   - Fill in app name, support email, developer contact email
+   - Publish the app (or add test users) so sign-in isn't capped to a 7-day test window
+3. **APIs & Services → Credentials → Create Credentials → OAuth client ID**
+   - Application type: Web application
+   - Authorized JavaScript origins: your production domain (e.g. `https://your-site.com`) and `http://localhost:3000`
+   - Authorized redirect URIs: **your Supabase project's callback**, not your app's —
+     `https://xxx.supabase.co/auth/v1/callback` (use your actual `NEXT_PUBLIC_SUPABASE_URL` project ref)
+   - Save, copy the Client ID and Client Secret
+4. **Supabase Dashboard → Authentication → Providers → Google**
+   - Enable it, paste the Client ID and Client Secret, save
+5. Confirm Authentication → URL Configuration (step 2.4 above) includes your production `/auth/callback` URL
+6. Test: `/auth/login` → "Continue with Google" → should return signed in, both locally and in production
+
+---
+
 ## 3 · Stripe
 
 1. Go to [dashboard.stripe.com](https://dashboard.stripe.com).
