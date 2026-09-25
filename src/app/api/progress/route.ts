@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createSupabase } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/server'
 import { progressLimiter, checkLimit } from '@/lib/rate-limit'
+import { isValidStatInput } from '@/lib/progress-validation'
 
 function safeUrl(v: string | undefined) {
   if (!v) return 'https://placeholder.supabase.co'
@@ -81,6 +82,9 @@ export async function POST(req: NextRequest) {
 
   if (gameId !== access.gameId || !Number.isInteger(sector) || sector < 1 || sector > 6) {
     return NextResponse.json({ error: 'Invalid game or sector' }, { status: 400 })
+  }
+  if (!isValidStatInput(kills, squadLost, moneyEnd, timeAlive, belt)) {
+    return NextResponse.json({ error: 'Invalid stats' }, { status: 400 })
   }
 
   if (sector > 1 && !access.allowed) return NextResponse.json({ error: 'Purchase required' }, { status: 403 })
