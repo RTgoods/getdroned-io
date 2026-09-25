@@ -21,15 +21,15 @@ interface Kit {
 }
 
 const BASE_KITS: Kit[] = [
-  { id:'woodland', label:'WOODLAND', col:'#6e6a4b', band:'#2f6fd0',
+  { id:'woodland', label:'ROOK', col:'#6e6a4b', band:'#2f6fd0',
     pal:['#8a7f57','#57603c','#9d8b62','#3c4230'], shades:true },
-  { id:'urban',    label:'URBAN',    col:'#7b7f82', band:'#2f6fd0',
+  { id:'urban',    label:'GHOST',    col:'#7b7f82', band:'#2f6fd0',
     pal:['#9aa0a3','#5e6468','#c2c6c8','#3a3f42'], mask:true, gog:true },
-  { id:'ranger',   label:'RANGER',   col:'#4f5f45', band:'#2f6fd0',
+  { id:'ranger',   label:'TALON',   col:'#4f5f45', band:'#2f6fd0',
     pal:['#4f5f45','#4f5f45','#57684c','#4a5941'], scarf:true },
-  { id:'desert',   label:'DESERT',   col:'#9b8a63', band:'#2f6fd0',
+  { id:'desert',   label:'NOMAD',   col:'#9b8a63', band:'#2f6fd0',
     pal:['#b3a179','#8a7a55','#c6b389','#6e6247'], mask:true, scarf:true },
-  { id:'night',    label:'NIGHT',    col:'#3a3d42', band:'#3f8fe0',
+  { id:'night',    label:'WRAITH',    col:'#3a3d42', band:'#3f8fe0',
     pal:['#44484e','#2e3136','#53585f','#1f2226'], mask:true, gog:true },
 ]
 

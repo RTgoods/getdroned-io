@@ -2,15 +2,15 @@
 var SKIN='#d9a97c', SKIN2='#c3925f';
 var EMR=[];
 var PKITS=[
-  {id:'woodland',n:'WOODLAND',col:'#6e6a4b',band:'#2f6fd0',rig:'#6d6647',
+  {id:'woodland',n:'ROOK',col:'#6e6a4b',band:'#2f6fd0',rig:'#6d6647',
    pal:['#8a7f57','#57603c','#9d8b62','#3c4230'],mask:0,gog:0,scarf:0,shades:1},
-  {id:'urban',   n:'URBAN',   col:'#7b7f82',band:'#2f6fd0',rig:'#4a4f52',
+  {id:'urban',   n:'GHOST',   col:'#7b7f82',band:'#2f6fd0',rig:'#4a4f52',
    pal:['#9aa0a3','#5e6468','#c2c6c8','#3a3f42'],mask:1,gog:1,scarf:0},
-  {id:'ranger',  n:'RANGER',  col:'#4f5f45',band:'#2f6fd0',rig:'#8a7350',
+  {id:'ranger',  n:'TALON',  col:'#4f5f45',band:'#2f6fd0',rig:'#8a7350',
    pal:['#4f5f45','#4f5f45','#57684c','#4a5941'],mask:0,gog:0,scarf:1},
-  {id:'desert',  n:'DESERT',  col:'#9b8a63',band:'#2f6fd0',rig:'#7d6a44',
+  {id:'desert',  n:'NOMAD',  col:'#9b8a63',band:'#2f6fd0',rig:'#7d6a44',
    pal:['#b3a179','#8a7a55','#c6b territory','#6e6247'],mask:1,gog:0,scarf:1},
-  {id:'night',   n:'NIGHT',   col:'#3a3d42',band:'#3f8fe0',rig:'#25282c',
+  {id:'night',   n:'WRAITH',   col:'#3a3d42',band:'#3f8fe0',rig:'#25282c',
    pal:['#44484e','#2e3136','#53585f','#1f2226'],mask:1,gog:1,scarf:0}
 ];
 PKITS[3].pal=['#b3a179','#8a7a55','#c6b389','#6e6247'];
@@ -164,7 +164,16 @@ function paintGun(c,id){
     line(0,3,5,4,'#83908b',.7);line(5,4,4,6,'#83908b',.7);
   }
 }
-function paintRobotDog(c,phase){
+function paintReinforcementBadge(c){
+  var poses=[[-10,0,.35,0],[10,0,2.8,1],[-6,6,.65,2],[6,6,2.5,3],[0,13,1.2,4]];
+  poses.forEach(function(p){
+    var kit=PKITS[p[3]];
+    c.save();c.translate(p[0],p[1]);c.scale(.32,.32);
+    drawUnit(c,0,0,p[2],kit.col,kit.band,1+p[3],.65,null,p[3]===4?'pistol':'rifle',false,false,false,1200+p[3],0,null,true,kit);
+    c.restore();
+  });
+}
+function paintRobotDog(c,phase,turretAngle){
   // Four articulated legs surround an armoured spine; nose points upward like other drone icons.
   for(var side=-1;side<=1;side+=2)for(var leg=0;leg<2;leg++){
     var ly=leg?10:-10,swing=Math.sin(phase*.35+leg*Math.PI+(side<0?Math.PI:0))*4;
@@ -182,9 +191,7 @@ function paintRobotDog(c,phase){
   gearBox(c,-6,-12,12,24,'#959d80','#46543e',2);
   for(var vent=0;vent<4;vent++)gearLine(c,-4,7+vent*2,4,7+vent*2,'#3b493c',1);
   gearBox(c,-6,-23,12,10,'#454f43','#202d26',3);gearLens(c,0,-21,2.5,'#80c9d0');
-  gearBox(c,-5,-5,10,12,'#303b32','#192820',2);
-  gearBox(c,1,-25,3,23,'#333e36','#18251e',1);
-  gearBox(c,-8,-3,5,9,'#aca177','#3e4736',1);
+
   gearLine(c,6,10,10,21,'#303b32',1.5);
   // Layered cheek armour and paired optical sensors.
   gearPoly(c,[[-7,-21],[-10,-17],[-8,-11],[-5,-13]],'#858e71');
@@ -194,10 +201,16 @@ function paintRobotDog(c,phase){
   for(var bolt=0;bolt<4;bolt++){
     c.fillStyle='#c6c9af';c.fillRect(bolt%2?5:-6,bolt<2?-11:12,1.2,1.2);
   }
+  // Independent turret follows gun aim while the chassis follows movement.
+  c.save();c.rotate(turretAngle||0);
+  gearBox(c,-5,-5,10,12,'#303b32','#192820',2);
+  gearBox(c,1,-25,3,23,'#333e36','#18251e',1);
+  gearBox(c,-8,-3,5,9,'#aca177','#3e4736',1);
   // Gun cooling jacket, muzzle brake, feed belt and battery latch.
   gearBox(c,.5,-29,4,5,'#56645a','#18291f',.6);
   for(var hole=0;hole<5;hole++){c.fillStyle='#111e18';c.fillRect(1.5,-22+hole*2.5,1,1.2);}
   for(var link=0;link<4;link++)gearLine(c,-7+link*2,1,-7+link*2,4,'#b4a574',1.3);
+  c.restore();
   gearBox(c,-4,15,8,3,'#3b4a39','#223023',.6);
   gearLine(c,-5,-9,-3,-7,'#c4c7ad',.7);gearLine(c,4,9,6,7,'#bfc3a8',.6);
   c.fillStyle='#d4c999';c.font='bold 3px monospace';c.fillText('K9',-5,11);
@@ -250,7 +263,22 @@ function paintMilitaryDrone(c,kind,spin){
   gearLens(c,0,-8,heavy?1.8:2.5,'#91b7b0');
 }
 function ring(x,y,r,col,w){c.strokeStyle=col;c.lineWidth=w||1;c.beginPath();c.arc(x,y,r,0,6.3);c.stroke();}
+function paintFullArmour(c){
+  // Complete field kit: helmet, shoulder guards, plate carrier and lower protection.
+  gearBox(c,-15,-7,6,13,'#77816c','#27332d',2);gearBox(c,9,-7,6,13,'#77816c','#27332d',2);
+  gearPoly(c,[[-8,-11],[-3,-9],[3,-9],[8,-11],[11,-4],[10,12],[-10,12],[-11,-4]],'#78826d');
+  c.strokeStyle='#26332b';c.lineWidth=1.2;c.stroke();
+  gearBox(c,-7,-4,14,12,'#444f48','#202b25',2);
+  gearLine(c,-5,-2,5,-2,'#aab3a2',1);
+  for(var row=0;row<3;row++)gearLine(c,-6,row*3,6,row*3,'#87917e',1);
+  gearBox(c,-9,7,5,6,'#9a9f89','#354036',1);gearBox(c,4,7,5,6,'#9a9f89','#354036',1);
+  gearPoly(c,[[-5,12],[5,12],[4,17],[-4,17]],'#535e50');
+  c.fillStyle='#939d86';c.beginPath();c.ellipse(0,-14,7,5,0,Math.PI,Math.PI*2);c.lineTo(7,-11);c.lineTo(-7,-11);c.closePath();c.fill();c.strokeStyle='#28342b';c.stroke();
+  gearLine(c,-7,-11,7,-11,'#bec6ad',1);gearBox(c,-2,-17,4,2,'#535f51','#303c32',.5);
+  gearBox(c,-3,-6,6,2,'#0057b7','#0057b7',0);gearBox(c,-3,-4,6,2,'#ffd700','#ffd700',0);
+}
 function paintTool(c,k){
+  if(k==='reinforcements'){paintReinforcementBadge(c);return;}
   if(k==='god'){
     gearBox(c,-12,-14,24,28,'#182c3a','#ffd700',3);
     c.save();rrect(c,-11,-13,22,26,2);c.clip();c.scale(1.45,1.45);
@@ -343,6 +371,8 @@ function paintTool(c,k){
     box(-12,-7,24,18,'#9da487','#4e624f',3);box(-6,-11,12,4,'#748575','#354c40',1.5);
     box(-9,-4,18,11,'#e2e1c7','#b3b9a1',1.5);c.fillStyle='#b8463d';c.fillRect(-1.5,-2,3,8);c.fillRect(-4,0.5,8,3);
     box(-12,-4,3,12,'#7e8a6c','#44593f');box(9,-4,3,12,'#7e8a6c','#44593f');line(-8,8,8,8,'#c4c7a5',.7);
+  }else if(k==='fullArmour'){
+    paintFullArmour(c);
   }else if(k==='plate'){
     gearPoly(c,[[-6,-13],[6,-13],[11,-7],[10,9],[5,13],[-5,13],[-10,9],[-11,-7]],'#425c68');
     gearPoly(c,[[-5,-10],[5,-10],[8,-5],[7,8],[0,11],[-7,8],[-8,-5]],'#829b9b');

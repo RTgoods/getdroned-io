@@ -1082,14 +1082,6 @@ function buildStatic(){
     sc.stroke();
   }
 
-  // ---- tyre ruts through the yard
-  if(mapKind!=='trench'){
-  sc.strokeStyle='rgba(40,34,22,.35)'; sc.lineWidth=7; sc.setLineDash([9,7]);
-  sc.beginPath(); sc.moveTo(0,MH*TILE-90); sc.bezierCurveTo(WW*.3,MH*TILE-140,WW*.6,MH*TILE-40,WW,MH*TILE-110); sc.stroke();
-  sc.beginPath(); sc.moveTo(0,MH*TILE-68); sc.bezierCurveTo(WW*.3,MH*TILE-118,WW*.6,MH*TILE-18,WW,MH*TILE-88); sc.stroke();
-  sc.setLineDash([]);
-  }
-
   // ---- scorch beneath every fire
   for(var fi=0;fi<fires.length;fi++){
     var FR=fires[fi];
@@ -3136,7 +3128,7 @@ function buildTrench(){
   setupTruck([[45,35],[45,35]]);
   if(truck){truck.parked=true;truck.ang=Math.PI;}
   baseFlags=[{x:.6*TILE,y:26.4*TILE,h:60,crest:0},{x:20.4*TILE,y:26.4*TILE,h:60,crest:0},
-             {x:10.5*TILE,y:38.4*TILE,h:54,crest:0},{x:21.4*TILE,y:32.5*TILE,h:62,crest:2}];
+             {x:10.5*TILE,y:38.4*TILE,h:54,crest:0}];
   addProp(1,28,3,1,'shoptable'); addProp(8,28,1,2,'shelf');
   addProp(1,33,3,1,'console');   addProp(6,29,3,1,'console');
   addProp(12,28,3,1,'console');
@@ -3287,7 +3279,7 @@ function buildSea(){
   addProp(3,44,1,3,'sand',true); addProp(17,43,1,3,'sand',true);
   addProp(5,49,2,1,'block');    addProp(14,49,2,1,'block');
   baseFlags=[{x:6.4*TILE,y:56.4*TILE,h:64,crest:0},{x:24.4*TILE,y:56.4*TILE,h:64,crest:0},
-             {x:15.5*TILE,y:71.4*TILE,h:58,crest:0},{x:29*TILE,y:60.8*TILE,h:64,crest:2}];
+             {x:15.5*TILE,y:71.4*TILE,h:58,crest:0}];
 
   // ---- a couple of rocky islets to break up the water
   var ROCK=[[42,28,4],[34,48,4],[68,12,3],[36,36,3],[58,58,4],[80,40,3],[62,20,2],[76,64,3]];
@@ -3797,7 +3789,7 @@ function buildOil(){
   addProp(13,52,1,1,'hedgehog');  addProp(19,34,1,1,'hedgehog');
   addProp(6,51,2,1,'block');      addProp(20,51,2,1,'block');
   baseFlags=[{x:3.4*TILE,y:36.6*TILE,h:62,crest:0},{x:25.4*TILE,y:36.6*TILE,h:62,crest:0},
-             {x:14.5*TILE,y:51.2*TILE,h:56,crest:0},{x:27.4*TILE,y:44.4*TILE,h:62,crest:2}];
+             {x:14.5*TILE,y:51.2*TILE,h:56,crest:0}];
 
   // ---- six refineries, each with its own SAM ring
   var RF=[[22,8],[46,6],[62,14],[20,24],[57,30],[45,40]];
@@ -5062,6 +5054,32 @@ function seedCrates(n){
    ========================================================================= */
 var mv={x:0,y:0,m:0}, firing=false, keys={};
 var mouseAim={x:0,y:0,active:false};
+var mobileLock=null, mobileLockUntil=0;
+var touchFire={id:null,x:0,y:0,aiming:false,angle:0};
+var fragPreview=false;
+function touchFireStart(e){
+  if(state!=='play'||touchFire.id!==null)return;
+  var t=e.changedTouches[0];
+  touchFire={id:t.identifier,x:t.clientX,y:t.clientY,aiming:false,angle:player?player.face:0};
+  mouseAim.active=false;actDown(e);
+}
+function touchFireMove(e){
+  if(touchFire.id===null)return;
+  for(var i=0;i<e.changedTouches.length;i++){
+    var t=e.changedTouches[i];if(t.identifier!==touchFire.id)continue;
+    var dx=t.clientX-touchFire.x,dy=t.clientY-touchFire.y;
+    if(Math.hypot(dx,dy)>10&&!piloting&&!aboard){
+      touchFire.aiming=true;touchFire.angle=Math.atan2(dy,dx);
+      player.face=touchFire.angle;
+    }
+  }
+  e.preventDefault();
+}
+function touchFireEnd(e){
+  for(var i=0;i<e.changedTouches.length;i++)if(e.changedTouches[i].identifier===touchFire.id){
+    touchFire.id=null;touchFire.aiming=false;actUp(e);break;
+  }
+}
 cv.tabIndex=0;
 function focusGame(){ cv.focus({preventScroll:true}); }
 function controlKey(e){
@@ -5092,7 +5110,7 @@ cv.addEventListener('mousedown',function(e){
 cv.addEventListener('contextmenu',function(e){e.preventDefault();});
 window.addEventListener('touchstart',function(){mouseAim.active=false;},{passive:true});
 function releaseControls(){
-  keys={}; mv.m=0; joyId=null; mouseAim.active=false; actUp(); placeJoyHome();
+  keys={}; mv.m=0; joyId=null; mouseAim.active=false; touchFire.id=null; touchFire.aiming=false; fragPreview=false; mobileLock=null; actUp(); placeJoyHome();
 }
 window.addEventListener('blur',releaseControls);
 document.addEventListener('visibilitychange',function(){
@@ -5163,10 +5181,18 @@ function bindTap(el,fn){
 }
 function actDown(e){ firing=true; actBtn.classList.add('on'); if(ac()&&AC.state==='suspended')AC.resume(); if(e)e.preventDefault(); }
 function actUp(e){ firing=false; actBtn.classList.remove('on'); if(player){player.open=0; player.openC=null;} if(e)e.preventDefault(); }
-actBtn.addEventListener('touchstart',actDown,{passive:false});
-actBtn.addEventListener('touchend',actUp); actBtn.addEventListener('touchcancel',actUp);
+actBtn.addEventListener('touchstart',touchFireStart,{passive:false});
+actBtn.addEventListener('touchmove',touchFireMove,{passive:false});
+actBtn.addEventListener('touchend',touchFireEnd); actBtn.addEventListener('touchcancel',touchFireEnd);
 actBtn.addEventListener('mousedown',actDown); window.addEventListener('mouseup',function(e){ if(firing&&(e.buttons&1)===0) actUp(); });
-bindTap(nadeBtn,throwNade);
+// Pointer release performs the existing throw; cancellation never throws.
+nadeBtn.addEventListener('pointerdown',function(e){
+  if(e.pointerType!=='touch'||state!=='play'||piloting||aboard)return;
+  fragPreview=true;mouseAim.active=false;
+});
+nadeBtn.addEventListener('pointercancel',function(){fragPreview=false;});
+nadeBtn.addEventListener('pointerleave',function(){fragPreview=false;});
+bindTap(nadeBtn,function(){fragPreview=false;throwNade();});
 
 window.addEventListener('keydown',function(e){
   var key=controlKey(e);
@@ -5198,17 +5224,21 @@ function keyVec(){
 /* =========================================================================
    COMBAT
    ========================================================================= */
-// Touch aiming uses a 15-degree total cone, centred on the joystick facing.
+// Touch assistance stays within 15 degrees either side of the intended direction.
 function mobileAimTarget(range){
   if(!touchControls.matches||mouseAim.active||!player||piloting||aboard)return null;
-  var best=null,score=Infinity,halfCone=Math.PI/24;
+  var best=null,score=Infinity,halfCone=Math.PI/12;
+  var held=null,clock=performance.now();
   enemies.forEach(function(e){
     var dx=e.x-player.x,dy=e.y-player.y,d=Math.hypot(dx,dy);
     if(e.hp<=0||d>range||d<1)return;
     var a=Math.atan2(dy,dx)-player.face,offset=Math.abs(Math.atan2(Math.sin(a),Math.cos(a)));
     if(offset>halfCone||!los(player.x,player.y,e.x,e.y)||smokeBlocked(player.x,player.y,e.x,e.y))return;
+    if(e===mobileLock)held=e;
     var rank=offset/halfCone+d/range*.2;if(rank<score){score=rank;best=e;}
   });
+  if(held&&clock<mobileLockUntil)return held;
+  if(best!==mobileLock){mobileLock=best;mobileLockUntil=clock+450;}
   return best;
 }
 function nearestTarget(closestOnly){
@@ -5436,7 +5466,7 @@ function throwNade(){
   if(state==='play'&&piloting&&drone&&drone.kind==='dog'){dogJump();return;}
   if(!player||state!=='play'||(!player.godMode&&player.nades<=0)) return;
   var mobile=touchControls.matches&&!mouseAim.active;
-  var tgt=mobile?mobileAimTarget(300):nearestTarget(),targetX=tgt?tgt.x:player.x+Math.cos(player.face)*220,targetY=tgt?tgt.y:player.y+Math.sin(player.face)*220;
+  var tgt=mobile?null:nearestTarget(),targetX=tgt?tgt.x:player.x+Math.cos(player.face)*220,targetY=tgt?tgt.y:player.y+Math.sin(player.face)*220;
   if(manualAim()){ targetX=mouseAim.x+cam.x; targetY=mouseAim.y+cam.y; tgt=null; }
   if(tgt&&tgt.compoundBoss&&!mobile){ targetX+=(tgt.cvx||0)*.62; targetY+=(tgt.cvy||0)*.62; }
   var ang=Math.atan2(targetY-player.y,targetX-player.x);
@@ -6125,7 +6155,7 @@ function update(dt,realDt){
     var travelled=Math.hypot(player.x-oldX,player.y-oldY);
     player.lvx=(player.x-oldX)/Math.max(dt,.001); player.lvy=(player.y-oldY)/Math.max(dt,.001);
     // Touch/keyboard face movement; explicit mouse aim overrides below.
-    player.face=Math.atan2(m.y,m.x);
+    player.face=touchFire.aiming?touchFire.angle:Math.atan2(m.y,m.x);
     player.walk+=travelled*(12/162);
     // Footfalls trigger sound only. No player footprint or ground-trail marks
     // are painted on any terrain type or level.
@@ -9388,6 +9418,13 @@ async function sectorClear(){
 }
 function gameOver(win,why){
   state='over'; stopMusic();
+  if(!win&&why==='base'){
+    var baseLostArt=document.getElementById('baseLostArt');
+    if(baseLostArt&&!baseLostArt.getAttribute('src')){
+      baseLostArt.onload=function(){document.getElementById('over').classList.add('has-base-art');};
+      baseLostArt.src='assets/images/covers/base-lost.png';
+    }
+  }
   var head='K.I.A.', sub='THE HOUSE HOLDS';
   if(win){ head='CLEARED'; sub='THE GROUND IS YOURS'; }
   else if(why==='base'){ head='BASE LOST'; sub='THEY SHELLED IT FLAT'; }
@@ -9807,15 +9844,15 @@ var SKIN='#d9a97c', SKIN2='#c3925f';
 var EMR=['#3f4634','#717552','#8d8260','#2b3125'];   // enemy digital flora
 var MC =['#8a7f57','#57603c','#9d8b62','#3c4230'];   // player multi-terrain
 var PKITS=[
-  {id:'woodland',n:'WOODLAND',col:'#6e6a4b',band:'#2f6fd0',rig:'#6d6647',
+  {id:'woodland',n:'ROOK',col:'#6e6a4b',band:'#2f6fd0',rig:'#6d6647',
    pal:['#8a7f57','#57603c','#9d8b62','#3c4230'],mask:0,gog:0,scarf:0,shades:1},
-  {id:'urban',   n:'URBAN',   col:'#7b7f82',band:'#2f6fd0',rig:'#4a4f52',
+  {id:'urban',   n:'GHOST',   col:'#7b7f82',band:'#2f6fd0',rig:'#4a4f52',
    pal:['#9aa0a3','#5e6468','#c2c6c8','#3a3f42'],mask:1,gog:1,scarf:0},
-  {id:'ranger',  n:'RANGER',  col:'#4f5f45',band:'#2f6fd0',rig:'#8a7350',
+  {id:'ranger',  n:'TALON',  col:'#4f5f45',band:'#2f6fd0',rig:'#8a7350',
    pal:['#4f5f45','#4f5f45','#57684c','#4a5941'],mask:0,gog:0,scarf:1},
-  {id:'desert',  n:'DESERT',  col:'#9b8a63',band:'#2f6fd0',rig:'#7d6a44',
+  {id:'desert',  n:'NOMAD',  col:'#9b8a63',band:'#2f6fd0',rig:'#7d6a44',
    pal:['#b3a179','#8a7a55','#c6b territory','#6e6247'],mask:1,gog:0,scarf:1},
-  {id:'night',   n:'NIGHT',   col:'#3a3d42',band:'#3f8fe0',rig:'#25282c',
+  {id:'night',   n:'WRAITH',   col:'#3a3d42',band:'#3f8fe0',rig:'#25282c',
    pal:['#44484e','#2e3136','#53585f','#1f2226'],mask:1,gog:1,scarf:0}
 ];
 PKITS[3].pal=['#b3a179','#8a7a55','#c6b389','#6e6247'];
@@ -11244,6 +11281,20 @@ function drawBlastDetails(c,f,k){
   }
   c.restore();
 }
+function drawMobileAim(c){
+  if(!touchControls.matches||mouseAim.active||!player||player.dead||piloting||aboard||state!=='play')return;
+  c.save();c.lineWidth=1.5;c.strokeStyle='rgba(255,215,0,.8)';
+  if(fragPreview){
+    var x=player.x+Math.cos(player.face)*220-Math.round(cam.x),y=player.y+Math.sin(player.face)*220-Math.round(cam.y);
+    c.setLineDash([5,5]);c.beginPath();c.moveTo(player.x-Math.round(cam.x),player.y-Math.round(cam.y));c.lineTo(x,y);c.stroke();
+    c.setLineDash([]);c.beginPath();c.ellipse(x,y,22,12,0,0,Math.PI*2);c.stroke();
+    c.beginPath();c.moveTo(x-5,y);c.lineTo(x+5,y);c.moveTo(x,y-5);c.lineTo(x,y+5);c.stroke();
+  }else{
+    var target=mobileAimTarget(Math.min(720,WEAPONS[player.wep].spd*1.4));
+    if(target){c.beginPath();c.arc(target.x-Math.round(cam.x),target.y-Math.round(cam.y)-18,14,0,Math.PI*2);c.stroke();}
+  }
+  c.restore();
+}
 function drawAimReticle(c){
   if(!manualAim()||state!=='play') return;
   c.save(); c.translate(mouseAim.x,mouseAim.y);
@@ -12667,10 +12718,7 @@ function draw(){
   for(var bf=0;bf<baseFlags.length;bf++){
     var BF=baseFlags[bf];
     if(BF.x<cam.x-90||BF.x>cam.x+VW+90||BF.y<cam.y-140||BF.y>cam.y+VH+90) continue;
-    if(BF.crest===2){
-      drawPole(ctx,BF.x,BF.y,BF.h,0,now+bf*1.7,null);
-      drawPrintFlag(ctx,BF.x+2,BF.y-BF.h+3,38,26,now+bf*1.7,DRONED,dronedOK,'#ece9df');
-    } else if(BF.crest){
+    if(BF.crest){
       drawPole(ctx,BF.x,BF.y,BF.h,0,now+bf*1.7,null);
       drawCrestFlag(ctx,BF.x+2,BF.y-BF.h+3,32,29,now+bf*1.7);
     } else {
@@ -13206,6 +13254,7 @@ function draw(){
     ctx.restore(); ctx.globalAlpha=1;
   }
 
+  drawMobileAim(ctx);
   drawAimReticle(ctx);
 
   // vignette
@@ -13598,41 +13647,6 @@ var UA=['#2f7fd0','#f2c744'], RU=['#f2f2f0','#2f5aa8','#c8332c'];
 var CREST=(typeof Image!=='undefined')?new Image():null;
 if(CREST) CREST.src='assets/images/emblems/ukraine-crest.png';
 var crestOK=false; if(CREST) CREST.onload=function(){ crestOK=true; };
-var DRONED=(typeof Image!=='undefined')?new Image():null;
-if(DRONED) DRONED.src='assets/images/emblems/get-droned-flag.png';
-var dronedOK=false; if(DRONED) DRONED.onload=function(){ dronedOK=true; };
-/* white banner, black print, same ripple */
-function drawPrintFlag(c,px,py,w,h,t,img,ok,cloth){
-  var N=16, amp=2.4+Math.abs(wind)*.2;
-  function wv(xx){ var k=xx/w;
-    return (Math.sin(xx*.26-t*6.4)*amp + Math.sin(xx*.115-t*3.5)*amp*.62)*k*k; }
-  for(var sN=0;sN<N;sN++){
-    var x0=w*sN/N, x1=w*(sN+1)/N, o0=wv(x0), o1=wv(x1);
-    var sf=1-Math.max(-.34,Math.min(.34,(o1-o0)*.55));
-    c.fillStyle=shade(cloth,sf);
-    c.beginPath();
-    c.moveTo(px+x0,py+o0); c.lineTo(px+x1,py+o1);
-    c.lineTo(px+x1,py+h+o1); c.lineTo(px+x0,py+h+o0);
-    c.closePath(); c.fill();
-    if(ok&&img){
-      var sw=img.width/N;
-      c.save();
-      c.beginPath();
-      c.moveTo(px+x0,py+o0); c.lineTo(px+x1+.6,py+o1);
-      c.lineTo(px+x1+.6,py+h+o1); c.lineTo(px+x0,py+h+o0);
-      c.closePath(); c.clip();
-      c.globalAlpha=Math.min(1,.9*sf+.1);
-      try{ c.drawImage(img, sN*sw,0,sw,img.height,
-                       px+x0, py+o0+h*.30, (w/N)+.7, h*.66); }catch(e){}
-      c.globalAlpha=1; c.restore();
-    }
-  }
-  c.strokeStyle='rgba(20,18,14,.7)'; c.lineWidth=1.3;
-  c.beginPath(); c.moveTo(px,py);
-  for(var q=0;q<=N;q++){ var xa=w*q/N; c.lineTo(px+xa,py+wv(xa)); }
-  for(var q2=N;q2>=0;q2--){ var xb=w*q2/N; c.lineTo(px+xb,py+h+wv(xb)); }
-  c.closePath(); c.stroke();
-}
 /* the unit standard: dark field, gold crest, same ripple as the colours */
 function drawCrestFlag(c,px,py,w,h,t){
   var N=16, amp=2.4+Math.abs(wind)*.2;

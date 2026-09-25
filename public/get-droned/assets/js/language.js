@@ -2,6 +2,11 @@
 (function(root){
 'use strict';
 var pairs = `
+ROOK|ГРАК
+GHOST|ПРИВИД
+TALON|КІГОТЬ
+NOMAD|КОЧІВНИК
+WRAITH|ПРИМАРА
 FULL BODY ARMOUR|ПОВНИЙ БРОНЕКОМПЛЕКТ
 RESTORE 100% ARMOUR|ВІДНОВИТИ 100% БРОНІ
 100% armour · to belt|100% броні · на пояс
