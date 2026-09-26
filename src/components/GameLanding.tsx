@@ -76,13 +76,16 @@ export function GameLanding({ game, user, hasPurchased, onPlay, continueLevel = 
 
       {/* ── HERO ──────────────────────────────────────────────────────── */}
       <div className="gd-hero relative overflow-hidden">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src="/get-droned/assets/images/covers/main-cover.png?v=2"
-          alt="Get Droned"
-          className="w-full h-full object-cover object-top block"
-          fetchPriority="high"
-        />
+        <picture>
+          <source srcSet="/get-droned/assets/images/covers/main-cover.webp?v=2" type="image/webp" />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/get-droned/assets/images/covers/main-cover.png?v=2"
+            alt="Get Droned"
+            className="w-full h-full object-cover object-top block"
+            fetchPriority="high"
+          />
+        </picture>
         <div className="absolute inset-0" style={{
           background: 'linear-gradient(to top, #0c0d0b 0%, rgba(12,13,11,0.55) 30%, rgba(12,13,11,0.0) 65%)',
         }} />
@@ -214,8 +217,11 @@ export function GameLanding({ game, user, hasPurchased, onPlay, continueLevel = 
             {SECTORS.map(s => (
               <article key={s.num} className="overflow-hidden rounded-lg border border-[#263746] bg-[#0d1720]">
                 <div className="relative aspect-video bg-[#101e2a]">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={s.cover} alt={t(s.name)} loading="lazy" className="w-full h-full object-cover block" />
+                  <picture>
+                    <source srcSet={s.cover.replace('.png', '.webp')} type="image/webp" />
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={s.cover} alt={t(s.name)} loading="lazy" className="w-full h-full object-cover block" />
+                  </picture>
                   <div className="absolute inset-0 bg-gradient-to-t from-[#08131e]/90 via-transparent to-transparent" />
                   <span className="absolute bottom-3 left-4 text-[10px] font-black tracking-[2px] text-[#ffd700]">{t("SECTOR")} {String(s.num).padStart(2, '0')}</span>
                 </div>

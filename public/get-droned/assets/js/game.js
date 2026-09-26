@@ -5680,7 +5680,8 @@ function launchBossVictoryFireworks(){
     cv.style.cssText='position:absolute;inset:0;width:100%;height:100%;pointer-events:none';
   },4200);
 }
-var SOLVED_IMGS=['Level-1-solved.png','Level-2-solved.png','Level-3-Solved.png','Level-4-solved.png','Level-5-solved.png','Level-6-solved.png'];
+var SOLVED_IMGS=['Level-1-solved.webp','Level-2-solved.webp','Level-3-Solved.webp','Level-4-solved.webp','Level-5-solved.webp','Level-6-solved.webp'];
+var SOLVED_IMGS_FALLBACK=['Level-1-solved.png','Level-2-solved.png','Level-3-Solved.png','Level-4-solved.png','Level-5-solved.png','Level-6-solved.png'];
 // Publish the actual objective state, including resets and newly spawned enemies.
 var objectiveSnapshot='',objectivePoll=0;
 function checkObjMilestones(){
@@ -5788,6 +5789,7 @@ function showLevelSolvedScreen(previewAdvance){
   var img=document.getElementById('solvedImg');
   if(!ov||!img) return;
   clearTimeout(solvedAdvanceTimer);
+  img.onerror=function(){img.onerror=null;img.src='assets/images/covers/'+SOLVED_IMGS_FALLBACK[level-1];};
   img.src='assets/images/covers/'+SOLVED_IMGS[level-1];
   state='pause'; ov.classList.add('show');
   launchSolvedFireworks(ov);
