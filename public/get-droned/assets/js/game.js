@@ -14315,6 +14315,7 @@ function frame(t){
     if(droneCam.t<=0) droneCam=null;
     else dt=raw*(1-.58*Math.min(1,droneCam.t/1.1));
   }
+  document.getElementById('wrap').classList.toggle('in-shop',state==='shop');
   if(state==='card'){ cardT+=dt; if(!pendingCard||!cardData) closeCard(); }
   if(bot.on&&player&&!piloting) botStep(dt);
   if(bot.session&&state==='over'&&bot.on){botStop('Run failed');REC.stopManual();}

@@ -251,6 +251,8 @@ h1 small{display:block;font-size:11px;letter-spacing:6px;color:#79b9f1;margin-to
 .solvedContinueWrap .levelIntroStart{width:100%;display:block}
 /* Hide HUD and controls while a solved/complete screen is active */
 #wrap.in-solved .hud,#wrap.in-solved #act,#wrap.in-solved #nade,#wrap.in-solved #mute,#wrap.in-solved #joyZone,#wrap.in-solved #banner,#wrap.in-solved #dmgFlash{display:none!important}
+/* Hide fire/frag controls while the quartermaster (shop) screen is open */
+#wrap.in-shop #act,#wrap.in-shop #nade,#wrap.in-shop #joyZone{display:none!important}
 
 /* Ukrainian labels use Cyrillic-capable system fonts and tighter control spacing. */
 html[lang="uk"] #act,html[lang="uk"] #nade{font-family:Arial,sans-serif;letter-spacing:0;font-size:10px}
