@@ -5189,13 +5189,22 @@ actBtn.addEventListener('touchmove',touchFireMove,{passive:false});
 actBtn.addEventListener('touchend',touchFireEnd); actBtn.addEventListener('touchcancel',touchFireEnd);
 actBtn.addEventListener('mousedown',actDown); window.addEventListener('mouseup',function(e){ if(firing&&(e.buttons&1)===0) actUp(); });
 // Pointer release performs the existing throw; cancellation never throws.
+// Dragging from the button lets the player point the frag; a plain tap throws it forward.
+var nadeAim={id:null,x:0,y:0,aiming:false,angle:0};
 nadeBtn.addEventListener('pointerdown',function(e){
   if(e.pointerType!=='touch'||state!=='play'||piloting||aboard)return;
   fragPreview=true;mouseAim.active=false;
+  nadeAim.id=e.pointerId;nadeAim.x=e.clientX;nadeAim.y=e.clientY;nadeAim.aiming=false;
 });
-nadeBtn.addEventListener('pointercancel',function(){fragPreview=false;});
-nadeBtn.addEventListener('pointerleave',function(){fragPreview=false;});
-bindTap(nadeBtn,function(){fragPreview=false;throwNade();});
+nadeBtn.addEventListener('pointermove',function(e){
+  if(nadeAim.id===null||e.pointerId!==nadeAim.id)return;
+  var dx=e.clientX-nadeAim.x,dy=e.clientY-nadeAim.y;
+  var dragMin=Math.max(8,Math.min(18,Math.min(window.innerWidth,window.innerHeight)*.018));
+  if(Math.hypot(dx,dy)>dragMin){ nadeAim.aiming=true; nadeAim.angle=Math.atan2(dy,dx); }
+});
+nadeBtn.addEventListener('pointercancel',function(){fragPreview=false;nadeAim.id=null;nadeAim.aiming=false;});
+nadeBtn.addEventListener('pointerleave',function(){fragPreview=false;nadeAim.id=null;nadeAim.aiming=false;});
+bindTap(nadeBtn,function(){fragPreview=false;throwNade();nadeAim.id=null;nadeAim.aiming=false;});
 
 window.addEventListener('keydown',function(e){
   var key=controlKey(e);
@@ -5502,6 +5511,10 @@ function throwNade(){
   var mobile=touchControls.matches&&!mouseAim.active;
   var tgt=mobile?null:nearestTarget(),targetX=tgt?tgt.x:player.x+Math.cos(player.face)*220,targetY=tgt?tgt.y:player.y+Math.sin(player.face)*220;
   if(manualAim()){ targetX=mouseAim.x+cam.x; targetY=mouseAim.y+cam.y; tgt=null; }
+  // Dragging the frag button aims the throw directly; a plain tap just lands it forward.
+  if(mobile&&typeof nadeAim!=='undefined'&&nadeAim.aiming){
+    targetX=player.x+Math.cos(nadeAim.angle)*220; targetY=player.y+Math.sin(nadeAim.angle)*220; tgt=null;
+  }
   if(tgt&&tgt.compoundBoss&&!mobile){ targetX+=(tgt.cvx||0)*.62; targetY+=(tgt.cvy||0)*.62; }
   var ang=Math.atan2(targetY-player.y,targetX-player.x);
   var dist2=tgt?Math.min(tgt.compoundBoss?460:300,Math.hypot(targetX-player.x,targetY-player.y)):220;
