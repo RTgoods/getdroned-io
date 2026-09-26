@@ -5054,7 +5054,7 @@ function seedCrates(n){
    ========================================================================= */
 var mv={x:0,y:0,m:0}, firing=false, keys={};
 var mouseAim={x:0,y:0,active:false};
-var mobileLock=null, mobileLockUntil=0;
+var mobileLock=null, mobileLockUntil=0, mobileLockFlash=0;
 var touchFire={id:null,x:0,y:0,aiming:false,angle:0};
 var fragPreview=false;
 function touchFireStart(e){
@@ -5068,7 +5068,10 @@ function touchFireMove(e){
   for(var i=0;i<e.changedTouches.length;i++){
     var t=e.changedTouches[i];if(t.identifier!==touchFire.id)continue;
     var dx=t.clientX-touchFire.x,dy=t.clientY-touchFire.y;
-    if(Math.hypot(dx,dy)>10&&!piloting&&!aboard){
+    // Deadzone scales with viewport so small and large touch screens feel the same.
+    var vw=typeof window!=='undefined'?window.innerWidth:400, vh=typeof window!=='undefined'?window.innerHeight:800;
+    var dragMin=Math.max(8,Math.min(18,Math.min(vw,vh)*.018));
+    if(Math.hypot(dx,dy)>dragMin&&!piloting&&!aboard){
       touchFire.aiming=true;touchFire.angle=Math.atan2(dy,dx);
       player.face=touchFire.angle;
     }
@@ -5224,21 +5227,32 @@ function keyVec(){
 /* =========================================================================
    COMBAT
    ========================================================================= */
-// Touch assistance stays within 15 degrees either side of the intended direction.
-function mobileAimTarget(range){
+// Assist cone narrows for precision weapons (railgun, DMR) and widens for spread weapons (shotgun, LMG).
+function mobileAssistCone(){
+  var W=WEAPONS[player.wep];
+  return Math.max(Math.PI/15,Math.min(.42,(W.spread||0)*1.3+.12));
+}
+// Touch assistance acquires within halfCone, then keeps the lock while the target
+// stays inside a wider retention cone so a manual face-turn has time to catch up.
+function mobileAimTarget(range,halfCone){
   if(!touchControls.matches||mouseAim.active||!player||piloting||aboard)return null;
-  var best=null,score=Infinity,halfCone=Math.PI/12;
-  var held=null,clock=performance.now();
+  halfCone=halfCone||Math.PI/12;
+  var heldCone=halfCone*1.6;
+  var best=null,score=Infinity,held=null,clock=performance.now();
   enemies.forEach(function(e){
     var dx=e.x-player.x,dy=e.y-player.y,d=Math.hypot(dx,dy);
     if(e.hp<=0||d>range||d<1)return;
+    if(!los(player.x,player.y,e.x,e.y)||smokeBlocked(player.x,player.y,e.x,e.y))return;
     var a=Math.atan2(dy,dx)-player.face,offset=Math.abs(Math.atan2(Math.sin(a),Math.cos(a)));
-    if(offset>halfCone||!los(player.x,player.y,e.x,e.y)||smokeBlocked(player.x,player.y,e.x,e.y))return;
-    if(e===mobileLock)held=e;
+    if(e===mobileLock&&offset<=heldCone){held=e;mobileLockUntil=clock+450;}
+    if(offset>halfCone)return;
     var rank=offset/halfCone+d/range*.2;if(rank<score){score=rank;best=e;}
   });
   if(held&&clock<mobileLockUntil)return held;
-  if(best!==mobileLock){mobileLock=best;mobileLockUntil=clock+450;}
+  if(best!==mobileLock){
+    mobileLock=best;mobileLockUntil=clock+450;mobileLockFlash=clock;
+    if(best&&typeof navigator!=='undefined'&&navigator.vibrate){try{navigator.vibrate(12);}catch(err){}}
+  }
   return best;
 }
 function nearestTarget(closestOnly){
@@ -5424,7 +5438,7 @@ function shoot(){
   if(player.godMode){player.mag=W.mag;player.reload=0;}
   if(player.mag<=0){ startReload(); return; }
   var mobile=touchControls.matches&&!mouseAim.active;
-  var tgt=mobile?mobileAimTarget(Math.min(720,W.spd*1.4)):nearestTarget(autoAimEnabled), ang=player.face;
+  var tgt=mobile?mobileAimTarget(Math.min(720,W.spd*1.4),mobileAssistCone()):nearestTarget(autoAimEnabled), ang=player.face;
   var moving=Math.hypot(player.lvx||0,player.lvy||0)>8;
   if(manualAim()){ ang=aimAngle(); player.face=ang; }
   if((mobile||autoAimEnabled||(bot&&bot.on))&&!manualAim()&&tgt){
@@ -6174,6 +6188,16 @@ function update(dt,realDt){
 
   var autoTarget=autoAimEnabled&&!(touchControls.matches&&!mouseAim.active)&&!piloting&&!aboard&&!player.dead?nearestTarget(true):null;
   if(autoTarget){player.face=Math.atan2(autoTarget.y-player.y,autoTarget.x-player.x);player.ang=player.face;}
+  // While holding fire without dragging, ease facing toward the locked target so a
+  // stationary player still tracks it instead of freezing on the last move direction.
+  if(touchControls.matches&&!mouseAim.active&&!touchFire.aiming&&!piloting&&!aboard&&!player.dead&&firing){
+    var trackTgt=mobileAimTarget(Math.min(720,WEAPONS[player.wep].spd*1.4),mobileAssistCone());
+    if(trackTgt){
+      var desiredFace=Math.atan2(trackTgt.y-player.y,trackTgt.x-player.x);
+      var faceDiff=Math.atan2(Math.sin(desiredFace-player.face),Math.cos(desiredFace-player.face));
+      player.face+=faceDiff*Math.min(1,dt*8);
+    }
+  }
   var combatFire=firing;
   // --- ACT
   if(onCrate&&!piloting){
@@ -11290,8 +11314,16 @@ function drawMobileAim(c){
     c.setLineDash([]);c.beginPath();c.ellipse(x,y,22,12,0,0,Math.PI*2);c.stroke();
     c.beginPath();c.moveTo(x-5,y);c.lineTo(x+5,y);c.moveTo(x,y-5);c.lineTo(x,y+5);c.stroke();
   }else{
-    var target=mobileAimTarget(Math.min(720,WEAPONS[player.wep].spd*1.4));
-    if(target){c.beginPath();c.arc(target.x-Math.round(cam.x),target.y-Math.round(cam.y)-18,14,0,Math.PI*2);c.stroke();}
+    var target=mobileAimTarget(Math.min(720,WEAPONS[player.wep].spd*1.4),mobileAssistCone());
+    if(target){
+      var tx=target.x-Math.round(cam.x),ty=target.y-Math.round(cam.y)-18,sinceLock=performance.now()-mobileLockFlash;
+      if(sinceLock<220){
+        c.save();c.globalAlpha=Math.max(0,1-sinceLock/220);
+        c.beginPath();c.arc(tx,ty,14+(sinceLock/220)*14,0,Math.PI*2);c.stroke();
+        c.restore();
+      }
+      c.beginPath();c.arc(tx,ty,14,0,Math.PI*2);c.stroke();
+    }
   }
   c.restore();
 }
