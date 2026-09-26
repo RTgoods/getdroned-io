@@ -6186,18 +6186,12 @@ function update(dt,realDt){
 
   if(manualAim()){ player.face=aimAngle(); player.ang=player.face; }
 
-  var autoTarget=autoAimEnabled&&!(touchControls.matches&&!mouseAim.active)&&!piloting&&!aboard&&!player.dead?nearestTarget(true):null;
+  // Touch devices always face the nearest valid enemy (like desktop auto-aim), since
+  // tying facing to movement direction meant shots went the way you walked, not at
+  // whoever you were actually near. A manual drag (touchFire.aiming) still overrides this.
+  var mobileForceAim=touchControls.matches&&!mouseAim.active&&!touchFire.aiming&&!piloting&&!aboard&&!player.dead;
+  var autoTarget=(autoAimEnabled||mobileForceAim)&&!piloting&&!aboard&&!player.dead?nearestTarget(true):null;
   if(autoTarget){player.face=Math.atan2(autoTarget.y-player.y,autoTarget.x-player.x);player.ang=player.face;}
-  // While holding fire without dragging, ease facing toward the locked target so a
-  // stationary player still tracks it instead of freezing on the last move direction.
-  if(touchControls.matches&&!mouseAim.active&&!touchFire.aiming&&!piloting&&!aboard&&!player.dead&&firing){
-    var trackTgt=mobileAimTarget(Math.min(720,WEAPONS[player.wep].spd*1.4),mobileAssistCone());
-    if(trackTgt){
-      var desiredFace=Math.atan2(trackTgt.y-player.y,trackTgt.x-player.x);
-      var faceDiff=Math.atan2(Math.sin(desiredFace-player.face),Math.cos(desiredFace-player.face));
-      player.face+=faceDiff*Math.min(1,dt*8);
-    }
-  }
   var combatFire=firing;
   // --- ACT
   if(onCrate&&!piloting){
@@ -11308,22 +11302,15 @@ function drawBlastDetails(c,f,k){
 function drawMobileAim(c){
   if(!touchControls.matches||mouseAim.active||!player||player.dead||piloting||aboard||state!=='play')return;
   c.save();c.lineWidth=1.5;c.strokeStyle='rgba(255,215,0,.8)';
-  if(fragPreview){
-    var x=player.x+Math.cos(player.face)*220-Math.round(cam.x),y=player.y+Math.sin(player.face)*220-Math.round(cam.y);
-    c.setLineDash([5,5]);c.beginPath();c.moveTo(player.x-Math.round(cam.x),player.y-Math.round(cam.y));c.lineTo(x,y);c.stroke();
-    c.setLineDash([]);c.beginPath();c.ellipse(x,y,22,12,0,0,Math.PI*2);c.stroke();
-    c.beginPath();c.moveTo(x-5,y);c.lineTo(x+5,y);c.moveTo(x,y-5);c.lineTo(x,y+5);c.stroke();
-  }else{
-    var target=mobileAimTarget(Math.min(720,WEAPONS[player.wep].spd*1.4),mobileAssistCone());
-    if(target){
-      var tx=target.x-Math.round(cam.x),ty=target.y-Math.round(cam.y)-18,sinceLock=performance.now()-mobileLockFlash;
-      if(sinceLock<220){
-        c.save();c.globalAlpha=Math.max(0,1-sinceLock/220);
-        c.beginPath();c.arc(tx,ty,14+(sinceLock/220)*14,0,Math.PI*2);c.stroke();
-        c.restore();
-      }
-      c.beginPath();c.arc(tx,ty,14,0,Math.PI*2);c.stroke();
+  var target=mobileAimTarget(Math.min(720,WEAPONS[player.wep].spd*1.4),mobileAssistCone());
+  if(target){
+    var tx=target.x-Math.round(cam.x),ty=target.y-Math.round(cam.y)-18,sinceLock=performance.now()-mobileLockFlash;
+    if(sinceLock<220){
+      c.save();c.globalAlpha=Math.max(0,1-sinceLock/220);
+      c.beginPath();c.arc(tx,ty,14+(sinceLock/220)*14,0,Math.PI*2);c.stroke();
+      c.restore();
     }
+    c.beginPath();c.arc(tx,ty,14,0,Math.PI*2);c.stroke();
   }
   c.restore();
 }
