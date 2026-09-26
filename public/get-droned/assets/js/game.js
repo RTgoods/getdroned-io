@@ -5509,17 +5509,17 @@ function throwNade(){
   if(state==='play'&&piloting&&drone&&drone.kind==='dog'){dogJump();return;}
   if(!player||state!=='play'||(!player.godMode&&player.nades<=0)) return;
   var mobile=touchControls.matches&&!mouseAim.active;
-  var tgt=mobile?null:nearestTarget(),targetX=tgt?tgt.x:player.x+Math.cos(player.face)*220,targetY=tgt?tgt.y:player.y+Math.sin(player.face)*220;
+  var tgt=nearestTarget(),targetX=tgt?tgt.x:player.x+Math.cos(player.face)*220,targetY=tgt?tgt.y:player.y+Math.sin(player.face)*220;
   if(manualAim()){ targetX=mouseAim.x+cam.x; targetY=mouseAim.y+cam.y; tgt=null; }
-  // Dragging the frag button aims the throw directly; a plain tap just lands it forward.
+  // Dragging the frag button overrides auto-tracking and aims the throw directly.
   if(mobile&&typeof nadeAim!=='undefined'&&nadeAim.aiming){
     targetX=player.x+Math.cos(nadeAim.angle)*220; targetY=player.y+Math.sin(nadeAim.angle)*220; tgt=null;
   }
-  if(tgt&&tgt.compoundBoss&&!mobile){ targetX+=(tgt.cvx||0)*.62; targetY+=(tgt.cvy||0)*.62; }
+  if(tgt&&tgt.compoundBoss){ targetX+=(tgt.cvx||0)*.62; targetY+=(tgt.cvy||0)*.62; }
   var ang=Math.atan2(targetY-player.y,targetX-player.x);
   var dist2=tgt?Math.min(tgt.compoundBoss?460:300,Math.hypot(targetX-player.x,targetY-player.y)):220;
   if(manualAim()) dist2=Math.min(300,Math.hypot(targetX-player.x,targetY-player.y));
-  if(!player.godMode)player.nades--; if(!mobile)player.face=ang;
+  if(!player.godMode)player.nades--; player.face=ang;
   nades.push({x:player.x,y:player.y,sx:player.x,sy:player.y,
     tx:player.x+Math.cos(ang)*dist2, ty:player.y+Math.sin(ang)*dist2, t:0, dur:.62, spin:0});
   sfx('reload'); hud();
