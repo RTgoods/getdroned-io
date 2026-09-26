@@ -5052,7 +5052,7 @@ function seedCrates(n){
 /* =========================================================================
    INPUT
    ========================================================================= */
-var mv={x:0,y:0,m:0}, firing=false, keys={};
+var mv={x:0,y:0,m:0}, firing=false, keys={}, manualFace=0;
 var mouseAim={x:0,y:0,active:false};
 var mobileLock=null, mobileLockUntil=0, mobileLockFlash=0;
 var touchFire={id:null,x:0,y:0,aiming:false,angle:0};
@@ -5073,7 +5073,7 @@ function touchFireMove(e){
     var dragMin=Math.max(8,Math.min(18,Math.min(vw,vh)*.018));
     if(Math.hypot(dx,dy)>dragMin&&!piloting&&!aboard){
       touchFire.aiming=true;touchFire.angle=Math.atan2(dy,dx);
-      player.face=touchFire.angle;
+      player.face=touchFire.angle;manualFace=touchFire.angle;
     }
   }
   e.preventDefault();
@@ -5387,10 +5387,12 @@ function addGun(id){
   hud(); return W2.name;
 }
 function spray(dt){
-  var tgt=nearestTarget(autoAimEnabled), ang=player.face;
+  var mobile=touchControls.matches&&!mouseAim.active;
+  var tgt=nearestTarget(autoAimEnabled), ang=mobile?manualFace:player.face;
   var moving=Math.hypot(player.lvx||0,player.lvy||0)>8;
   if(manualAim()) ang=aimAngle();
-  if((autoAimEnabled||(bot&&bot.on))&&!manualAim()&&tgt&&Math.hypot(tgt.x-player.x,tgt.y-player.y)<420) ang=Math.atan2(tgt.y-player.y,tgt.x-player.x);
+  // The flamethrower always follows where the player is pointing on touch, never auto-aim.
+  if(!mobile&&(autoAimEnabled||(bot&&bot.on))&&!manualAim()&&tgt&&Math.hypot(tgt.x-player.x,tgt.y-player.y)<420) ang=Math.atan2(tgt.y-player.y,tgt.x-player.x);
   player.face=ang; player.ang=ang;
   for(var i=0;i<3&&flames.length<190;i++){
     var a=ang+rr(-.26,.26), sp=rr(620,760);
@@ -6148,6 +6150,12 @@ function update(dt,realDt){
     var bt=null,bdd=1e9;
     for(var se=0;se<enemies.length;se++){ var EN=enemies[se], dd2=Math.hypot(EN.x-SY.x,EN.y-SY.y);
       if(dd2<340&&dd2<bdd&&los(SY.x,SY.y,EN.x,EN.y)&&!smokeBlocked(SY.x,SY.y,EN.x,EN.y)){ bdd=dd2; bt=EN; } }
+    // Drones and patrol tanks live outside enemies[] but still take bullet damage.
+    for(var sd=0;sd<edrones.length;sd++){ var ED2=edrones[sd], dd3=Math.hypot(ED2.x-SY.x,ED2.y-SY.y);
+      if(dd3<340&&dd3<bdd&&los(SY.x,SY.y,ED2.x,ED2.y)&&!smokeBlocked(SY.x,SY.y,ED2.x,ED2.y)){ bdd=dd3; bt=ED2; } }
+    for(var sc=0;sc<motorcade.length;sc++){ var MC=motorcade[sc]; if(MC.dead||MC.droneHQ)continue;
+      var dd4=Math.hypot(MC.x-SY.x,MC.y-SY.y);
+      if(dd4<340&&dd4<bdd&&los(SY.x,SY.y,MC.x,MC.y)&&!smokeBlocked(SY.x,SY.y,MC.x,MC.y)){ bdd=dd4; bt=MC; } }
     if(bt){
       SY.ang=Math.atan2(bt.y-SY.y,bt.x-SY.x);
       if(SY.cd<=0){ SY.cd=.16;
@@ -6203,6 +6211,7 @@ function update(dt,realDt){
     player.lvx=(player.x-oldX)/Math.max(dt,.001); player.lvy=(player.y-oldY)/Math.max(dt,.001);
     // Touch/keyboard face movement; explicit mouse aim overrides below.
     player.face=touchFire.aiming?touchFire.angle:Math.atan2(m.y,m.x);
+    manualFace=player.face;
     player.walk+=travelled*(12/162);
     // Footfalls trigger sound only. No player footprint or ground-trail marks
     // are painted on any terrain type or level.
