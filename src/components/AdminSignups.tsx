@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { createClient } from '@supabase/supabase-js'
+import { AdminDeleteUserButton } from '@/components/AdminDeleteUserButton'
 
 const UA = {
   surface: '#0f1828',
@@ -62,7 +63,7 @@ export async function AdminSignups({ page }: { page: number }) {
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
             <thead>
               <tr style={{ background: 'rgba(0,104,204,0.08)', borderBottom: `1px solid ${UA.border}` }}>
-                {['Account', 'Signed up', 'Payment', 'Amount', 'Paid on'].map(h => (
+                {['Account', 'Signed up', 'Payment', 'Amount', 'Paid on', ''].map(h => (
                   <th key={h} style={{ padding: '10px 14px', textAlign: 'left', fontSize: 7, fontWeight: 900, letterSpacing: '2px', color: UA.blueMid, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{h}</th>
                 ))}
               </tr>
@@ -91,11 +92,16 @@ export async function AdminSignups({ page }: { page: number }) {
                         : '—'}
                     </td>
                     <td style={{ padding: '10px 14px', whiteSpace: 'nowrap', color: UA.muted }}>{isPaid ? date(purchase.created_at) : '—'}</td>
+                    <td style={{ padding: '10px 14px', whiteSpace: 'nowrap', textAlign: 'right' }}>
+                      {u.app_metadata?.role !== 'admin' && (
+                        <AdminDeleteUserButton userId={u.id} email={u.email || 'this account'} />
+                      )}
+                    </td>
                   </tr>
                 )
               })}
               {!data.users.length && (
-                <tr><td colSpan={5} style={{ padding: '24px 14px', color: UA.muted, textAlign: 'center', fontSize: 11 }}>No signups on this page.</td></tr>
+                <tr><td colSpan={6} style={{ padding: '24px 14px', color: UA.muted, textAlign: 'center', fontSize: 11 }}>No signups on this page.</td></tr>
               )}
             </tbody>
           </table>
