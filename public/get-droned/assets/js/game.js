@@ -5239,7 +5239,7 @@ function mobileAimTarget(range,halfCone){
   halfCone=halfCone||Math.PI/12;
   var heldCone=halfCone*1.6;
   var best=null,score=Infinity,held=null,clock=performance.now();
-  enemies.forEach(function(e){
+  function consider(e){
     var dx=e.x-player.x,dy=e.y-player.y,d=Math.hypot(dx,dy);
     if(e.hp<=0||d>range||d<1)return;
     if(!los(player.x,player.y,e.x,e.y)||smokeBlocked(player.x,player.y,e.x,e.y))return;
@@ -5247,7 +5247,11 @@ function mobileAimTarget(range,halfCone){
     if(e===mobileLock&&offset<=heldCone){held=e;mobileLockUntil=clock+450;}
     if(offset>halfCone)return;
     var rank=offset/halfCone+d/range*.2;if(rank<score){score=rank;best=e;}
-  });
+  }
+  enemies.forEach(consider);
+  // Enemy drones and patrol tanks take bullet damage too but live outside enemies[].
+  if(typeof edrones!=='undefined')edrones.forEach(consider);
+  if(typeof motorcade!=='undefined')motorcade.forEach(function(mc){if(!mc.dead&&!mc.droneHQ)consider(mc);});
   if(held&&clock<mobileLockUntil)return held;
   if(best!==mobileLock){
     mobileLock=best;mobileLockUntil=clock+450;mobileLockFlash=clock;
@@ -5264,6 +5268,22 @@ function nearestTarget(closestOnly){
     if(!los(player.x,player.y,e.x,e.y)) continue;
     if(!closestOnly&&(e.compoundBoss||e.levelTwoBoss||e.oilBoss||e.airfieldBoss)) return e;
     if(d<bd){ bd=d; best=e; }
+  }
+  // Enemy drones and patrol tanks take bullet damage too but live outside the
+  // enemies[] list, so auto-aim otherwise ignored them entirely.
+  for(var j=0;j<edrones.length;j++){
+    var ed=edrones[j], dd=Math.hypot(ed.x-player.x,ed.y-player.y);
+    if(dd>560||(closestOnly&&smokeBlocked(player.x,player.y,ed.x,ed.y))) continue;
+    if(!los(player.x,player.y,ed.x,ed.y)) continue;
+    if(dd<bd){ bd=dd; best=ed; }
+  }
+  for(var k=0;k<motorcade.length;k++){
+    var mc=motorcade[k];
+    if(mc.dead||mc.droneHQ) continue;
+    var dm=Math.hypot(mc.x-player.x,mc.y-player.y);
+    if(dm>560||(closestOnly&&smokeBlocked(player.x,player.y,mc.x,mc.y))) continue;
+    if(!los(player.x,player.y,mc.x,mc.y)) continue;
+    if(dm<bd){ bd=dm; best=mc; }
   }
   return best;
 }
