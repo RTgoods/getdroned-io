@@ -88,7 +88,7 @@ export async function POST(request: NextRequest) {
         gameSlug: game.slug,
       },
       success_url: `${baseUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}&slug=${game.slug}`,
-      cancel_url: `${baseUrl}/games/${game.slug}`,
+      cancel_url: `${baseUrl}/`,
     })
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Stripe error'
