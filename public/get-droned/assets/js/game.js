@@ -13868,7 +13868,7 @@ function drawPole(c,x,y,H,band,t,cols){
 /* a small chart of the whole area of operations */
 function drawMinimap(){
   if(touchControls.matches)return;
-  var mw=Math.min(128,VW*.32), mh=mw*(WH/WW), mx=VW-mw-10, my=VH-mh-Math.max(150,VH*.2);
+  var mw=Math.min(128,VW*.32), mh=mw*(WH/WW), mx=10, my=VH-mh-10;
   var sea=(mapKind==='sea');
   var sx=mw/WW, sy=mh/WH;
   function px(x){ return mx+x*sx; }
