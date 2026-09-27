@@ -5915,7 +5915,8 @@ function killEnemy(e,ang,gib){
     sfx('hit',.8); fx.push({t:'ring',x:e.x,y:e.y,life:.3,max:.3});
   }
   // Sunflowers grow where fallen soldiers lie, in sectors 1, 2 and 4 — Slava Ukraini.
-  if(!e.boss&&(level===1||level===2||level===4)&&Math.random()<.25) spawnSunflower(e.x,e.y);
+  // Skip indoor floor tiles; only takes root out in the open.
+  if(!e.boss&&(level===1||level===2||level===4)&&T(Math.floor(e.x/TILE),Math.floor(e.y/TILE))!==FLOOR&&Math.random()<.1) spawnSunflower(e.x,e.y);
   for(var bf=0;bf<fires.length;bf++){ // bodies dropped in a fire start burning
     if(Math.hypot(e.x-fires[bf].x,e.y-fires[bf].y)<fires[bf].r*2.4&&fires.length<15){
       fires.push({x:e.x,y:e.y,r:rr(8,12),p:rr(0,6),life:rr(14,26),sp:0});
@@ -10581,14 +10582,18 @@ function drawCrawlers(c){
   }
 }
 
+var SUNFLOWER_HUES=['#e2b13c','#d9a02e','#c98d28','#e8bb52','#cf9a34'];
 function spawnSunflower(x,y){
   // A small cluster, not a single stem — scattered around the death spot.
   var n=ri(3,5);
   for(var i=0;i<n;i++){
+    var petals=[]; for(var pi=0;pi<8;pi++) petals.push({da:rr(-.14,.14),dl:rr(-1,1.4),dw:rr(-.5,.6)});
     sunflowers.push({
       x:x+rr(-16,16), y:y+rr(-8,10),
-      t:-rr(0,.3), dur:rr(.8,1.2), h:rr(24,34), lean:rr(-.1,.1),
-      phase:rr(0,6.283), swaySpeed:rr(1.1,2.1), swayAmt:rr(.06,.14)
+      t:-rr(0,.3), dur:rr(.8,1.2), h:rr(22,32), lean:rr(-.14,.14),
+      phase:rr(0,6.283), swaySpeed:rr(1.1,2.1), swayAmt:rr(.06,.14),
+      kink:rr(-.18,.18), tilt:rr(-.25,.25), hue:SUNFLOWER_HUES[ri(0,SUNFLOWER_HUES.length-1)],
+      petals:petals
     });
   }
   // Safety cap so a very long session can't grow this array forever.
@@ -10605,23 +10610,35 @@ function drawSunflower(c,S){
   var ep=1-Math.pow(1-p,3), h=S.h*ep;
   var bloom=Math.max(0,(p-.55)/.45); bloom=1-Math.pow(1-bloom,2);
   var sway=S.lean+Math.sin(now*S.swaySpeed+S.phase)*S.swayAmt;
+  var midX=sway*h*.45+S.kink*h*.3, midY=-h*.5;
+  var topX=sway*h+S.kink*h*.15, topY=-h;
   c.save(); c.translate(S.x,S.y);
-  c.strokeStyle='#4a6b3a'; c.lineWidth=2.4; c.lineCap='round';
-  c.beginPath(); c.moveTo(0,0); c.quadraticCurveTo(sway*h*.5,-h*.55,sway*h,-h); c.stroke();
+  // dirt clump where the stem breaks the ground
+  if(ep>.05){
+    c.fillStyle='rgba(58,42,26,.55)';
+    c.beginPath(); c.ellipse(0,2,6+2*ep,2.6,0,0,6.3); c.fill();
+  }
+  // gnarled, slightly kinked stem rather than a smooth uniform curve
+  c.strokeStyle='#4f5a2e'; c.lineWidth=2.2; c.lineCap='round';
+  c.beginPath(); c.moveTo(0,0); c.quadraticCurveTo(midX*.6,midY*.55,midX,midY);
+  c.quadraticCurveTo((midX+topX)/2+S.kink*h*.2,(midY+topY)/2,topX,topY); c.stroke();
   if(ep>.3){
-    c.fillStyle='#597443';
-    c.save(); c.translate(sway*h*.35,-h*.42); c.rotate(.6+sway*.3); c.beginPath(); c.ellipse(0,0,5*ep,2.2*ep,0,0,6.3); c.fill(); c.restore();
-    c.save(); c.translate(sway*h*.55,-h*.62); c.rotate(-.7+sway*.3); c.beginPath(); c.ellipse(0,0,5*ep,2.2*ep,0,0,6.3); c.fill(); c.restore();
+    c.fillStyle='#5c6a3a';
+    c.save(); c.translate(midX*.8,midY*.85); c.rotate(.6+sway*.3+S.kink*.5); c.beginPath(); c.ellipse(0,0,5.5*ep,2.1*ep,0,0,6.3); c.fill(); c.restore();
+    c.save(); c.translate(topX*.65,topY*.55); c.rotate(-.75+sway*.3-S.kink*.4); c.beginPath(); c.ellipse(0,0,4.6*ep,1.9*ep,0,0,6.3); c.fill(); c.restore();
   }
   if(bloom>0){
-    c.save(); c.translate(sway*h,-h); c.scale(bloom,bloom);
-    c.fillStyle='#f5c800';
+    c.save(); c.translate(topX,topY); c.rotate(S.tilt); c.scale(bloom,bloom);
+    c.fillStyle=S.hue;
     for(var pi=0;pi<8;pi++){
-      c.save(); c.rotate(pi/8*6.283);
-      c.beginPath(); c.ellipse(0,-6.5,3.1,5.2,0,0,6.3); c.fill();
+      var pt=S.petals[pi];
+      c.save(); c.rotate(pi/8*6.283+pt.da);
+      c.beginPath(); c.ellipse(0,-6.3-pt.dl*.5,2.7+pt.dw,4.6+pt.dl,0,0,6.3); c.fill();
       c.restore();
     }
-    c.fillStyle='#5a3a12'; c.beginPath(); c.arc(0,0,4.2,0,6.3); c.fill();
+    c.fillStyle='#5a3a12'; c.beginPath(); c.arc(0,0,4.3,0,6.3); c.fill();
+    c.fillStyle='rgba(80,52,20,.6)';
+    for(var d=0;d<5;d++){ var da=d*1.257+S.petals[0].da; c.beginPath(); c.arc(Math.cos(da)*1.8,Math.sin(da)*1.8,.7,0,6.3); c.fill(); }
     c.restore();
   }
   c.restore();
