@@ -254,6 +254,247 @@ def thumbnail(title=None):
     return cv.convert("RGB")
 
 
+# --------------------------------------------------------------------------- shared bits
+
+# which way each soldier's gun points in the source art
+FACING = {"soldier-1": "right", "soldier-2": "right", "soldier-3": "left",
+          "soldier-4": "right", "soldier-5": "left"}
+
+
+def soldier(name, h, face=None):
+    s = fit(load(name), h=h)
+    if face and FACING[name] != face:
+        s = s.transpose(Image.FLIP_LEFT_RIGHT)
+    return s
+
+
+def drone_only():
+    """The drone half of the lockup, without the wordmark."""
+    logo = load("drone-logo")
+    d = logo.crop((0, 0, logo.width, 440))
+    a = np.asarray(d.getchannel("A")).astype(np.float32)
+    a[-30:] *= np.linspace(1, 0, 30)[:, None]
+    d.putalpha(Image.fromarray(a.astype(np.uint8)))
+    return d.crop(d.getchannel("A").point(lambda v: 255 if v > 8 else 0).getbbox())
+
+
+def reticle(canvas, cx, cy, r, color=(255, 70, 60), width=None):
+    """HUD target-lock brackets + crosshair ticks."""
+    width = width or max(2, r // 40)
+    layer = Image.new("RGBA", canvas.size, (0, 0, 0, 0))
+    d = ImageDraw.Draw(layer)
+    c = color + (230,)
+    d.ellipse([cx - r, cy - r, cx + r, cy + r], outline=color + (120,), width=width)
+    for sx in (-1, 1):
+        for sy in (-1, 1):
+            x0, y0, L = cx + sx * r * 1.15, cy + sy * r * 1.15, r * 0.35
+            d.line([(x0, y0), (x0 - sx * L, y0)], fill=c, width=width * 2)
+            d.line([(x0, y0), (x0, y0 - sy * L)], fill=c, width=width * 2)
+    for ang in range(4):
+        dx, dy = [(1, 0), (0, 1), (-1, 0), (0, -1)][ang]
+        d.line([(cx + dx * r * 0.82, cy + dy * r * 0.82), (cx + dx * r * 1.08, cy + dy * r * 1.08)],
+               fill=c, width=width)
+    canvas.alpha_composite(layer.filter(ImageFilter.GaussianBlur(width * 2)))
+    canvas.alpha_composite(layer)
+
+
+def flag_bars(canvas, h=14):
+    W, H = canvas.size
+    canvas.alpha_composite(Image.new("RGBA", (W, h), BLUE + (255,)), (0, H - 2 * h))
+    canvas.alpha_composite(Image.new("RGBA", (W, h), YELLOW + (255,)), (0, H - h))
+
+
+def pill(canvas, xy, s, size, bg=YELLOW, fg=(12, 12, 16), center=False):
+    """Stencil text on a solid tag -- for 'NEW', 'PLAY FREE' style callouts."""
+    font = ImageFont.truetype(FONT, size)
+    w = font.getlength(s) + size * 0.12 * (len(s) - 1)
+    x, y = xy
+    if center:
+        x -= (w + size * 1.2) / 2
+    ImageDraw.Draw(canvas).rounded_rectangle([x, y, x + w + size * 1.2, y + size * 1.6],
+                                             radius=size // 4, fill=bg + (255,))
+    text(canvas, (x + size * 0.6, y + size * 0.8), s, size, fg + (255,), anchor="lm", spacing=0.12, shadow=False)
+
+
+# --------------------------------------------------------------------------- alt banners
+
+SAFE = (507, 508, 1546, 423)
+
+
+def banner_squad():
+    """Wordmark with the whole squad lined up underneath; drone hovers in the TV area."""
+    W, H = 2560, 1440
+    SX0, SY0, SW, SH = SAFE
+    cv = background(W, H)
+
+    d = fit(drone_only(), w=1100)
+    paste_glow(cv, d, ((W - d.width) // 2, SY0 - d.height - 40), BLUE, 40, 0.9)
+
+    wm = fit(load("wordmark"), h=150)
+    paste_glow(cv, wm, ((W - wm.width) // 2, SY0 + 6), (0, 0, 0), 12, 1.0)
+
+    feet = SY0 + SH - 4
+    line = [("soldier-4", "right"), ("soldier-1", "right"), ("soldier-2", "right"),
+            ("soldier-3", "left"), ("soldier-5", "left")]
+    sprites = [soldier(n, 250, f) for n, f in line]
+    gap = 34
+    total = sum(s.width for s in sprites) + gap * (len(sprites) - 1)
+    x = (W - total) // 2
+    for s in sprites:
+        paste_glow(cv, s, (x, feet - s.height), (0, 0, 0), 12, 0.8)
+        x += s.width + gap
+
+    text(cv, (W // 2, H - 250), "GETDRONED.IO", 64, YELLOW + (255,), spacing=0.3)
+    flag_bars(cv)
+    return cv.convert("RGB")
+
+
+def banner_target():
+    """Drone locked in a red reticle on the left, big tagline on the right."""
+    W, H = 2560, 1440
+    SX0, SY0, SW, SH = SAFE
+    cv = background(W, H, focus_y=H / 2)
+
+    logo = fit(load("drone-logo"), h=330)
+    lx, ly = SX0 + 10, SY0 + (SH - logo.height) // 2
+    paste_glow(cv, logo, (lx, ly), BLUE, 36, 0.9)
+    reticle(cv, lx + logo.width // 2, ly + int(logo.height * 0.30), 120)
+
+    tx = lx + logo.width + 60
+    for i, (line, col) in enumerate([("SIX SECTORS.", (240, 240, 245)),
+                                     ("NO INSTALLS.", (240, 240, 245)),
+                                     ("NO MERCY.", YELLOW)]):
+        text(cv, (tx, SY0 + 110 + i * 100), line, 72, col + (255,), anchor="lm", spacing=0.06)
+
+    for name, face, cx in [("soldier-4", "right", SX0 - 240), ("soldier-5", "left", SX0 + SW + 240)]:
+        s = soldier(name, 330, face)
+        paste_glow(cv, s, (cx - s.width // 2, SY0 + SH - 6 - s.height), (0, 0, 0), 14, 0.8)
+
+    text(cv, (W // 2, 200), "GETDRONED.IO", 64, YELLOW + (255,), spacing=0.3)
+    flag_bars(cv)
+    return cv.convert("RGB")
+
+
+# --------------------------------------------------------------------------- thumbnails per soldier
+
+THUMB_GLOW = {"soldier-1": YELLOW, "soldier-2": YELLOW, "soldier-3": BLUE,
+              "soldier-4": (120, 220, 120), "soldier-5": BLUE}
+
+
+def thumbnail_soldier(name, title=None, tag=None):
+    W, H = 1280, 720
+    cv = background(W, H, focus_y=H * 0.45)
+    s = soldier(name, 560, "left")  # soldier on the right, aiming in at the title
+    cx = W - 60 - s.width // 2
+    ground_shadow(cv, cx, H - 70, 420, 50)
+    paste_glow(cv, s, (cx - s.width // 2, H - 60 - s.height), THUMB_GLOW[name], 30, 0.55)
+
+    wm = fit(load("wordmark"), w=440)
+    paste_glow(cv, wm, (40, H - wm.height - 36), (0, 0, 0), 10, 1.0)
+    if tag:
+        pill(cv, (56, 40), tag, 40)
+    if title:
+        y = 190
+        for line in title:
+            text(cv, (60, y), line, 92, (255, 255, 255, 255), anchor="lm", spacing=0.02)
+            y += 118
+    return cv.convert("RGB")
+
+
+def thumbnail_drone(title=None):
+    """Drone-strike thumbnail: big drone locked in a reticle, title under it."""
+    W, H = 1280, 720
+    cv = background(W, H, focus_y=H * 0.35)
+    d = fit(drone_only(), w=1000)
+    dx, dy = (W - d.width) // 2, 40
+    paste_glow(cv, d, (dx, dy), BLUE, 40, 1.0)
+    reticle(cv, W // 2, dy + int(d.height * 0.58), 110)
+    if title:
+        text(cv, (W // 2, H - 150), title, 96, (255, 255, 255, 255), spacing=0.04)
+    wm = fit(load("wordmark"), w=300)
+    paste_glow(cv, wm, (W - wm.width - 30, H - wm.height - 24), (0, 0, 0), 8, 1.0)
+    return cv.convert("RGB")
+
+
+# --------------------------------------------------------------------------- end screen
+
+# YouTube end-screen element slots we design around (1920x1080 frame)
+END_VIDEO_1 = (120, 300, 760, 428)     # x, y, w, h -- 16:9 video element
+END_VIDEO_2 = (1040, 300, 760, 428)
+END_SUB = (960, 870, 150)              # cx, cy, diameter -- subscribe circle
+
+
+def end_screen(guide=False):
+    W, H = 1920, 1080
+    cv = background(W, H, focus_y=H * 0.5)
+    wm = fit(load("wordmark"), h=130)
+    paste_glow(cv, wm, ((W - wm.width) // 2, 60), (0, 0, 0), 12, 1.0)
+    text(cv, (W // 2, 240), "KEEP FLYING", 44, YELLOW + (255,), spacing=0.35)
+
+    # dark slots so the video cards sit on something clean
+    slots = Image.new("RGBA", cv.size, (0, 0, 0, 0))
+    ds = ImageDraw.Draw(slots)
+    for x, y, w, h in (END_VIDEO_1, END_VIDEO_2):
+        ds.rounded_rectangle([x - 10, y - 10, x + w + 10, y + h + 10], radius=18,
+                             fill=(0, 0, 0, 140), outline=BLUE + (200,), width=4)
+    cx, cy, dia = END_SUB
+    ds.ellipse([cx - dia / 2 - 12, cy - dia / 2 - 12, cx + dia / 2 + 12, cy + dia / 2 + 12],
+               fill=(0, 0, 0, 140), outline=YELLOW + (220,), width=4)
+    cv.alpha_composite(slots)
+
+    for name, face, x in [("soldier-1", "right", 250), ("soldier-3", "left", W - 250)]:
+        s = soldier(name, 300, face)
+        paste_glow(cv, s, (x - s.width // 2, H - 40 - s.height), (0, 0, 0), 12, 0.8)
+    text(cv, (cx - 330, cy), "SUBSCRIBE", 40, (240, 240, 245, 255), spacing=0.25)
+    text(cv, (cx + 330, cy), "GETDRONED.IO", 40, YELLOW + (255,), spacing=0.2)
+    flag_bars(cv, 10)
+
+    if guide:
+        d = ImageDraw.Draw(cv)
+        f = ImageFont.truetype(FONT, 30)
+        for i, (x, y, w, h) in enumerate((END_VIDEO_1, END_VIDEO_2), 1):
+            d.rectangle([x, y, x + w, y + h], outline=(60, 255, 120), width=3)
+            d.text((x + w / 2, y + h / 2), f"VIDEO ELEMENT {i}", fill=(60, 255, 120), font=f, anchor="mm")
+        d.ellipse([cx - dia / 2, cy - dia / 2, cx + dia / 2, cy + dia / 2], outline=(60, 255, 120), width=3)
+        d.text((cx, cy), "SUB", fill=(60, 255, 120), font=f, anchor="mm")
+    return cv.convert("RGB")
+
+
+# --------------------------------------------------------------------------- community post / shorts cover
+
+def community_post():
+    S = 1080
+    cv = background(S, S, focus_y=S * 0.45)
+    logo = fit(load("drone-logo"), w=900)
+    paste_glow(cv, logo, ((S - logo.width) // 2, 70), BLUE, 36, 0.9)
+    feet = S - 150
+    for name, face, cx in [("soldier-1", "right", 250), ("soldier-2", "right", 470),
+                           ("soldier-3", "left", 830)]:
+        s = soldier(name, 330, face)
+        paste_glow(cv, s, (cx - s.width // 2, feet - s.height), (0, 0, 0), 12, 0.8)
+    pill(cv, (S // 2, S - 125), "PLAY NOW  •  GETDRONED.IO", 38, center=True)
+    flag_bars(cv, 10)
+    return cv.convert("RGB")
+
+
+def shorts_cover(title=None):
+    W, H = 1080, 1920
+    cv = background(W, H, focus_y=H * 0.45)
+    logo = fit(load("drone-logo"), w=960)
+    paste_glow(cv, logo, ((W - logo.width) // 2, 180), BLUE, 36, 0.9)
+    s = soldier("soldier-4", 680, "right")
+    ground_shadow(cv, W // 2, H - 290, 560, 60)
+    paste_glow(cv, s, ((W - s.width) // 2, H - 280 - s.height), (120, 220, 120), 34, 0.5)
+    if title:
+        y = 720
+        for line in title:
+            text(cv, (W // 2, y), line, 104, (255, 255, 255, 255), spacing=0.03)
+            y += 128
+    text(cv, (W // 2, H - 170), "GETDRONED.IO", 54, YELLOW + (255,), spacing=0.3)
+    flag_bars(cv, 14)
+    return cv.convert("RGB")
+
+
 def main():
     OUT.mkdir(exist_ok=True)
     banner().save(OUT / "banner-2560x1440.jpg", quality=93, optimize=True)
@@ -271,6 +512,23 @@ def main():
 
     thumbnail().save(OUT / "thumbnail-template-1280x720.jpg", quality=92)
     thumbnail(["SWEEP THE", "COMPOUND"]).save(OUT / "thumbnail-example-1280x720.jpg", quality=92)
+
+    banner_squad().save(OUT / "banner-alt-squad-2560x1440.jpg", quality=93, optimize=True)
+    banner_target().save(OUT / "banner-alt-target-2560x1440.jpg", quality=93, optimize=True)
+
+    for n in ("soldier-1", "soldier-3", "soldier-4", "soldier-5"):
+        thumbnail_soldier(n).save(OUT / f"thumbnail-template-{n}-1280x720.jpg", quality=92)
+    thumbnail_soldier("soldier-4", ["ONE SHOT.", "ONE DRONE."], tag="NEW SECTOR").save(
+        OUT / "thumbnail-example-sniper-1280x720.jpg", quality=92)
+    thumbnail_drone().save(OUT / "thumbnail-template-drone-1280x720.jpg", quality=92)
+    thumbnail_drone("TARGET LOCKED").save(OUT / "thumbnail-example-drone-1280x720.jpg", quality=92)
+
+    end_screen().save(OUT / "end-screen-1920x1080.jpg", quality=92)
+    end_screen(guide=True).resize((960, 540), Image.LANCZOS).save(OUT / "preview-end-screen-slots.jpg", quality=88)
+
+    community_post().save(OUT / "community-post-1080x1080.jpg", quality=92)
+    shorts_cover().save(OUT / "shorts-cover-1080x1920.jpg", quality=92)
+    shorts_cover(["DRONE", "DOWN!"]).save(OUT / "shorts-cover-example-1080x1920.jpg", quality=92)
 
     for f in sorted(OUT.iterdir()):
         with Image.open(f) as im:
