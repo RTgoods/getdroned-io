@@ -8416,10 +8416,12 @@ function hitMotorcadeCar(C,dmg){
       }
       fx.push({t:'depotCloud',x:C.x,y:C.y,life:4,max:4});
       for(var debris=0;debris<40;debris++)launchPart(C.x,C.y,'debris',null,null,rr(0,6.283),rr(.8,2.2));
-      for(var hqf=0;hqf<4&&fires.length<20;hqf++)
-        fires.push({x:C.x+rr(-40,40),y:C.y+rr(-30,30),r:rr(14,20),p:rr(0,6),life:90,sp:0});
-      for(var hqp=0;hqp<24&&plume.length<300;hqp++)
-        plume.push({x:C.x+rr(-40,40),y:C.y+rr(-30,30),vx:rr(-60,60),vy:-rr(50,120),life:rr(2.5,5),max:5,s:rr(12,26),hot:1});
+      for(var hqf=0;hqf<8&&fires.length<20;hqf++)
+        fires.push({x:C.x+rr(-55,55),y:C.y+rr(-40,40),r:rr(13,22),p:rr(0,6),life:rr(85,110),sp:0});
+      for(var hqs=0;hqs<30;hqs++)
+        smoke.push({x:C.x+rr(-35,35),y:C.y+rr(-25,25),vx:rr(-60,60),vy:rr(-60,60),life:rr(1,2.2),max:2.2,s:rr(10,24)});
+      for(var hqp=0;hqp<48&&plume.length<300;hqp++)
+        plume.push({x:C.x+rr(-50,50),y:C.y+rr(-35,35),vx:rr(-60,60),vy:-rr(50,130),life:rr(3,6.5),max:6.5,s:rr(14,30),hot:1});
       banner('DRONE BASE DESTROYED','ENEMY LAUNCHES STOPPED',3);hud();
     }return;
   }
@@ -12492,7 +12494,7 @@ function draw(){
       ctx.fill();
     }
   }
-  // smoke
+  // smoke — jagged torn-edge lobes instead of smooth round puffs
   for(var s3=0;s3<smoke.length;s3++){ var S=smoke[s3], kk=S.life/S.max;
     if(S.sd===undefined) S.sd=Math.random()*971;
     ctx.fillStyle='rgba(150,145,135,'+(kk*.4)+')';
@@ -12500,12 +12502,18 @@ function draw(){
     ctx.beginPath();
     for(var lb4=0;lb4<3;lb4++){
       var la2=hs(S.sd+lb4*4.3)*6.283+(1-kk)*1.2, ld2=sr3*(.2+hs(S.sd+lb4*8.1)*.45);
-      ctx.ellipse(S.x+Math.cos(la2)*ld2,S.y+Math.sin(la2)*ld2*.8,
-                  sr3*(.55+hs(S.sd+lb4*2.7)*.4), sr3*(.45+hs(S.sd+lb4*6.1)*.35), la2,0,6.3);
+      var lrw4=sr3*(.55+hs(S.sd+lb4*2.7)*.4), lrh4=sr3*(.45+hs(S.sd+lb4*6.1)*.35);
+      ctx.save(); ctx.translate(S.x+Math.cos(la2)*ld2,S.y+Math.sin(la2)*ld2*.8); ctx.rotate(la2);
+      for(var pe4=0;pe4<9;pe4++){
+        var pa4=pe4/9*6.283, pj4=.6+hs(S.sd+lb4*13+pe4*7)*.55;
+        var px4=Math.cos(pa4)*lrw4*pj4, py4=Math.sin(pa4)*lrh4*pj4;
+        if(pe4===0) ctx.moveTo(px4,py4); else ctx.lineTo(px4,py4);
+      }
+      ctx.closePath(); ctx.restore();
     }
     ctx.fill(); }
 
-  // smoke columns rolling off the fires
+  // smoke columns rolling off the fires — same jagged-lobe treatment
   for(var pq=0;pq<plume.length;pq++){
     var P=plume[pq], pk2=P.life/P.max, age=1-pk2;
     if(P.x<cam.x-140||P.x>cam.x+VW+140||P.y<cam.y-200||P.y>cam.y+VH+140) continue;
@@ -12521,9 +12529,14 @@ function draw(){
     ctx.beginPath();
     for(var lb3=0;lb3<4;lb3++){
       var la=hs(P.sd+lb3*3.1)*6.283+spin, ld=pr3*(.18+hs(P.sd+lb3*7.7)*.5);
-      ctx.ellipse(P.x+Math.cos(la)*ld, P.y+Math.sin(la)*ld*.8,
-                  pr3*(.48+hs(P.sd+lb3*2.3)*.42), pr3*(.4+hs(P.sd+lb3*5.9)*.38),
-                  la*.6+spin, 0, 6.3);
+      var lrw3=pr3*(.48+hs(P.sd+lb3*2.3)*.42), lrh3=pr3*(.4+hs(P.sd+lb3*5.9)*.38);
+      ctx.save(); ctx.translate(P.x+Math.cos(la)*ld, P.y+Math.sin(la)*ld*.8); ctx.rotate(la*.6+spin);
+      for(var pe3=0;pe3<9;pe3++){
+        var pa3=pe3/9*6.283, pj3=.6+hs(P.sd+lb3*17+pe3*9)*.55;
+        var px3=Math.cos(pa3)*lrw3*pj3, py3=Math.sin(pa3)*lrh3*pj3;
+        if(pe3===0) ctx.moveTo(px3,py3); else ctx.lineTo(px3,py3);
+      }
+      ctx.closePath(); ctx.restore();
     }
     ctx.fill();
   }
@@ -14346,20 +14359,58 @@ function drawFire(c,f){
   // charred debris at the base
   c.fillStyle='rgba(24,18,14,.85)'; c.beginPath(); c.ellipse(0,0,base*.9,base*.42,0,0,6.3); c.fill();
   var cols=['rgba(196,44,22,.80)','rgba(248,124,32,.88)','rgba(255,206,104,.95)','rgba(255,246,206,.9)'];
-  for(var i=0;i<4;i++){
-    var w=base*(.95-i*.19), h=base*(2.5-i*.48);
-    var wob=Math.sin(k*(2.1+i*.5)+i*1.7)*base*.22, wob2=Math.sin(k*3.1+i)*base*.12;
-    c.fillStyle=cols[i];
-    c.beginPath(); c.moveTo(-w,0);
-    c.quadraticCurveTo(-w*.85+wob2,-h*.5, wob,-h);
-    c.quadraticCurveTo(w*.85+wob2,-h*.5, w,0);
-    c.closePath(); c.fill();
-  }
-  // licks breaking off the top
-  for(var j=0;j<2;j++){
-    var ly=-base*(2.3+Math.abs(Math.sin(k*1.6+j*2.2))*.8), lw=base*.2;
-    c.fillStyle='rgba(255,170,60,'+(.35+Math.sin(k*2+j)*.2)+')';
-    c.beginPath(); c.ellipse(Math.sin(k*1.3+j)*base*.4,ly,lw,lw*1.9,0,0,6.3); c.fill();
+  if(f.style===undefined) f.style=ri(0,2);
+  if(f.style===1){
+    // Twin flames — a paired campfire look instead of one tall tongue.
+    for(var side=-1;side<=1;side+=2){
+      for(var i1=0;i1<4;i1++){
+        var w1=base*(.55-i1*.11), h1=base*(1.9-i1*.34), ox1=side*base*.42;
+        var wob1=Math.sin(k*(2.3+i1*.5)+i1*1.7+side)*base*.16, wob1b=Math.sin(k*3.4+i1+side)*base*.09;
+        c.fillStyle=cols[i1];
+        c.beginPath(); c.moveTo(ox1-w1,0);
+        c.quadraticCurveTo(ox1-w1*.85+wob1b,-h1*.5, ox1+wob1,-h1);
+        c.quadraticCurveTo(ox1+w1*.85+wob1b,-h1*.5, ox1+w1,0);
+        c.closePath(); c.fill();
+      }
+    }
+    for(var j1=0;j1<3;j1++){
+      var jside=j1===2?0:(j1===0?-1:1);
+      var ly1=-base*(1.8+Math.abs(Math.sin(k*1.7+j1*2.1))*.7), lw1=base*.16;
+      c.fillStyle='rgba(255,170,60,'+(.32+Math.sin(k*2.1+j1)*.2)+')';
+      c.beginPath(); c.ellipse(jside*base*.42+Math.sin(k*1.4+j1)*base*.3,ly1,lw1,lw1*1.8,0,0,6.3); c.fill();
+    }
+  } else if(f.style===2){
+    // Low, wide smolder — spread flicker rather than a tall flame.
+    for(var i2=0;i2<4;i2++){
+      var w2=base*(1.3-i2*.22), h2=base*(1.35-i2*.24);
+      var wob2b=Math.sin(k*(2.5+i2*.6)+i2*1.9)*base*.28;
+      c.fillStyle=cols[i2];
+      c.beginPath(); c.moveTo(-w2,0);
+      c.quadraticCurveTo(-w2*.7,-h2*.85, wob2b,-h2);
+      c.quadraticCurveTo(w2*.7,-h2*.85, w2,0);
+      c.closePath(); c.fill();
+    }
+    for(var j2=0;j2<3;j2++){
+      var ly2=-base*(1.2+Math.abs(Math.sin(k*2+j2*1.9))*.6), lw2=base*.22;
+      c.fillStyle='rgba(255,170,60,'+(.3+Math.sin(k*2.3+j2)*.2)+')';
+      c.beginPath(); c.ellipse(Math.sin(k*1.6+j2*1.3)*base*.55,ly2,lw2,lw2*1.5,0,0,6.3); c.fill();
+    }
+  } else {
+    // Original: a single tall tongue with licks breaking off the top.
+    for(var i=0;i<4;i++){
+      var w=base*(.95-i*.19), h=base*(2.5-i*.48);
+      var wob=Math.sin(k*(2.1+i*.5)+i*1.7)*base*.22, wob2=Math.sin(k*3.1+i)*base*.12;
+      c.fillStyle=cols[i];
+      c.beginPath(); c.moveTo(-w,0);
+      c.quadraticCurveTo(-w*.85+wob2,-h*.5, wob,-h);
+      c.quadraticCurveTo(w*.85+wob2,-h*.5, w,0);
+      c.closePath(); c.fill();
+    }
+    for(var j=0;j<2;j++){
+      var ly=-base*(2.3+Math.abs(Math.sin(k*1.6+j*2.2))*.8), lw=base*.2;
+      c.fillStyle='rgba(255,170,60,'+(.35+Math.sin(k*2+j)*.2)+')';
+      c.beginPath(); c.ellipse(Math.sin(k*1.3+j)*base*.4,ly,lw,lw*1.9,0,0,6.3); c.fill();
+    }
   }
   c.restore();
 }
