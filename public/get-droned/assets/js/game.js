@@ -8408,9 +8408,18 @@ function hitMotorcadeCar(C,dmg){
   if(C.dead) return; C.hp-=dmg; C.hurt=.22;
   if(C.droneHQ){
     if(C.hp<=0){C.hp=0;C.dead=1;money+=400;
-      explode(C.x,C.y,125,0,true);
-      for(var debris=0;debris<18;debris++)launchPart(C.x,C.y,'debris',null,null,rr(0,6.283),rr(.6,1.4));
-      fires.push({x:C.x-20,y:C.y,r:20,p:0,life:90,sp:0});
+      // Big layered chain-reaction blast — its own stockpiled ordnance goes up with it.
+      explode(C.x,C.y,190,0,true);
+      for(var hqb=0;hqb<4;hqb++){
+        var hqa=hqb/4*6.283+rr(-.2,.2), hqd=rr(30,90);
+        explode(C.x+Math.cos(hqa)*hqd,C.y+Math.sin(hqa)*hqd*.65,rr(90,140),0,true);
+      }
+      fx.push({t:'depotCloud',x:C.x,y:C.y,life:4,max:4});
+      for(var debris=0;debris<40;debris++)launchPart(C.x,C.y,'debris',null,null,rr(0,6.283),rr(.8,2.2));
+      for(var hqf=0;hqf<4&&fires.length<20;hqf++)
+        fires.push({x:C.x+rr(-40,40),y:C.y+rr(-30,30),r:rr(14,20),p:rr(0,6),life:90,sp:0});
+      for(var hqp=0;hqp<24&&plume.length<300;hqp++)
+        plume.push({x:C.x+rr(-40,40),y:C.y+rr(-30,30),vx:rr(-60,60),vy:-rr(50,120),life:rr(2.5,5),max:5,s:rr(12,26),hot:1});
       banner('DRONE BASE DESTROYED','ENEMY LAUNCHES STOPPED',3);hud();
     }return;
   }
