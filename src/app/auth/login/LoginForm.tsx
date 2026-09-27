@@ -14,6 +14,7 @@ export function LoginForm() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
+  const [ageConfirmed, setAgeConfirmed] = useState(false)
 
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -23,6 +24,7 @@ export function LoginForm() {
   const supabase = createClient()
 
   const handleOAuth = async (provider: 'google' | 'discord') => {
+    if (mode === 'signup' && !ageConfirmed) { setError('Please confirm you are 18 or older to sign up.'); return }
     setLoading(true)
     setError('')
     try {
@@ -51,6 +53,7 @@ export function LoginForm() {
       if (error) setError(error.message)
       else setMessage('If an account exists for this email, a password reset link will arrive shortly.')
     } else if (mode === 'signup') {
+      if (!ageConfirmed) { setError('Please confirm you are 18 or older to sign up.'); setLoading(false); return }
       const { error } = await supabase.auth.signUp({
         email,
         password,
@@ -237,6 +240,19 @@ export function LoginForm() {
               </div>
             )}
 
+            {mode === 'signup' && (
+              <label className="flex items-start gap-2 text-[11px] leading-relaxed tracking-[0.5px] cursor-pointer" style={{ color: '#a9b9cb' }}>
+                <input
+                  type="checkbox"
+                  checked={ageConfirmed}
+                  onChange={(e) => setAgeConfirmed(e.target.checked)}
+                  required
+                  style={{ marginTop: 2, accentColor: '#0068d9' }}
+                />
+                I confirm I am 18 years of age or older.
+              </label>
+            )}
+
             <button
               type="submit"
               disabled={loading}
@@ -272,7 +288,7 @@ export function LoginForm() {
             <p className="text-[11px] tracking-[1.5px] uppercase" style={{ color: '#a9b9cb' }}>
               {mode === 'login' ? 'No account? ' : 'Back to '}
               <button
-                onClick={() => { setMode(mode === 'login' ? 'signup' : 'login'); setError(''); setMessage('') }}
+                onClick={() => { setMode(mode === 'login' ? 'signup' : 'login'); setError(''); setMessage(''); setAgeConfirmed(false) }}
                 className="font-black transition-colors"
                 style={{ color: '#ffd700' }}
                 onMouseEnter={e => (e.currentTarget.style.color = '#ffd700')}
