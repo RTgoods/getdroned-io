@@ -175,7 +175,8 @@ export function GameSidebar({ game, user, hasPurchased, isAdmin = false, complet
           display: 'flex',
           flexDirection: 'column',
           height: '100dvh',
-          overflow: 'hidden',
+          overflowY: 'auto',
+          overflowX: 'hidden',
           position: mobile ? 'fixed' : 'relative',
           top: 0, left: 0,
           zIndex: mobile ? 50 : 'auto',
@@ -268,8 +269,8 @@ export function GameSidebar({ game, user, hasPurchased, isAdmin = false, complet
           <div style={{ height: 1, background: UA.borderFaint, flexShrink: 0 }} />
         )}
 
-        {/* ── Level list (scrollable) ───────────────────────── */}
-        <div style={{ overflowY: 'auto', flex: 1 }}>
+        {/* ── Level list ───────────────────────────────────── */}
+        <div style={{ flexShrink: 0 }}>
           {SECTORS.map((s) => {
             const prevDone = s.num === 1 || completedSectors.includes(s.num - 1)
             // Sector 1: free with sign-in. Sectors 2–6: need purchase + prev done (admins bypass)
