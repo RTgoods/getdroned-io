@@ -9306,7 +9306,7 @@ function startSector(n){
   player=makePlayer();
   impactMarks.length=0;
   enemies.length=0; bullets.length=0; eb.length=0; fx.length=0; nades.length=0; smoke.length=0;
-  chunks.length=0; mist.length=0; splat.length=0; pools.length=0; corpses.length=0; crawlers.length=0;
+  chunks.length=0; mist.length=0; splat.length=0; pools.length=0; corpses.length=0; crawlers.length=0; sunflowers.length=0;
   civs.length=0; baseGuards.length=0; pendingFlightLeader=null;reinforcements.length=0;reinforcementFragCD=0;
   if(level===1||level===2||level===3||level===4||level===6){
     // The same veteran and companion patrol each sector's home base.
@@ -10582,27 +10582,39 @@ function drawCrawlers(c){
 }
 
 function spawnSunflower(x,y){
-  sunflowers.push({x:x,y:y,t:0,dur:rr(.8,1.2),h:rr(26,34),sway:rr(-.12,.12)});
+  // A small cluster, not a single stem — scattered around the death spot.
+  var n=ri(3,5);
+  for(var i=0;i<n;i++){
+    sunflowers.push({
+      x:x+rr(-16,16), y:y+rr(-8,10),
+      t:-rr(0,.3), dur:rr(.8,1.2), h:rr(24,34), lean:rr(-.1,.1),
+      phase:rr(0,6.283), swaySpeed:rr(1.1,2.1), swayAmt:rr(.06,.14)
+    });
+  }
+  // Safety cap so a very long session can't grow this array forever.
+  if(sunflowers.length>400) sunflowers.splice(0,sunflowers.length-400);
 }
 function updateSunflowers(dt){
-  for(var si=sunflowers.length-1;si>=0;si--){
-    var S=sunflowers[si]; S.t+=dt;
-    if(S.t>=S.dur){ drawSunflower(dc,S,1); sunflowers.splice(si,1); }
-  }
+  for(var si=0;si<sunflowers.length;si++) sunflowers[si].t+=dt;
 }
-function drawSunflower(c,S,p){
+// Never baked onto the ground decal layer — kept live so they always draw on
+// top of later blood/dirt/scorch marks instead of being painted over by them,
+// and so they can keep swaying instead of freezing once grown.
+function drawSunflower(c,S){
+  var p=Math.max(0,Math.min(1,S.t/S.dur));
   var ep=1-Math.pow(1-p,3), h=S.h*ep;
   var bloom=Math.max(0,(p-.55)/.45); bloom=1-Math.pow(1-bloom,2);
+  var sway=S.lean+Math.sin(now*S.swaySpeed+S.phase)*S.swayAmt;
   c.save(); c.translate(S.x,S.y);
   c.strokeStyle='#4a6b3a'; c.lineWidth=2.4; c.lineCap='round';
-  c.beginPath(); c.moveTo(0,0); c.quadraticCurveTo(S.sway*h*.5,-h*.55,S.sway*h,-h); c.stroke();
+  c.beginPath(); c.moveTo(0,0); c.quadraticCurveTo(sway*h*.5,-h*.55,sway*h,-h); c.stroke();
   if(ep>.3){
     c.fillStyle='#597443';
-    c.save(); c.translate(S.sway*h*.35,-h*.42); c.rotate(.6); c.beginPath(); c.ellipse(0,0,5*ep,2.2*ep,0,0,6.3); c.fill(); c.restore();
-    c.save(); c.translate(S.sway*h*.55,-h*.62); c.rotate(-.7); c.beginPath(); c.ellipse(0,0,5*ep,2.2*ep,0,0,6.3); c.fill(); c.restore();
+    c.save(); c.translate(sway*h*.35,-h*.42); c.rotate(.6+sway*.3); c.beginPath(); c.ellipse(0,0,5*ep,2.2*ep,0,0,6.3); c.fill(); c.restore();
+    c.save(); c.translate(sway*h*.55,-h*.62); c.rotate(-.7+sway*.3); c.beginPath(); c.ellipse(0,0,5*ep,2.2*ep,0,0,6.3); c.fill(); c.restore();
   }
   if(bloom>0){
-    c.save(); c.translate(S.sway*h,-h); c.scale(bloom,bloom);
+    c.save(); c.translate(sway*h,-h); c.scale(bloom,bloom);
     c.fillStyle='#f5c800';
     for(var pi=0;pi<8;pi++){
       c.save(); c.rotate(pi/8*6.283);
@@ -10615,10 +10627,7 @@ function drawSunflower(c,S,p){
   c.restore();
 }
 function drawSunflowers(c){
-  for(var si=0;si<sunflowers.length;si++){
-    var S=sunflowers[si];
-    drawSunflower(c,S,Math.min(1,S.t/S.dur));
-  }
+  for(var si=0;si<sunflowers.length;si++) drawSunflower(c,sunflowers[si]);
 }
 /* whole bodies land in a few different attitudes */
 function bakeCorpse(x,y,ang,col,band,kind,gib,behead){
