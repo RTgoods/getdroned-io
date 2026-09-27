@@ -6866,7 +6866,9 @@ function update(dt,realDt){
           var carLocalX=crx*cca-cry*csa,carLocalY=crx*csa+cry*cca;
           if(Math.abs(carLocalX)<(shotCar.patrolTank?68:51)&&Math.abs(carLocalY)<(shotCar.droneHQ?36:shotCar.patrolTank?48:23)){
             shotCar.gunHits=(shotCar.gunHits||0)+1;
-            hitMotorcadeCar(shotCar,bu.dmg||24); impact(bu.x,bu.y); bullets.splice(b,1); bu=null; break;
+            // Small arms barely dent tank armour — frags/explosives are the real answer.
+            var gunDmg=bu.dmg||24; if(shotCar.patrolTank) gunDmg*=.35;
+            hitMotorcadeCar(shotCar,gunDmg); impact(bu.x,bu.y); bullets.splice(b,1); bu=null; break;
           }
         }
       }
