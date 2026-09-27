@@ -3,7 +3,7 @@
     pip install pillow numpy
     python3 youtube/make_graphics.py
 
-Outputs land in ./out next to this script.
+Outputs land in ./export next to this script.
 """
 from pathlib import Path
 
@@ -12,7 +12,7 @@ from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 HERE = Path(__file__).parent
 SRC = HERE / "source"
-OUT = HERE / "out"
+OUT = HERE / "export"
 
 BLUE = (38, 118, 235)
 YELLOW = (250, 200, 30)

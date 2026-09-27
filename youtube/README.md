@@ -1,6 +1,6 @@
 # YouTube channel graphics
 
-Upload these from `out/`:
+Upload these from `export/`:
 
 | File | Where it goes in YouTube Studio → Customization → Branding |
 |---|---|
