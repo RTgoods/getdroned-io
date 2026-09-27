@@ -67,7 +67,7 @@ var baseGuards=[];
 var startCoins=0; // set from ?coins= URL param; applied at every level reset
 var belt=[], drops=[], twitchers=[], money=0, sentries=[], strikes=[], smokes=[], drone=null, piloting=false, fx2=[];
 var fires=[], plume=[], embers=[], motes=[], flares=[], chunks=[], mist=[], splat=[], pools=[], arty={t:5,flash:0}, wind=14, now=0;
-var corpses=[], crawlers=[];
+var corpses=[], crawlers=[], sunflowers=[];
 var medStation=null;
 var spawnQ=0, spawnT=0, aliveTarget=0, killed=0, totalKills=0, timeAlive=0;
 
@@ -5914,6 +5914,8 @@ function killEnemy(e,ang,gib){
     if(Math.hypot(e.x-player.x,e.y-player.y)<190) screenSplat(ri(3,7));
     sfx('hit',.8); fx.push({t:'ring',x:e.x,y:e.y,life:.3,max:.3});
   }
+  // Sunflowers grow where fallen soldiers lie, in sectors 1, 2 and 4 — Slava Ukraini.
+  if(!e.boss&&(level===1||level===2||level===4)&&Math.random()<.25) spawnSunflower(e.x,e.y);
   for(var bf=0;bf<fires.length;bf++){ // bodies dropped in a fire start burning
     if(Math.hypot(e.x-fires[bf].x,e.y-fires[bf].y)<fires[bf].r*2.4&&fires.length<15){
       fires.push({x:e.x,y:e.y,r:rr(8,12),p:rr(0,6),life:rr(14,26),sp:0});
@@ -7015,6 +7017,7 @@ function update(dt,realDt){
     if(PO.t>2.3){ bloodPool(PO.x,PO.y,PO.r); pools.splice(po,1); } }
   updateCorpses(dt);
   updateCrawlers(dt);
+  updateSunflowers(dt);
   for(var sp2=splat.length-1;sp2>=0;sp2--){ splat[sp2].life-=dt; if(splat[sp2].life<=0) splat.splice(sp2,1); }
   for(var ck=chunks.length-1;ck>=0;ck--){
     var CK=chunks[ck];
@@ -10578,6 +10581,45 @@ function drawCrawlers(c){
   }
 }
 
+function spawnSunflower(x,y){
+  sunflowers.push({x:x,y:y,t:0,dur:rr(.8,1.2),h:rr(26,34),sway:rr(-.12,.12)});
+}
+function updateSunflowers(dt){
+  for(var si=sunflowers.length-1;si>=0;si--){
+    var S=sunflowers[si]; S.t+=dt;
+    if(S.t>=S.dur){ drawSunflower(dc,S,1); sunflowers.splice(si,1); }
+  }
+}
+function drawSunflower(c,S,p){
+  var ep=1-Math.pow(1-p,3), h=S.h*ep;
+  var bloom=Math.max(0,(p-.55)/.45); bloom=1-Math.pow(1-bloom,2);
+  c.save(); c.translate(S.x,S.y);
+  c.strokeStyle='#4a6b3a'; c.lineWidth=2.4; c.lineCap='round';
+  c.beginPath(); c.moveTo(0,0); c.quadraticCurveTo(S.sway*h*.5,-h*.55,S.sway*h,-h); c.stroke();
+  if(ep>.3){
+    c.fillStyle='#597443';
+    c.save(); c.translate(S.sway*h*.35,-h*.42); c.rotate(.6); c.beginPath(); c.ellipse(0,0,5*ep,2.2*ep,0,0,6.3); c.fill(); c.restore();
+    c.save(); c.translate(S.sway*h*.55,-h*.62); c.rotate(-.7); c.beginPath(); c.ellipse(0,0,5*ep,2.2*ep,0,0,6.3); c.fill(); c.restore();
+  }
+  if(bloom>0){
+    c.save(); c.translate(S.sway*h,-h); c.scale(bloom,bloom);
+    c.fillStyle='#f5c800';
+    for(var pi=0;pi<8;pi++){
+      c.save(); c.rotate(pi/8*6.283);
+      c.beginPath(); c.ellipse(0,-6.5,3.1,5.2,0,0,6.3); c.fill();
+      c.restore();
+    }
+    c.fillStyle='#5a3a12'; c.beginPath(); c.arc(0,0,4.2,0,6.3); c.fill();
+    c.restore();
+  }
+  c.restore();
+}
+function drawSunflowers(c){
+  for(var si=0;si<sunflowers.length;si++){
+    var S=sunflowers[si];
+    drawSunflower(c,S,Math.min(1,S.t/S.dur));
+  }
+}
 /* whole bodies land in a few different attitudes */
 function bakeCorpse(x,y,ang,col,band,kind,gib,behead){
   if(gib){ bakeGibs(x,y,ang,col,band,kind); return; }
@@ -12196,6 +12238,7 @@ function draw(){
   // falling corpses and wounded crawlers drawn below live units
   drawCorpses(ctx);
   drawCrawlers(ctx);
+  drawSunflowers(ctx);
 
   // characters, depth-sorted so nearer figures overlap farther ones
   var units=[];
