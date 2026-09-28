@@ -14716,6 +14716,15 @@ window.addEventListener('message',function(e){
   var m=document.getElementById('mute'); if(m){m.textContent=muted?'✕':'♪';m.style.opacity=muted?.5:1;}
   if(muted) stopMusic(); else if(state==='play') startMusic(mapKind);
 });
+// Backstop for backgrounding on mobile: this iframe's own visibilitychange
+// doesn't always fire when the *parent* tab is backgrounded on some mobile
+// browsers, so the parent relays its own visibility here instead. Does not
+// touch the user's mute preference — just pauses/resumes like tab hide/show.
+window.addEventListener('message',function(e){
+  if(e.origin!==window.location.origin||e.source!==window.parent||!e.data||e.data.type!=='gd:pageVisibility') return;
+  if(e.data.hidden){ releaseControls(); stopMusic(true); }
+  else resumeGameAudio();
+});
 
 /* =========================================================================
    BOT PLAYER  (B to toggle)

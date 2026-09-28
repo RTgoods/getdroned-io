@@ -153,6 +153,18 @@ export function GamePageClient({ game, solvedPreview = null }: { game: Game; sol
     return () => window.removeEventListener('message', handler)
   }, [allowed, gameId, user])
 
+  // Backstop for backgrounding on mobile: some mobile browsers don't reliably fire
+  // visibilitychange inside a nested <iframe>, so music can keep playing after the
+  // player switches apps. Relay the top-level document's own visibility instead.
+  useEffect(() => {
+    if (!playing) return
+    const onVisibility = () => {
+      frame.current?.contentWindow?.postMessage({ type: 'gd:pageVisibility', hidden: document.hidden }, window.location.origin)
+    }
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => document.removeEventListener('visibilitychange', onVisibility)
+  }, [playing])
+
   const play = useCallback(async (level = 1) => {
     const access = await loadAccess()
     if (!access) return
