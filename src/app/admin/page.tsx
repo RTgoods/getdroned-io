@@ -1,4 +1,5 @@
 import { AdminSignups } from '@/components/AdminSignups'
+import { AdminCreateFreeAccount } from '@/components/AdminCreateFreeAccount'
 import { AdminBotConsole } from '@/components/AdminBotConsole'
 import { AdminRecToggle } from '@/components/AdminRecToggle'
 import { AdminGameSidebar } from '@/components/AdminGameSidebar'
@@ -156,6 +157,9 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
 
           </div>
         </section>
+
+        {/* Free accounts */}
+        <AdminCreateFreeAccount />
 
         {/* Signups */}
         <AdminSignups page={page} />
