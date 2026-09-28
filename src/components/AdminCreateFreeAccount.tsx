@@ -18,6 +18,7 @@ const UA = {
 
 export function AdminCreateFreeAccount() {
   const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [result, setResult] = useState<{ email: string; password: string } | null>(null)
@@ -32,12 +33,13 @@ export function AdminCreateFreeAccount() {
       const res = await fetch('/api/admin/create-free-account', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email, password: password || undefined }),
       })
       const body = await res.json()
       if (!res.ok) throw new Error(body.error || 'Could not create account')
       setResult(body)
       setEmail('')
+      setPassword('')
       router.refresh()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not create account')
@@ -65,6 +67,18 @@ export function AdminCreateFreeAccount() {
             border: `1px solid ${UA.border}`, borderRadius: 3, color: UA.text, fontSize: 12, outline: 'none',
           }}
         />
+        <input
+          type="text"
+          value={password}
+          onChange={e => setPassword(e.target.value)}
+          placeholder="Password (leave blank to auto-generate)"
+          minLength={6}
+          style={{
+            flex: '1 1 220px', padding: '9px 12px', background: 'rgba(0,104,204,0.07)',
+            border: `1px solid ${UA.border}`, borderRadius: 3, color: UA.text, fontSize: 12, outline: 'none',
+            fontFamily: 'monospace',
+          }}
+        />
         <button
           type="submit"
           disabled={loading}
@@ -80,7 +94,7 @@ export function AdminCreateFreeAccount() {
       </form>
 
       <p style={{ marginTop: 8, fontSize: 9, color: UA.muted }}>
-        Creates a pre-confirmed account with full access to every sector — no payment, no email verification needed. Password is generated and shown once below; copy it before leaving this page.
+        Creates a pre-confirmed account with full access to every sector — no payment, no email verification needed. Set your own password or leave blank to auto-generate one; either way it's shown once below, so copy it before leaving this page.
       </p>
 
       {error && (

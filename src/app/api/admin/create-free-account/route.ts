@@ -27,13 +27,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  const { email } = await req.json() as { email?: string }
+  const { email, password: requestedPassword } = await req.json() as { email?: string; password?: string }
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return NextResponse.json({ error: 'Enter a valid email address' }, { status: 400 })
   }
+  if (requestedPassword && requestedPassword.length < 6) {
+    return NextResponse.json({ error: 'Password must be at least 6 characters' }, { status: 400 })
+  }
 
   const db = adminClient()
-  const password = generatePassword()
+  const password = requestedPassword || generatePassword()
 
   const { data: created, error: createError } = await db.auth.admin.createUser({
     email,
