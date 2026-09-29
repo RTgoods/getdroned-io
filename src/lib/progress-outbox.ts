@@ -1,6 +1,6 @@
 export type Completion = {
   gameId: string; sector: number; kills: number; squadLost: number;
-  moneyEnd: number; timeAlive: number; belt: string[];
+  moneyEnd: number; timeAlive: number; belt: string[]; resetVersion?: number;
 }
 export const progressQueueKey = (userId: string, gameId: string) => `gd:pending-progress:${userId}:${gameId}`
 
@@ -13,22 +13,23 @@ export function createProgressOutbox(
 ) {
   let queue: Completion[] = []
   try { queue = JSON.parse(storage.getItem(key) || '[]'); if (!Array.isArray(queue)) queue = [] } catch { queue = [] }
-  let running = false, stopped = false
+  let running = false, stopped = false, paused = false
   const persist = () => { try { storage.setItem(key, JSON.stringify(queue)); return true } catch { return false } }
   async function flush() {
-    if (running || stopped || !queue.length) return
+    if (running || stopped || paused || !queue.length) return
     running = true
     status('Saving sector progress…')
     try {
-      while (queue.length && !stopped) {
+      while (queue.length && !stopped && !paused) {
         const entry = [...queue].sort((a, b) => a.sector - b.sector)[0]
         await send(entry)
-        queue.splice(queue.indexOf(entry), 1); persist()
+        const index = queue.indexOf(entry)
+        if (index >= 0) { queue.splice(index, 1); persist() }
         if (stopped) return
       }
-      if (!stopped) status('Progress saved')
+      if (!stopped && !paused && !queue.length) status('Progress saved')
     } catch {
-      if (!stopped) status('Progress pending — keep this page open. Retrying automatically.')
+      if (!stopped && !paused) status('Progress pending — keep this page open. Retrying automatically.')
     } finally { running = false }
   }
   return {
@@ -39,6 +40,9 @@ export function createProgressOutbox(
       if (!persist()) status('Local saving unavailable — keep this page open until progress is saved.')
       void flush()
     },
+    pause() { paused = true },
+    resume() { paused = false; void flush() },
+    clear() { queue = []; persist() },
     stop() { stopped = true },
   }
 }

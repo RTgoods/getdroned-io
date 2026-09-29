@@ -14,6 +14,12 @@ export async function GET(request: NextRequest) {
   if (error && error.name !== 'AuthSessionMissingError') return NextResponse.json({ error: 'Access service unavailable' }, { status: 503 })
   const access = await gameAccess(db, user)
   if ('unavailable' in access && access.unavailable) return NextResponse.json({ error: 'Access service unavailable' }, { status: 503 })
+  let recEnabled = false
+  if (access.isAdmin && access.gameId) {
+    const { data: game, error: gameError } = await db.from('games').select('rec_enabled').eq('id', access.gameId).single()
+    if (gameError) return NextResponse.json({ error: 'Game settings unavailable' }, { status: 503 })
+    recEnabled = (game as { rec_enabled: boolean } | null)?.rec_enabled === true
+  }
   const canUseGodMode = user?.email?.trim().toLowerCase() === 'g00dsman@yahoo.com'
-  return NextResponse.json({ ...access, canUseGodMode, user: user ? { id: user.id, email: user.email } : null }, { headers: { 'Cache-Control': 'private, no-store' } })
+  return NextResponse.json({ ...access, recEnabled, canUseGodMode, user: user ? { id: user.id, email: user.email } : null }, { headers: { 'Cache-Control': 'private, no-store' } })
 }

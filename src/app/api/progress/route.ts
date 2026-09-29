@@ -41,7 +41,7 @@ export async function GET(req: NextRequest) {
 
   const { data, error } = await adminClient()
     .from('progress')
-    .select('completed_sectors, sector_stats')
+    .select('completed_sectors, sector_stats, reset_version')
     .eq('user_id', user.id)
     .eq('game_id', gameId)
     .maybeSingle()
@@ -56,7 +56,7 @@ export async function GET(req: NextRequest) {
   const carryMoney = lastStats?.moneyEnd ?? 0
   const carryBelt = lastStats?.belt ?? []
 
-  return NextResponse.json({ completedSectors, sectorStats, carryMoney, carryBelt })
+  return NextResponse.json({ completedSectors, sectorStats, carryMoney, carryBelt, resetVersion: data?.reset_version ?? 0 })
 }
 
 // POST /api/progress — upsert a completed sector + save its stats
@@ -77,69 +77,29 @@ export async function POST(req: NextRequest) {
     moneyEnd?: number
     timeAlive?: number
     belt?: string[]
+    resetVersion?: number
   }
-  const { gameId, sector, kills = 0, squadLost = 0, moneyEnd = 0, timeAlive = 0, belt = [] } = body
+  const { gameId, sector, kills = 0, squadLost = 0, moneyEnd = 0, timeAlive = 0, belt = [], resetVersion = 0 } = body
 
   if (gameId !== access.gameId || !Number.isInteger(sector) || sector < 1 || sector > 6) {
     return NextResponse.json({ error: 'Invalid game or sector' }, { status: 400 })
   }
+  if (!Number.isInteger(resetVersion) || resetVersion < 0) return NextResponse.json({ error: 'Invalid reset version' }, { status: 400 })
   if (!isValidStatInput(kills, squadLost, moneyEnd, timeAlive, belt)) {
     return NextResponse.json({ error: 'Invalid stats' }, { status: 400 })
   }
 
   if (sector > 1 && !access.allowed) return NextResponse.json({ error: 'Purchase required' }, { status: 403 })
 
-  const db = adminClient()
-
-  // Fetch existing
-  const { data: existing, error: readError } = await db
-    .from('progress')
-    .select('completed_sectors, sector_stats')
-    .eq('user_id', user.id)
-    .eq('game_id', gameId)
-    .maybeSingle()
-
-  if (readError) return NextResponse.json({ error: 'Progress unavailable' }, { status: 503 })
-  const current: number[] = existing?.completed_sectors ?? []
-  if (!access.isAdmin && sector > 1 && !current.includes(sector - 1)) return NextResponse.json({ error: `Complete Sector ${sector - 1} first` }, { status: 403 })
-  const updated = current.includes(sector) ? current : [...current, sector].sort((a, b) => a - b)
-
-  const existingStats: Record<string, SectorStat> = existing?.sector_stats ?? {}
-  const newStat: SectorStat = {
-    kills,
-    squadLost,
-    moneyEnd,
-    timeAlive,
-    belt,
-    completedAt: new Date().toISOString(),
-  }
-  // Keep best kill count if replayed
-  const prev = existingStats[String(sector)]
-  const updatedStats = {
-    ...existingStats,
-    [String(sector)]: prev && prev.kills > kills ? prev : newStat,
-  }
-
-  const { error } = await db.from('progress').upsert(
-    {
-      user_id: user.id,
-      game_id: gameId,
-      completed_sectors: updated,
-      sector_stats: updatedStats,
-      updated_at: new Date().toISOString(),
-    },
-    { onConflict: 'user_id,game_id' }
-  )
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-
-  // Return carry state for the sector just completed
-  return NextResponse.json({
-    completedSectors: updated,
-    sectorStats: updatedStats,
-    carryMoney: moneyEnd,
-    carryBelt: belt,
+  const { data, error } = await adminClient().rpc('save_sector_progress', {
+    p_user_id: user.id, p_game_id: gameId, p_sector: sector,
+    p_stat: { kills, squadLost, moneyEnd, timeAlive, belt, completedAt: new Date().toISOString() },
+    p_reset_version: resetVersion, p_is_admin: access.isAdmin,
   })
+  if (error) return NextResponse.json({ error: 'Progress unavailable' }, { status: 503 })
+  if (data?.error === 'stale_progress') return NextResponse.json(data, { status: 409 })
+  if (data?.error === 'previous_sector_required') return NextResponse.json({ error: `Complete Sector ${sector - 1} first` }, { status: 403 })
+  return NextResponse.json(data)
 }
 
 // DELETE /api/progress — reset all progress
@@ -155,12 +115,9 @@ export async function DELETE(req: NextRequest) {
   const gameId = req.nextUrl.searchParams.get('gameId')
   if (!gameId || gameId !== access.gameId) return NextResponse.json({ error: 'Invalid game' }, { status: 400 })
 
-  const { error } = await adminClient()
-    .from('progress')
-    .delete()
-    .eq('user_id', user.id)
-    .eq('game_id', gameId)
-
+  const { data, error } = await adminClient().rpc('reset_sector_progress', {
+    p_user_id: user.id, p_game_id: gameId,
+  })
   if (error) return NextResponse.json({ error: 'Could not reset progress' }, { status: 503 })
-  return NextResponse.json({ completedSectors: [], sectorStats: {}, carryMoney: 0, carryBelt: [] })
+  return NextResponse.json(data)
 }

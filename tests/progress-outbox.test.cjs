@@ -13,3 +13,18 @@ test('duplicate solved/continue messages do not create duplicate in-flight saves
  q.enqueue(entry(1));q.enqueue(entry(1));assert.equal(sent,1);resolve();await tick();assert.equal(values.get('pilot'),'[]');
 });
 test('accounts use separate queue keys',()=>assert.notEqual(e.progressQueueKey('a','g'),e.progressQueueKey('b','g')));
+test('reset clears pending entries without an in-flight save dropping a new completion',async()=>{
+ const values=new Map();let finish,sent=[];
+ const q=e.createProgressOutbox({getItem:k=>values.get(k)||null,setItem:(k,v)=>values.set(k,v)},'reset',entry=>{
+  sent.push(entry);return sent.length===1?new Promise(r=>finish=r):Promise.resolve();
+ },()=>{});
+ q.enqueue({...entry(1),resetVersion:0});q.enqueue({...entry(2),resetVersion:0});
+ q.pause();q.clear();q.enqueue({...entry(1),resetVersion:1});
+ finish();await tick();assert.equal(JSON.parse(values.get('reset')).length,1);
+ q.resume();await tick();assert.deepEqual(sent.map(x=>x.resetVersion),[0,1]);assert.equal(values.get('reset'),'[]');
+});
+test('a failed reset can resume its paused save queue',async()=>{
+ const values=new Map();let sent=0;
+ const q=e.createProgressOutbox({getItem:k=>values.get(k)||null,setItem:(k,v)=>values.set(k,v)},'reset',async()=>{sent++},()=>{});
+ q.pause();q.enqueue(entry(1));assert.equal(sent,0);q.resume();await tick();assert.equal(sent,1);
+});

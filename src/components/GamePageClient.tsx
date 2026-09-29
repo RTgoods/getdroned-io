@@ -14,8 +14,9 @@ export function GamePageClient({ game, solvedPreview = null }: { game: Game; sol
   const [preview, setPreview] = useState(solvedPreview)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [playing, setPlaying] = useState(!!solvedPreview)
-  const [launch, setLaunch] = useState({ level: 1, version: 0, coins: 0, belt: [] as string[], muted: false })
+  const [launch, setLaunch] = useState({ level: 1, version: 0, coins: 0, belt: [] as string[], muted: false, recEnabled: false, resetVersion: 0 })
   const [user, setUser] = useState<User | null>(null)
+  const userId = user?.id
   const [allowed, setAllowed] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
   const [gameId, setGameId] = useState<string | null>(null)
@@ -27,6 +28,9 @@ export function GamePageClient({ game, solvedPreview = null }: { game: Game; sol
   const [musicMuted, setMusicMuted] = useState(false)
   const [connectionMessage, setConnectionMessage] = useState('')
   const [saveMessage, setSaveMessage] = useState('')
+  const progressVersion = useRef(0)
+  const resetting = useRef(false)
+  const [progressReload, setProgressReload] = useState(0)
   const [progressReady, setProgressReady] = useState(false)
   const outbox = useRef<ReturnType<typeof createProgressOutbox> | null>(null)
   const accessRequest = useRef(0)
@@ -74,13 +78,15 @@ export function GamePageClient({ game, solvedPreview = null }: { game: Game; sol
     let cancelled = false, loaded = false, reading = false
     setCompletedSectors([]); setSectorStats({}); setProgressReady(false)
     const read = async () => {
-      if (cancelled || loaded || reading || !user || !gameId) return
+      if (cancelled || loaded || reading || !userId || !gameId) return
       reading = true
       try {
         const response = await fetch(`/api/progress?gameId=${gameId}`, { signal: AbortSignal.timeout(12000) })
         if (!response.ok) throw new Error('Progress unavailable')
         const data = await response.json()
         if (cancelled) return
+        if (resetting.current) return
+        progressVersion.current = data.resetVersion ?? 0
         loaded = true; setProgressReady(true); setConnectionMessage('')
         if (Array.isArray(data.completedSectors)) setCompletedSectors(prev => [...new Set([...data.completedSectors, ...prev])] as number[])
         if (data.sectorStats) setSectorStats(prev => ({ ...data.sectorStats, ...prev }))
@@ -88,12 +94,12 @@ export function GamePageClient({ game, solvedPreview = null }: { game: Game; sol
         if (!cancelled) setConnectionMessage('Sector progress unavailable — retrying automatically.')
       } finally { reading = false }
     }
-    if (user && gameId) void read()
+    if (userId && gameId) void read()
     else setProgressReady(true)
     const timer = setInterval(() => { void read() }, 10000)
     window.addEventListener('online', read)
     return () => { cancelled = true; clearInterval(timer); window.removeEventListener('online', read) }
-  }, [allowed, gameId, user?.id])
+  }, [allowed, gameId, userId, progressReload])
 
   useEffect(() => {
     if (saveMessage !== 'Progress saved') return
@@ -102,9 +108,9 @@ export function GamePageClient({ game, solvedPreview = null }: { game: Game; sol
   }, [saveMessage])
 
   useEffect(() => {
-    if (!user || !gameId) return
+    if (!userId || !gameId) return
     let active = true
-    const key = `gd:pending-progress:${user.id}:${gameId}`
+    const key = `gd:pending-progress:${userId}:${gameId}`
     const queue = createProgressOutbox({
       getItem: key => localStorage.getItem(key),
       setItem: (key, value) => localStorage.setItem(key, value),
@@ -113,21 +119,28 @@ export function GamePageClient({ game, solvedPreview = null }: { game: Game; sol
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(entry), signal: AbortSignal.timeout(12000),
       })
-      if (!response.ok) throw new Error('Save pending')
       const saved = await response.json()
-      if (active) {
+      if (response.status === 409 && saved.error === 'stale_progress') {
+        if (active && !resetting.current) {
+          setPlaying(false)
+          setProgressReload(value => value + 1)
+        }
+        return // Discard a completion from before a reset instead of retrying forever.
+      }
+      if (!response.ok) throw new Error('Save pending')
+      if (active && !resetting.current && saved.resetVersion === progressVersion.current) {
         setProgressReady(true)
         if (Array.isArray(saved.completedSectors)) setCompletedSectors(saved.completedSectors)
         if (saved.sectorStats) setSectorStats(saved.sectorStats)
       }
-    }, message => { if (active) setSaveMessage(message) })
+    }, message => { if (active && !resetting.current) setSaveMessage(message) })
     outbox.current = queue
     void queue.flush()
     const retry = () => { void queue.flush() }
     const timer = setInterval(retry, 10000)
     window.addEventListener('online', retry)
     return () => { active = false; queue.stop(); outbox.current = null; clearInterval(timer); window.removeEventListener('online', retry) }
-  }, [user?.id, gameId])
+  }, [userId, gameId])
 
   // Listen for messages from the game iframe
   useEffect(() => {
@@ -143,15 +156,15 @@ export function GamePageClient({ game, solvedPreview = null }: { game: Game; sol
         return
       }
 
-      if (type !== 'gd:sectorComplete' || !user || !gameId) return
+      if (type !== 'gd:sectorComplete' || !user || !gameId || resetting.current) return
       const { sector, kills, squadLost, moneyEnd, timeAlive, belt } = event.data
       if (!Number.isInteger(sector) || sector < 1 || sector > 6) return
 
-      outbox.current?.enqueue({ gameId, sector, kills, squadLost, moneyEnd, timeAlive, belt })
+      outbox.current?.enqueue({ gameId, sector, kills, squadLost, moneyEnd, timeAlive, belt, resetVersion: launch.resetVersion })
     }
     window.addEventListener('message', handler)
     return () => window.removeEventListener('message', handler)
-  }, [allowed, gameId, user])
+  }, [allowed, gameId, user, launch.resetVersion])
 
   // Backstop for backgrounding on mobile: some mobile browsers don't reliably fire
   // visibilitychange inside a nested <iframe>, so music can keep playing after the
@@ -166,6 +179,7 @@ export function GamePageClient({ game, solvedPreview = null }: { game: Game; sol
   }, [playing])
 
   const play = useCallback(async (level = 1) => {
+    if (resetting.current || !progressReady) return
     const access = await loadAccess()
     if (!access) return
     if (!access.user) { window.location.href = '/auth/login'; return }
@@ -187,19 +201,34 @@ export function GamePageClient({ game, solvedPreview = null }: { game: Game; sol
       version: previous.version + 1,
       coins: carryCoins,
       belt: carryBelt,
+      recEnabled: access.isAdmin && access.recEnabled === true,
+      resetVersion: progressVersion.current,
       muted: localStorage.getItem('gd_muted') === '1', // read the latest preference at launch
     }))
     setPlaying(true)
-  }, [completedSectors, sectorStats, loadAccess])
+  }, [completedSectors, sectorStats, loadAccess, progressReady])
 
   const continueLevel = completedSectors.length === 6 ? 1 : [1,2,3,4,5,6].find(n => !completedSectors.includes(n)) || 1
 
   const reset = async () => {
-    if (!allowed || !gameId) return
-    const response = await fetch(`/api/progress?gameId=${gameId}`, { method: 'DELETE' })
-    if (response.ok) {
+    if (!allowed || !gameId || resetting.current) return
+    resetting.current = true
+    outbox.current?.pause()
+    try {
+      const response = await fetch(`/api/progress?gameId=${gameId}`, { method: 'DELETE' })
+      if (!response.ok) throw new Error('Could not reset progress. Please try again.')
+      const data = await response.json()
+      progressVersion.current = data.resetVersion
+      outbox.current?.clear()
+      setPlaying(false)
       setCompletedSectors([])
       setSectorStats({})
+      setLiveObjectives({})
+      setSaveMessage('')
+      setProgressReload(value => value + 1)
+    } finally {
+      resetting.current = false
+      outbox.current?.resume()
     }
   }
 
@@ -210,7 +239,7 @@ export function GamePageClient({ game, solvedPreview = null }: { game: Game; sol
     if (isAdmin) params.set('coins', '5000')
     else if (launch.coins > 0) params.set('coins', String(launch.coins))
     if (launch.belt.length > 0 && !isAdmin) params.set('belt', launch.belt.join(','))
-    if (isAdmin && game.rec_enabled) params.set('rec', '1')
+    if (launch.recEnabled) params.set('rec', '1')
     if (launch.muted) params.set('mute', '1')
     return `/get-droned/index.html?${params.toString()}`
   })()
@@ -234,7 +263,7 @@ export function GamePageClient({ game, solvedPreview = null }: { game: Game; sol
         frame.current?.contentWindow?.postMessage({ type: 'gd:setMute', muted: true }, '*')
         setPlaying(false)
       }}
-      onReset={reset}
+      onReset={() => { void reset().catch(() => setSaveMessage('Could not reset progress. Please try again.')) }}
       avatarUrl={avatarUrl}
     />
     <div style={{ flex: 1, minWidth: 0, height: '100dvh', overflow: 'hidden', position: 'relative', isolation: 'isolate' }}>
@@ -252,7 +281,7 @@ export function GamePageClient({ game, solvedPreview = null }: { game: Game; sol
       {(connectionMessage || saveMessage) && <div role="status" aria-live="polite" style={{ position: 'absolute', bottom: playing ? 120 : 12, left: '50%', transform: 'translateX(-50%)', zIndex: 1100, maxWidth: '90%', width: 'max-content', padding: '8px 12px', borderRadius: 6, background: '#091a30', color: '#ffd700', border: '1px solid #3878b8', fontSize: 12, pointerEvents: 'none' }}>{connectionMessage || saveMessage}</div>}
       {settingsOpen && user && (
         <div role="dialog" aria-modal="true" aria-label="Pilot Settings" style={{ position: 'absolute', inset: 0, zIndex: 1000, background: '#09101f', overflowY: 'auto' }}>
-          <ProfileContent game={game} user={user} hasPurchased={allowed} isAdmin={isAdmin} completedSectors={completedSectors} sectorStats={sectorStats} avatarUrl={avatarUrl} gameId={gameId}
+          <ProfileContent onResetProgress={reset} game={game} user={user} hasPurchased={allowed} isAdmin={isAdmin} completedSectors={completedSectors} sectorStats={sectorStats} avatarUrl={avatarUrl} gameId={gameId}
             onReturnToGame={() => {
               setSettingsOpen(false)
               setMusicMuted(localStorage.getItem('gd_muted') === '1')

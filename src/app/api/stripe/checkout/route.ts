@@ -3,6 +3,8 @@ import { createClient } from '@/lib/supabase/server'
 import { stripe } from '@/lib/stripe'
 import { MIN_DONATION_CENTS, MAX_DONATION_CENTS } from '@/lib/donation'
 import { checkoutLimiter, checkLimit } from '@/lib/rate-limit'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { checkoutSession, CheckoutError } from '@/lib/checkout-session'
 import type { Game } from '@/types/database'
 
 export async function POST(request: NextRequest) {
@@ -46,7 +48,7 @@ export async function POST(request: NextRequest) {
   }
 
   // Prevent duplicate purchases
-  const { data: rawExisting } = await supabase
+  const { data: rawExisting, error: purchaseError } = await supabase
     .from('purchases')
     .select('id')
     .eq('user_id', user.id)
@@ -54,6 +56,7 @@ export async function POST(request: NextRequest) {
     .eq('status', 'completed')
     .maybeSingle()
 
+  if (purchaseError) return NextResponse.json({ error: 'Checkout unavailable' }, { status: 503 })
   const existing = rawExisting as { id: string } | null
   if (existing) {
     return NextResponse.json({ error: 'Already purchased' }, { status: 409 })
@@ -65,7 +68,7 @@ export async function POST(request: NextRequest) {
 
   let session
   try {
-    session = await stripe.checkout.sessions.create({
+    session = await checkoutSession(createAdminClient(), stripe, user.id, game.id, {
       mode: 'payment',
       customer_email: user.email,
       line_items: [
@@ -93,7 +96,7 @@ export async function POST(request: NextRequest) {
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Stripe error'
     console.error('Stripe checkout session error:', message)
-    return NextResponse.json({ error: message }, { status: 500 })
+    return NextResponse.json({ error: err instanceof CheckoutError ? err.message : 'Checkout unavailable. Please try again.' }, { status: err instanceof CheckoutError ? err.status : 503 })
   }
 
   return NextResponse.json({ url: session.url })

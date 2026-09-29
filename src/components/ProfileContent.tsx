@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useState, useCallback, useEffect } from 'react'
 import { GameSidebar } from './GameSidebar'
 import { AvatarSelector, AvatarBadge, ALL_KITS } from './AvatarSelector'
@@ -16,6 +17,7 @@ interface Props {
   sectorStats: Record<string, SectorStat>
   avatarUrl: string | null
   onReturnToGame?: () => void
+  onResetProgress?: () => Promise<void>
   gameId: string | null
 }
 
@@ -47,7 +49,7 @@ function fmtTime(s: number) {
   return m > 0 ? `${m}m ${s % 60}s` : `${s}s`
 }
 
-export function ProfileContent({ game, user, hasPurchased, isAdmin, completedSectors, sectorStats, avatarUrl: initialAvatarUrl, gameId, onReturnToGame }: Props) {
+export function ProfileContent({ game, user, hasPurchased, isAdmin, completedSectors, sectorStats, avatarUrl: initialAvatarUrl, gameId, onReturnToGame, onResetProgress }: Props) {
   const totalKills = Object.values(sectorStats).reduce((s, x) => s + (x.kills ?? 0), 0)
   const totalTime  = Object.values(sectorStats).reduce((s, x) => s + (x.timeAlive ?? 0), 0)
   const totalSquad = Object.values(sectorStats).reduce((s, x) => s + (x.squadLost ?? 0), 0)
@@ -111,7 +113,7 @@ export function ProfileContent({ game, user, hasPurchased, isAdmin, completedSec
 
           {/* Back to game */}
           <div style={{ marginBottom: 24 }}>
-            <a
+            <Link
               href="/"
               onClick={onReturnToGame ? (event) => { event.preventDefault(); onReturnToGame() } : undefined}
               style={{
@@ -127,7 +129,7 @@ export function ProfileContent({ game, user, hasPurchased, isAdmin, completedSec
               onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = UA.muted; (e.currentTarget as HTMLElement).style.borderColor = UA.borderFaint }}
             >
               {onReturnToGame ? '▶ RESUME GAME' : '← BACK TO GAME'}
-            </a>
+            </Link>
           </div>
 
           {/* Title row */}
@@ -286,24 +288,20 @@ export function ProfileContent({ game, user, hasPurchased, isAdmin, completedSec
                 <button
                   disabled={resetting}
                   onClick={async () => {
-                    try {
-                      const pending = localStorage.getItem(`gd:pending-progress:${user.id}:${gameId}`)
-                      if (pending && pending !== '[]') { setResetMsg('SAVE PENDING'); return }
-                    } catch {}
                     if (!confirm('Reset all sector progress and start from Sector 1?')) return
                     setResetting(true)
                     setResetMsg(null)
                     try {
-                      const res = await fetch(`/api/progress?gameId=${gameId}`, { method: 'DELETE' })
-                      if (res.ok) {
-                        localStorage.removeItem(`gd:pending-progress:${user.id}:${gameId}`)
-                        setResetMsg('RESET')
-                        setTimeout(() => window.location.reload(), 800)
+                      if (onResetProgress) {
+                        await onResetProgress()
                       } else {
-                        setResetMsg('ERROR')
-                        setTimeout(() => setResetMsg(null), 3000)
-                        setResetting(false)
+                        const res = await fetch(`/api/progress?gameId=${gameId}`, { method: 'DELETE' })
+                        if (!res.ok) throw new Error('Reset failed')
+                        try { localStorage.removeItem(`gd:pending-progress:${user.id}:${gameId}`) } catch {}
+                        window.location.reload()
                       }
+                      setResetMsg('RESET')
+                      setResetting(false)
                     } catch {
                       setResetMsg('ERROR')
                       setTimeout(() => setResetMsg(null), 3000)

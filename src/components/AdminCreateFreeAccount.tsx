@@ -94,7 +94,7 @@ export function AdminCreateFreeAccount() {
       </form>
 
       <p style={{ marginTop: 8, fontSize: 9, color: UA.muted }}>
-        Creates a pre-confirmed account with full access to every sector — no payment, no email verification needed. Set your own password or leave blank to auto-generate one; either way it's shown once below, so copy it before leaving this page.
+        Creates a pre-confirmed account with full access to every sector — no payment, no email verification needed. Set your own password or leave blank to auto-generate one; either way it&apos;s shown once below, so copy it before leaving this page.
       </p>
 
       {error && (

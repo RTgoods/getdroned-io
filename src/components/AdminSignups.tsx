@@ -123,7 +123,7 @@ export async function AdminSignups({ page }: { page: number }) {
     return (
       <section id="signups" style={{ marginBottom: 24, padding: '16px 20px', background: 'rgba(200,60,30,0.08)', border: '1px solid rgba(200,60,30,0.25)', borderRadius: 4 }}>
         <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: '2px', color: UA.red, textTransform: 'uppercase', marginBottom: 6 }}>SIGNUPS UNAVAILABLE</div>
-        <p style={{ fontSize: 11, color: '#6e6a60' }}>Couldn't load accounts or payment records. Refresh to retry.</p>
+        <p style={{ fontSize: 11, color: '#6e6a60' }}>Couldn&apos;t load accounts or payment records. Refresh to retry.</p>
       </section>
     )
   }

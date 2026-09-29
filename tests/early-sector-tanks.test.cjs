@@ -23,10 +23,10 @@ test('switching sector clears previous tanks and does not add a delayed legacy t
  const c=setup(1);c.level=2;c.buildMap();c.seedEarlyPatrolTanks();assert.equal(c.motorcade.length,2);assert(c.motorcade.every(t=>t.patrolTank));
  assert(!source.includes('tankSent=1; spawnTank();'));
 });
-test('ordinary bullets hit patrol tanks in both early sectors',()=>{
+test('patrol tank armour absorbs 65% of ordinary bullet damage in both early sectors',()=>{
  for(const level of [1,2]){
   const c=setup(level),tank=c.motorcade.find(t=>t.patrolTank);c.bu={x:tank.x,y:tank.y,dmg:27};c.bullets=[c.bu];c.b=0;c.impact=()=>{};
   const start=source.indexOf('      var hitAny=false;'),end=source.indexOf('      if(!bu) break;',start);
-  vm.runInContext(source.slice(start,end),c);assert.equal(tank.hp,393);assert.equal(c.bullets.length,0);
+  vm.runInContext(source.slice(start,end),c);assert.equal(tank.hp,420-27*.35);assert.equal(c.bullets.length,0);
  }
 });
