@@ -3185,7 +3185,7 @@ function buildTrench(){
     var RG={base:ti,x:(ex+2.5)*TILE,y:(ey+6.25)*TILE,state:'held',p:0,home:0,total:3};
     rescueGroups.push(RG);
     var CO=[[-12,4],[12,4],[0,-9]];
-    for(var ci=0;ci<CO.length;ci++) captives.push({captive:1,group:ti,state:'held',
+    for(var ci=0;ci<CO.length;ci++) captives.push({captive:1,group:ti,state:'held',r:9,
       x:RG.x+CO[ci][0],y:RG.y+CO[ci][1],ang:Math.PI/2+rr(-.16,.16),walk:rr(0,6.28),amt:0,
       path:null,pi:0,slot:ci,sid:2100+ti*17+ci*43});
     dig(ex-3,ey+3,4,2);                            // sap up to the west wall
@@ -4602,7 +4602,7 @@ function updateCaptives(dt){
     if(C2.path){
       while(C2.pi<C2.path.length-1&&Math.hypot(C2.path[C2.pi].x-C2.x,C2.path[C2.pi].y-C2.y)<20) C2.pi++;
       var P=C2.path[Math.min(C2.pi,C2.path.length-1)], dx=P.x-C2.x, dy=P.y-C2.y, dd=Math.hypot(dx,dy)||1;
-      var step=112*dt, ox=C2.x, oy=C2.y;
+      var step=Math.min(dd,112*dt), ox=C2.x, oy=C2.y;
       moveEnt(C2,dx/dd*step,dy/dd*step);
       C2.ang=Math.atan2(dy,dx); C2.walk+=dt*13; C2.amt=1;
       if(Math.hypot(C2.x-ox,C2.y-oy)<step*.35&&C2.repath<=0) C2.path=null;
@@ -6018,14 +6018,12 @@ function update(dt,realDt){
     var kv2=keyVec(), dm=kv2||mv;
     drone.t-=dt;
     // Exponential steering gives the same response at 30, 60 and 120 Hz.
+    if(drone.kind==='usv'&&drone.waterAng===undefined)drone.waterAng=drone.ang;
     var dmax=steerDrone(drone,dm,dt);
     var nx3=Math.max(8,Math.min(WW-8,drone.x+drone.vx*dt));
     var ny3=Math.max(8,Math.min(WH-8,drone.y+drone.vy*dt));
     if(drone.kind==='usv'&&mapKind==='sea'){
-      if(seaRoom({len:28,wid:16},nx3,drone.y,drone.ang)) drone.x=nx3;
-      else { drone.vx*=-.25; drone.vy+=(drone.vy>=0?1:-1)*120*dt; }
-      if(seaRoom({len:28,wid:16},drone.x,ny3,drone.ang)) drone.y=ny3;
-      else { drone.vy*=-.25; drone.vx+=(drone.vx>=0?1:-1)*120*dt; }
+      movePlayerBoat(drone,28,16,dt,true);
       if(Math.hypot(drone.vx,drone.vy)>20&&Math.random()<dt*8&&wakes.length<160) wakes.push({x:drone.x,y:drone.y,a:Math.atan2(drone.vy,drone.vx),
         life:1.6,max:1.6,w:9});
       for(var sm=seaMines.length-1;sm>=0&&piloting&&drone;sm--){
@@ -6041,7 +6039,7 @@ function update(dt,realDt){
       var SH=ships[sq2];
       if(SH.sink>0) continue;
       var rel=Math.atan2(drone.y-SH.y,drone.x-SH.x)-SH.ang, dr2=Math.hypot(drone.x-SH.x,drone.y-SH.y);
-      if(Math.abs(Math.cos(rel)*dr2)<SH.len*.5+16&&Math.abs(Math.sin(rel)*dr2)<SH.wid*.5+16){
+      if(drone.contactShip===SH||(Math.abs(Math.cos(rel)*dr2)<SH.len*.5+16&&Math.abs(Math.sin(rel)*dr2)<SH.wid*.5+16)){
         droneBoom(drone.x,drone.y); break;
       }
     }
@@ -7178,14 +7176,12 @@ function update(dt,realDt){
       var G=gunboat, kv3=keyVec(), gm=kv3||mv;
       if(gm.m>0.05){
         G.vx+=gm.x*650*dt*gm.m; G.vy+=gm.y*650*dt*gm.m;
-        G.ang=Math.atan2(G.vy,G.vx);
+        // Heading changes are validated with the hull below.
       }
       var boatDrag=Math.exp(-2.4*dt);G.vx*=boatDrag; G.vy*=boatDrag;
       var gs=Math.hypot(G.vx,G.vy), gmax=230;
       if(gs>gmax){ G.vx=G.vx/gs*gmax; G.vy=G.vy/gs*gmax; }
-      var gnx=G.x+G.vx*dt, gny=G.y+G.vy*dt;
-      if(seaRoom({len:102,wid:39},gnx,G.y,G.ang)) G.x=gnx; else G.vx*=-.3;
-      if(seaRoom({len:102,wid:39},G.x,gny,G.ang)) G.y=gny; else G.vy*=-.3;
+      movePlayerBoat(G,102,39,dt,false);
       player.x=G.x; player.y=G.y;
       for(var gm0=seaMines.length-1;gm0>=0;gm0--){
         if(!seaMines[gm0].dead&&Math.hypot(G.x-seaMines[gm0].x,G.y-seaMines[gm0].y)<28){
@@ -7239,7 +7235,8 @@ function update(dt,realDt){
     if(player.sHold>=1){
       player.sHold=0;
       var lw=waterNear(seaPad.x+30,seaPad.y);
-      drone={x:lw.x,y:lw.y,vx:0,vy:0,ang:1.57,t:TOOLS.usv.dur,rot:0,kind:'usv',hp:droneMaxHealth('usv'),mx:droneMaxHealth('usv')};
+      drone={x:lw.x,y:lw.y,vx:0,vy:0,ang:1.57,t:TOOLS.usv.dur,rot:0,kind:'usv',len:28,wid:16,hp:droneMaxHealth('usv'),mx:droneMaxHealth('usv')};
+      placeBoatClear(drone);
       piloting=true; firing=false; actBtn.classList.remove('on'); seaCD=16;
       sfx('card'); banner('SEA DRONE AWAY','STEER INTO A HULL',1.8);
     }
@@ -7679,7 +7676,7 @@ var seaBridge=null,seaGulls=[],seaSharks=[],seaWrecks=[],gunboatRespawn=0,seaBas
 function buildSeaExpansion(){
   motorcade=[];aaGuns=[];seaWrecks=[];seaSharks=[];gunboatRespawn=0;seaBaseSalvoCooldown=0;
   fill(0,0,5,12,EXT);fill(92,0,97,13,EXT);
-  seaBridge={x0:0,x1:98*TILE,y:8*TILE,railY:5*TILE,hp:1800,mx:1800,fleetSunk:0,dead:false,fall:0,trainX:35*TILE,trainDir:1};
+  seaBridge={x0:0,x1:98*TILE,y:8*TILE,railY:5*TILE,hp:1800,mx:1800,fleetSunk:0,uboatsSunk:0,dead:false,fall:0,trainX:35*TILE,trainDir:1};
   fill(0,4,97,10,EXT);
   for(var i=0;i<3;i++)motorcade.push({i:i,x:(35+i*18)*TILE,y:8.5*TILE,ang:0,hp:420,mx:420,patrolTank:true,bridgeTank:true,dir:i%2?-1:1,gunCD:2,turret:0,trackPhase:0,dead:0,hurt:0});
   [29,48,67,82].forEach(function(x){aaGuns.push({x:x*TILE,y:10.5*TILE,tower:true,bridgeAA:true,hp:200,mx:200,ang:1.57,cd:1,burst:0,spin:0,hurt:0});});
@@ -7701,7 +7698,72 @@ function buildSeaExpansion(){
     if(S.lander)S.launchDelay=30+landingIndex++*35;
     prepareSeaRoute(S);
   });
+  ships.forEach(function(S){placeBoatClear(S);});
+  seedEnemyUboats();
 }
+// Oriented hull separation; navigation still plans against static land only.
+function boatOverlap(A,x,y,a,B){
+  var al=(A.len||28)*.5+3,aw=(A.wid||16)*.5+3,bl=(B.len||102)*.5+3,bw=(B.wid||39)*.5+3;
+  var axes=[a,a+Math.PI/2,B.ang,B.ang+Math.PI/2],dx=B.x-x,dy=B.y-y;
+  for(var i=0;i<4;i++){
+    var q=axes[i],distance=Math.abs(dx*Math.cos(q)+dy*Math.sin(q));
+    var ra=al*Math.abs(Math.cos(q-a))+aw*Math.abs(Math.sin(q-a));
+    var rb=bl*Math.abs(Math.cos(q-B.ang))+bw*Math.abs(Math.sin(q-B.ang));
+    if(distance>=ra+rb)return false;
+  }
+  return true;
+}
+function boatTrafficClear(S,x,y,a){
+  for(var i=0;i<ships.length;i++)if(ships[i]!==S&&boatOverlap(S,x,y,a,ships[i]))return false;
+  if(gunboat&&gunboat!==S&&boatOverlap(S,x,y,a,gunboat))return false;
+  if(drone&&drone!==S&&drone.kind==='usv'&&boatOverlap(S,x,y,a,{x:drone.x,y:drone.y,ang:drone.ang,len:28,wid:16}))return false;
+  return true;
+}
+function movePlayerBoat(B,len,wid,dt,impact){
+  B.len=len;B.wid=wid;B.contactShip=null;
+  // Steering may have rotated the drone into sand before translation. Preserve a
+  // valid water heading, then slide along the free axis without adding rebound.
+  var old=B.waterAng===undefined?B.ang:B.waterAng;
+  var desired=Math.hypot(B.vx,B.vy)>2?Math.atan2(B.vy,B.vx):old;
+  var angle=seaRoom(B,B.x,B.y,desired)&&boatTrafficClear(B,B.x,B.y,desired)?desired:old;
+  if(!seaRoom(B,B.x,B.y,angle)){for(var turn=0;turn<16;turn++){var trial=turn*Math.PI/8;if(seaRoom(B,B.x,B.y,trial)&&boatTrafficClear(B,B.x,B.y,trial)){angle=trial;break;}}}
+  B.ang=angle;
+  var steps=Math.max(1,Math.ceil(Math.hypot(B.vx,B.vy)*dt/6));
+  for(var n=0;n<steps;n++){
+    var dx=B.vx*dt/steps,dy=B.vy*dt/steps;
+    for(var axis=0;axis<2;axis++){
+      var x=B.x+(axis===0?dx:0),y=B.y+(axis===1?dy:0);
+      if(!seaRoom(B,x,y,angle)){if(axis===0)B.vx=0;else B.vy=0;continue;}
+      if(!boatTrafficClear(B,x,y,angle)){
+        if(impact){for(var hit=0;hit<ships.length;hit++)if(ships[hit].hp>0&&boatOverlap(B,x,y,angle,ships[hit])){B.contactShip=ships[hit];B.waterAng=angle;return;}}
+        if(axis===0)B.vx=0;else B.vy=0;continue;
+      }
+      B.x=x;B.y=y;
+    }
+  }
+  B.waterAng=angle;
+}
+function placeBoatClear(S){
+  if(seaRoom(S,S.x,S.y,S.ang)&&boatTrafficClear(S,S.x,S.y,S.ang))return true;
+  var best=null,distance=Infinity,cols=Math.floor(MW/2),rows=Math.floor(MH/2);
+  for(var y=0;y<rows;y++)for(var x=0;x<cols;x++){
+    if(S.nav&&!S.nav.clear[y*cols+x])continue;
+    var wx=(x*2+1)*TILE,wy=(y*2+1)*TILE,d=Math.hypot(wx-S.x,wy-S.y);
+    if(d<distance&&seaRoom(S,wx,wy,S.ang)&&boatTrafficClear(S,wx,wy,S.ang)){distance=d;best={x:wx,y:wy};}
+  }
+  if(!best)return false;S.x=best.x;S.y=best.y;S.navPath=null;return true;
+}
+function seedEnemyUboats(){
+  for(var i=0;i<10;i++){
+    var U={uboat:true,i:100+i,name:'PATROL U-BOAT '+(i+1),hp:120,mx:120,len:76,wid:25,
+      x:(44+i%5*10)*TILE,y:(27+Math.floor(i/5)*25)*TILE,ang:0,spd:88,
+      lane:[[42,24],[87,24],[87,66],[42,66]],wp:i%4,aa:2,gun:1+i*.2,sam:999,msl:999,hurt:0,wake:0,sink:0};
+    prepareSeaRoute(U);
+    placeBoatClear(U);
+    ships.push(U);
+  }
+}
+
 function seaHullDistance(S,x,y){
   var ca=Math.cos(S.ang),sa=Math.sin(S.ang),dx=x-S.x,dy=y-S.y;
   return Math.hypot(Math.max(0,Math.abs(dx*ca+dy*sa)-S.len*.5),Math.max(0,Math.abs(-dx*sa+dy*ca)-S.wid*.5));
@@ -7742,10 +7804,18 @@ function moveSeaShip(S,dt,tx,ty){
   if(!P){S.navPath=null;return true;}
   var dx=P.x-S.x,dy=P.y-S.y,d=Math.hypot(dx,dy),a=Math.atan2(dy,dx),step=Math.min(d,S.spd*dt);
   var turn=((a-S.ang+Math.PI*3)%(Math.PI*2))-Math.PI;
-  S.ang+=Math.max(-1.1*dt,Math.min(1.1*dt,turn));
+  var heading=S.ang+Math.max(-1.1*dt,Math.min(1.1*dt,turn));
+  if(boatTrafficClear(S,S.x,S.y,heading))S.ang=heading;
   var nx=S.x+dx/d*step,ny=S.y+dy/d*step;
   // Centre-line waypoints have clearance for the hull at every heading.
-  if(seaRoom(S,nx,ny,S.ang)){S.x=nx;S.y=ny;}
+  if(seaRoom(S,nx,ny,S.ang)&&boatTrafficClear(S,nx,ny,S.ang)){S.x=nx;S.y=ny;S.blocked=0;}
+  else {
+    S.blocked=(S.blocked||0)+dt;
+    // Yield sideways into clear water; never pass through another hull.
+    for(var side=1;side>=-1;side-=2){var sx=S.x-dy/d*step*side,sy=S.y+dx/d*step*side;
+      if(seaRoom(S,sx,sy,S.ang)&&boatTrafficClear(S,sx,sy,S.ang)){S.x=sx;S.y=sy;break;}}
+    if(S.blocked>3){S.navPath=null;S.blocked=0;}
+  }
   return false;
 }
 function damageSeaBridge(x,y,damage,heavy){
@@ -7760,11 +7830,13 @@ function damageSeaBridge(x,y,damage,heavy){
   motorcade.forEach(function(t){if(t.bridgeTank&&!t.dead){t.hp=0;t.dead=1;t.bridgeFall=true;for(var k=0;k<9;k++)launchPart(t.x,t.y,'debris',null,null,rr(0,6.3),rr(1,2));}});
   for(var b=0;b<18;b++){
     var xx=B.x0+(B.x1-B.x0)*b/17;
-    fx.push({t:'boom',x:xx,y:B.y,life:1.5,max:1.5,r:B.trainBlast?180:90});
+    fx.push({t:'boom',x:xx,y:B.y,life:2.2,max:2.2,r:B.trainBlast?320:230});
+    if(b%3===0)fx.push({t:'depotCloud',x:xx,y:B.y,life:7,max:7});
+    for(var spark=0;spark<8&&embers.length<260;spark++)embers.push({x:xx,y:B.y,vx:rr(-150,150),vy:-rr(90,240),life:rr(1,3),max:3});
     wakes.push({x:xx,y:B.y,a:0,life:5,max:5,w:70});
     for(var k=0;k<6;k++)launchPart(xx,B.y,'debris',null,null,rr(0,6.3),rr(1,2.8));
   }
-  if(B.trainBlast)for(var j=0;j<65;j++)plume.push({x:B.trainX+rr(-180,180),y:B.railY+rr(-30,30),vx:rr(-85,85),vy:-rr(60,150),life:6,max:6,s:rr(25,60),hot:1,oil:1});
+  for(var j=0;j<65&&plume.length<300;j++)plume.push({x:B.trainX+rr(-180,180),y:B.railY+rr(-30,30),vx:rr(-85,85),vy:-rr(60,150),life:6,max:6,s:rr(25,60),hot:1,oil:1});
   if(!piloting&&!aboard&&player.x>B.x0&&player.x<B.x1&&player.y>4*TILE&&player.y<11*TILE)downPlayer();
   shake=Math.max(shake,B.trainBlast?38:24);sfx('boom');sfx('boom',.7);
   droneCam={x:B.trainBlast?B.trainX:(B.x0+B.x1)/2,y:B.y,t:10};
@@ -7779,7 +7851,7 @@ function sinkPlayerGunboat(){
 }
 function updateSeaExpansion(dt){
   if(mapKind!=='sea')return;
-  if(gunboatRespawn>0){gunboatRespawn-=dt;if(gunboatRespawn<=0){gunboat={x:32*TILE,y:jetty.y,ang:0,vx:0,vy:0,hp:340,mx:340,cd:0,turret:0,wake:0,hurt:0};banner('GUNBOAT READY','REPLACEMENT AT THE DOCK',2);}}
+  if(gunboatRespawn>0){gunboatRespawn-=dt;if(gunboatRespawn<=0){gunboat={x:32*TILE,y:jetty.y,ang:0,vx:0,vy:0,hp:340,mx:340,cd:0,turret:0,wake:0,hurt:0,len:102,wid:39};placeBoatClear(gunboat);banner('GUNBOAT READY','REPLACEMENT AT THE DOCK',2);}}
   var B=seaBridge;
   if(B){
     if(B.dead)B.fall=Math.max(0,B.fall-dt);
@@ -7787,7 +7859,7 @@ function updateSeaExpansion(dt){
     updatePatrolTanks(dt);
   }
   seaWrecks.forEach(function(w){w.t+=dt;});seaWrecks=seaWrecks.filter(function(w){return w.t<12;});
-  seaSharks.forEach(function(sh){sh.t+=dt;sh.a+=dt*.35;});seaSharks=seaSharks.filter(function(sh){return sh.t<110;});
+  updateSeaSharks(dt);
   seaGulls.forEach(function(g){
     if(g.dead)return;
     var phase=now*(.13+hs(g.i*7)*.08)+g.i*2.4;
@@ -7799,6 +7871,28 @@ function updateSeaExpansion(dt){
     }
   });
 }
+function updateSeaSharks(dt){
+  seaSharks.forEach(function(sh){
+    sh.t+=dt;
+    if(sh.attack&&!sh.target&&sh.ship)sh.target=floaters.find(function(f){return f.ship===sh.ship&&!f.part&&f.t<30;});
+    if(sh.t>=3&&sh.target&&sh.target.t<120){
+      var dx=sh.target.x-sh.x,dy=sh.target.y-sh.y,d=Math.hypot(dx,dy),step=Math.min(d,65*dt);
+      sh.a=Math.atan2(dy,dx)-Math.PI/2;
+      if(d<12){sh.target.t=121;sh.attack=false;sh.target=null;wakes.push({x:sh.x,y:sh.y,a:0,life:2,max:2,w:28});}
+      else if(isWater(sh.x+dx/d*step,sh.y+dy/d*step)){sh.x+=dx/d*step;sh.y+=dy/d*step;}
+    }else{sh.a+=dt*.35;var x=sh.x+Math.cos(sh.a)*28*dt,y=sh.y+Math.sin(sh.a)*28*dt;if(isWater(x,y)){sh.x=x;sh.y=y;}else sh.a+=Math.PI*.5;}
+  });
+  seaSharks=seaSharks.filter(function(sh){return sh.t<110;});
+}
+function drawEnemyUboat(c,S){
+  c.save();c.translate(S.x,S.y);c.rotate(S.ang);c.globalAlpha=S.sink>0?Math.max(.1,S.sink/6):1;
+  c.fillStyle='#24393c';c.beginPath();c.ellipse(0,0,38,12,0,0,Math.PI*2);c.fill();outl(c,'#0c2128',2);
+  gearBox(c,-17,-7,33,14,'#536564','#202f30',5);gearBox(c,-7,-5,13,10,'#71827b','#273b3e',3);
+  gearLine(c,-2,0,-2,-15,'#a4afa1',2);gearLine(c,-2,-15,4,-15,'#a4afa1',2);
+  gearLine(c,14,0,32,0,'#111f25',4);gearLine(c,-29,-12,-29,12,'#607473',3);
+  c.fillStyle='#b33c2d';c.fillRect(-17,-2,5,4);c.restore();
+}
+
 function drawSeaExpansion(c){
   if(mapKind!=='sea')return;
   var B=seaBridge;if(!B)return;
@@ -7886,7 +7980,7 @@ function drawSeaExpansion(c){
     var fade=Math.max(0,1-w.t/12);c.save();c.translate(w.x,w.y);c.rotate(w.a);c.globalAlpha=fade;
     for(var half=-1;half<=1;half+=2){c.save();c.translate(half*(w.len*.24+w.t*3),w.t*2);c.rotate(half*w.t*.025);gearPoly(c,[[-w.len*.23,-w.wid*.4],[w.len*.2,-w.wid*.3],[w.len*.23,0],[w.len*.12,w.wid*.4],[-w.len*.22,w.wid*.3]],'#354b50');gearLine(c,-w.len*.15,0,w.len*.13,0,'#788980',3);c.restore();}c.restore();
   });
-  seaSharks.forEach(function(sh){if(sh.t<3)return;var x=sh.x+Math.cos(sh.a)*85,y=sh.y+Math.sin(sh.a)*55;if(!isWater(x,y))return;c.save();c.translate(x,y);c.rotate(sh.a+Math.PI/2);c.strokeStyle='rgba(210,234,233,.4)';c.lineWidth=1;c.beginPath();c.moveTo(-6,3);c.lineTo(-18,20);c.moveTo(6,3);c.lineTo(18,20);c.stroke();gearPoly(c,[[-7,4],[0,-17],[4,-7],[9,5]],'#35494d');c.restore();});
+  seaSharks.forEach(function(sh){if(sh.t<3)return;var x=sh.x,y=sh.y;if(!isWater(x,y))return;c.save();c.translate(x,y);c.rotate(sh.a+Math.PI/2);c.strokeStyle='rgba(210,234,233,.4)';c.lineWidth=1;c.beginPath();c.moveTo(-6,3);c.lineTo(-18,20);c.moveTo(6,3);c.lineTo(18,20);c.stroke();gearPoly(c,[[-7,4],[0,-17],[4,-7],[9,5]],'#35494d');c.restore();});
   c.restore();
 }
 
@@ -7911,9 +8005,10 @@ function shipHit(S,dmg,ang){
   }
   if(S.hp<=0&&!S.sink){
     S.sink=6; S.hp=0; if(COMMANDER_ENABLED&&S.squadId!==undefined) cmdCheckShipWipe(S.squadId);
-    if(seaBridge&&!S.boss3)seaBridge.fleetSunk++;
+    if(seaBridge&&!S.boss3&&!S.uboat)seaBridge.fleetSunk++;
+    if(seaBridge&&S.uboat)seaBridge.uboatsSunk=(seaBridge.uboatsSunk||0)+1;
     seaWrecks.push({x:S.x,y:S.y,a:S.ang,len:S.len,wid:S.wid,t:0});
-    seaSharks.push({x:S.x,y:S.y,a:0,t:0}); S.blast=0; S.pops=ri(5,8);
+    if(!S.uboat)seaSharks.push({x:S.x,y:S.y,a:0,t:0,ship:S,attack:Math.random()<.05}); S.blast=0; S.pops=ri(5,8);
     // the first detonation, right through the hull
     explode(S.x,S.y,210,10,true);
     explode(S.x+Math.cos(S.ang)*S.len*.3,S.y+Math.sin(S.ang)*S.len*.3,150,10,true);
@@ -7954,7 +8049,7 @@ function spawnSeaBoss(){
   for(var sr3=0;sr3<30&&!seaRoom(boss,boss.x,boss.y,boss.ang);sr3++){
     var pos=waterNear((58+sr3%5*7)*TILE,(8+Math.floor(sr3/5)*8)*TILE); boss.x=pos.x; boss.y=pos.y;
   }
-  prepareSeaRoute(boss);ships.push(boss);
+  prepareSeaRoute(boss);placeBoatClear(boss);ships.push(boss);
   banner('ALEKSANDR MOISEYEV','COMMAND SHIP INBOUND · GUNS BLAZING',3.2);
   hud();
 }
@@ -7963,9 +8058,7 @@ function showSeaBossClear(){
   seaBossDefeated=1;
   checkObjMilestones();
   banner('LEVEL THREE CLEAR','ALEKSANDR MOISEYEV DEFEATED',3);
-  setTimeout(function(){ var c=document.getElementById('seaBossVictory'); state='pause'; if(c) c.classList.add('show'); sfx('clear'); },1450);
-  setTimeout(function(){ var c=document.getElementById('seaBossVictory'); if(c) c.classList.remove('show'); },5100);
-  setTimeout(showLevelSolvedScreen,5300);
+  setTimeout(function(){if(level===3&&seaBossDefeated&&!player.dead)showLevelSolvedScreen();},1450);
 }
 function updateShips(dt){
   seaBaseSalvoCooldown=Math.max(0,seaBaseSalvoCooldown-dt);
@@ -7976,9 +8069,9 @@ function updateShips(dt){
     if(S.sink>0){
       S.sink-=dt; S.hurt=0;
       var dx7=S.x+Math.cos(S.ang)*10*dt, dy7=S.y+Math.sin(S.ang)*10*dt;
-      if(seaRoom(S,dx7,dy7,S.ang)){ S.x=dx7; S.y=dy7; }
+      if(seaRoom(S,dx7,dy7,S.ang)&&boatTrafficClear(S,dx7,dy7,S.ang)){ S.x=dx7; S.y=dy7; }
       var na9=S.ang+dt*.06;
-      if(seaRoom(S,S.x,S.y,na9)) S.ang=na9;
+      if(seaRoom(S,S.x,S.y,na9)&&boatTrafficClear(S,S.x,S.y,na9)) S.ang=na9;
       // magazines cooking off as she settles
       S.blast=(S.blast||0)-dt;
       if(S.blast<=0&&S.pops>0){
@@ -8002,14 +8095,14 @@ function updateShips(dt){
       if(S.dumped===undefined) S.dumped=0;
       if(S.dumped<1&&S.sink<4.5){                      // her people go over the side
         S.dumped=1;
-        var crewN=ri(7,13);
+        var crewN=S.uboat?2:ri(7,13);
         for(var fl=0;fl<crewN;fl++){
           var fa=rr(0,6.283), fd=rr(10,S.len*.55);
           floaters.push({x:S.x+Math.cos(fa)*fd,y:S.y+Math.sin(fa)*fd*.7,
             vx:Math.cos(fa)*rr(6,26),vy:Math.sin(fa)*rr(4,18),
             rot:rr(0,6.283),spin:rr(-.5,.5),bob:rr(0,6.283),
             col:pick(['#5b6146','#6b6d4c','#4c563f','#565a4a']),
-            face:fl%2===0,pose:fl%4, t:0});
+            face:fl%2===0,pose:fl%4,ship:S,burning:!S.uboat&&fl%4===0,part:!S.uboat&&fl%5===0,struggle:!S.uboat&&fl%5!==0, t:0});
         }
       }
       if(S.sink<=0){
@@ -8032,7 +8125,7 @@ function updateShips(dt){
         var arrived=moveSeaShip(S,dt,S.landX,S.landY);
         S.wake+=dt;
         if(S.wake>.18){S.wake=0;wakes.push({x:S.x-Math.cos(S.ang)*S.len*.4,y:S.y-Math.sin(S.ang)*S.len*.4,a:S.ang,life:2.4,max:2.4,w:S.wid*.5});}
-        if(arrived){S.ang=Math.atan2(S.shoreY-S.y,S.shoreX-S.x);S.rampLength=Math.hypot(S.shoreX-S.x,S.shoreY-S.y)-S.len*.38+12;S.landed=1;S.deployT=.8;banner('ENEMY LANDING','TROOPS COMING ASHORE',2.4);}
+        if(arrived){var landingAngle=Math.atan2(S.shoreY-S.y,S.shoreX-S.x);if(seaRoom(S,S.x,S.y,landingAngle)&&boatTrafficClear(S,S.x,S.y,landingAngle))S.ang=landingAngle;S.rampLength=Math.hypot(S.shoreX-S.x,S.shoreY-S.y)-S.len*.38+12;S.landed=1;S.deployT=.8;banner('ENEMY LANDING','TROOPS COMING ASHORE',2.4);}
       } else if(S.deployed<6){
         S.deployT-=dt;
         if(S.deployT<=0){
@@ -8058,9 +8151,9 @@ function updateShips(dt){
       var gdd=Math.hypot(gunboat.x-S.x,gunboat.y-S.y);
       if(gdd<(S.boss3?620:420)&&S.gun<=0){ S.gun=S.boss3?.38:rr(.6,1.1); shipFireAA(S,gunboat.x,gunboat.y,1.4); }
     }
-    if(S.boss3&&!aboard&&!player.dead){
+    if((S.boss3||S.uboat)&&!aboard&&!player.dead){
       var pdd=Math.hypot(player.x-S.x,player.y-S.y);
-      if(pdd<720&&S.gun<=0){ S.gun=.22; shipFireAA(S,player.x,player.y,1.25); }
+      if(pdd<(S.uboat?520:720)&&S.gun<=0){ S.gun=S.uboat?1.1:.22; shipFireAA(S,player.x,player.y,1.25); }
     }
     if(drone&&piloting){
       var dd=Math.hypot(drone.x-S.x,drone.y-S.y);
@@ -8083,7 +8176,7 @@ function updateShips(dt){
     }
     // missiles at our base
     S.msl-=dt;
-    if(S.msl<=0&&baseHP>0&&seaBaseSalvoCooldown<=0){
+    if(!S.uboat&&S.msl<=0&&baseHP>0&&seaBaseSalvoCooldown<=0){
       var hurt2=(S.hp<S.mx*.4);                       // a wounded ship shoots off everything it has
       S.msl=S.boss3?rr(30,40):rr(55,75);
       seaBaseSalvoCooldown=S.boss3?18:14;
@@ -12460,24 +12553,7 @@ function draw(){
       ctx.globalAlpha=k*.7; ctx.strokeStyle='#e8dcc0'; ctx.lineWidth=2;
       ctx.beginPath(); ctx.arc(F.x,F.y,(1-k)*26,0,6.3); ctx.stroke(); ctx.globalAlpha=1;
     } else if(F.t==='depotCloud'){
-      var age=1-k,rise=Math.min(1,age*2.5);
-      ctx.save();ctx.globalAlpha=Math.min(1,k*2.8);
-      // Uneven rising lobes form a towering fireball and mushroom cloud.
-      for(var lobe=0;lobe<42;lobe++){
-        var crown=lobe>13,spread=crown?110:26;
-        var cx=F.x+(hs(lobe*31+7)-.5)*spread*(.4+rise*1.6);
-        var cy=F.y-(crown?110+hs(lobe*19)*50:hs(lobe*17)*125)*rise;
-        var radius=(crown?22:14)+hs(lobe*11+5)*25;
-        ctx.fillStyle=age<.24?(lobe%3?'#ffab38':'#fff0b0'):(lobe%3?'#655e51':'#92816a');
-        ctx.beginPath();
-        for(var edge=0;edge<12;edge++){
-          var angle=edge/12*6.283,rrr=radius*(.72+hs(lobe*97+edge*13)*.38)*(.4+rise);
-          var vx=cx+Math.cos(angle)*rrr,vy=cy+Math.sin(angle)*rrr*.7;
-          if(edge===0)ctx.moveTo(vx,vy);else ctx.lineTo(vx,vy);
-        }
-        ctx.closePath();ctx.fill();
-      }
-      ctx.restore();
+      drawDepotSmoke(ctx,F,k);
     } else if(F.t==='miniNuke'){
       var np=1-k,nRise=Math.min(1,np*1.8),nFade=Math.min(1,k*1.7);
       ctx.save(); ctx.globalAlpha=nFade;
@@ -12964,6 +13040,10 @@ function draw(){
     var lift=Math.sin(FO.bob)*1.6, fade=Math.min(1,(120-FO.t)/12);
     ctx.save(); ctx.translate(FO.x,FO.y+lift); ctx.rotate(FO.rot);
     ctx.globalAlpha=.9*fade;
+    if(FO.part){
+      gearLine(ctx,-8,0,6,3,FO.col,6);gearBox(ctx,4,0,7,5,'#252c26','#15201c',1);ctx.restore();continue;
+    }
+    var struggle=FO.struggle&&FO.t<22?Math.sin(FO.t*9+FO.bob)*5:0;
     var pose=FO.pose||0;
     ctx.fillStyle='rgba(10,26,34,.3)';ctx.beginPath();ctx.ellipse(-2,2,26,12,0,0,6.3);ctx.fill();
     // Normal infantry proportions: boots, separate legs, armored torso and helmet.
@@ -12972,7 +13052,7 @@ function draw(){
       gearLine(ctx,-7,side*4,kneeX,kneeY,shade(FO.col,.8),7);
       gearLine(ctx,kneeX,kneeY,-25+(pose===2?5:0),side*(pose===3?10:6),FO.col,6);
       gearBox(ctx,-28+(pose===2?5:0),side*(pose===3?10:6)-3,7,6,'#28302b','#141d19',2);
-      var elbowX=pose===3?15:3,elbowY=side*(pose===0?15:10);
+      var elbowX=pose===3?15:3,elbowY=side*((pose===0?15:10)+struggle);
       gearLine(ctx,6,side*7,elbowX,elbowY,FO.col,6);
       gearLine(ctx,elbowX,elbowY,pose===1?-5:14,side*(pose===0?19:pose===3?6:13),shade(FO.col,.9),5);
       ctx.fillStyle=SKIN;ctx.beginPath();ctx.arc(pose===1?-5:14,side*(pose===0?19:pose===3?6:13),2.5,0,6.3);ctx.fill();
@@ -12986,6 +13066,13 @@ function draw(){
       gearLine(ctx,21,-3,23,-1,'#342c23',1);gearLine(ctx,21,3,23,1,'#342c23',1);
     }
     ctx.restore();
+    if(FO.burning&&FO.t<8)drawFire(ctx,{x:FO.x,y:FO.y,r:8,p:now*3,style:0});
+    if(FO.struggle&&FO.t<22){
+      ctx.strokeStyle='rgba(221,242,245,.65)';ctx.lineWidth=1.5;
+      for(var splash=0;splash<5;splash++){var phase=(FO.t*1.7+splash*.2)%1,angle=splash*1.7+FO.rot;
+        var sx=FO.x+Math.cos(angle)*(10+phase*23),sy=FO.y+Math.sin(angle)*(6+phase*12);
+        ctx.beginPath();ctx.moveTo(sx,sy);ctx.lineTo(sx+2,sy-Math.sin(phase*Math.PI)*9);ctx.stroke();}
+    }
     ctx.strokeStyle='rgba(205,229,233,'+(.22*fade)+')';ctx.lineWidth=1;
     ctx.beginPath();ctx.ellipse(FO.x,FO.y+lift+2,32+Math.sin(FO.bob)*2,16,FO.rot,0,6.3);ctx.stroke();
     ctx.globalAlpha=1;
@@ -13009,6 +13096,7 @@ function draw(){
   for(var sq4=0;sq4<ships.length;sq4++){
     var SP2=ships[sq4];
     if(SP2.x<cam.x-260||SP2.x>cam.x+VW+260||SP2.y<cam.y-260||SP2.y>cam.y+VH+260) continue;
+    if(SP2.uboat){drawEnemyUboat(ctx,SP2);continue;}
     var L2=SP2.len, W2=SP2.wid, sinkK=SP2.sink>0?Math.min(1,SP2.sink/6):1;
     ctx.save(); ctx.translate(SP2.x,SP2.y); ctx.rotate(SP2.ang);
     if(SP2.sink>0){ ctx.globalAlpha=Math.max(.05,sinkK*.7); ctx.scale(.75+sinkK*.25,.75+sinkK*.25); }
@@ -13615,7 +13703,7 @@ function missionObjectives(){
     objs.push({t:'DEFEAT THE OIL BARON',                             done:!!oilBossDefeated});
   } else if(mapKind==='sea'){
     var afloat=0; for(var sq6=0;sq6<ships.length;sq6++) if(ships[sq6].hp>0) afloat++;
-    objs.push({t:'SINK THE FLEET ('+(seaBridge?seaBridge.fleetSunk:0)+'/7)',done:!!seaBridge&&seaBridge.fleetSunk>=7});
+    objs.push({t:'SINK THE FLEET ('+(seaBridge?seaBridge.fleetSunk:0)+'/7) · U-BOATS ('+(seaBridge?seaBridge.uboatsSunk||0:0)+'/10)',done:!!seaBridge&&seaBridge.fleetSunk>=7&&seaBridge.uboatsSunk>=10});
     objs.push({t:'ELIMINATE SHORE TROOPS',                           done:!!seaBridge&&seaBridge.fleetSunk>=7&&enemies.length===0});
     objs.push({t:'DESTROY KERCH ROAD / RAIL BRIDGE',done:!!(seaBridge&&seaBridge.dead)});
     objs.push({t:'DESTROY THE SEA BOSS',                             done:!!seaBossDefeated});
@@ -14345,6 +14433,40 @@ function drawPadBay(P,col,label,cd,icon){
   ctx.fillText(live?'STAND IN THE BAY':'',P.x,y+h+10);
   ctx.textAlign='start';
 }
+// Cache diffuse soot fragments once; no per-frame canvases or hard circular crown.
+var depotSootArt=null;
+function drawDepotSmoke(c,F,k){
+  if(!depotSootArt){
+    depotSootArt=[];
+    for(var variant=0;variant<4;variant++){
+      var art=document.createElement('canvas');art.width=128;art.height=128;
+      var paint=art.getContext('2d');
+      for(var tuft=0;tuft<22;tuft++){
+        var seed=variant*173+tuft*37;
+        var px=20+hs(seed+1)*88,py=25+hs(seed+2)*78,r=9+hs(seed+3)*24;
+        var soot=paint.createRadialGradient(px,py,0,px,py,r);
+        var tone=variant%2?'66,62,56':'35,37,36';
+        soot.addColorStop(0,'rgba('+tone+',.35)');soot.addColorStop(.4,'rgba('+tone+',.22)');soot.addColorStop(1,'rgba('+tone+',0)');
+        paint.fillStyle=soot;paint.fillRect(px-r,py-r,r*2,r*2);
+      }
+      depotSootArt.push(art);
+    }
+  }
+  var age=(1-k)*F.max,fade=Math.min(1,age*5)*Math.min(1,k*2.2);
+  c.save();
+  for(var wisp=0;wisp<38;wisp++){
+    var seed=wisp*43+F.x*.07+F.y*.11,delay=hs(seed)*.75;
+    var t=Math.max(0,age-delay),speed=25+hs(seed+2)*44;
+    var x=F.x+(hs(seed+3)-.5)*150+t*(12+hs(seed+4)*18)+Math.sin(t*1.2+seed)*t*4;
+    var y=F.y+(hs(seed+5)-.5)*60-t*speed;
+    var size=(24+hs(seed+6)*43)*(1+t*.28);
+    c.globalAlpha=fade*Math.min(1,t*4)*(.45+hs(seed+7)*.45);
+    c.save();c.translate(x,y);c.rotate(hs(seed+8)*3+Math.sin(t*.5+seed)*.18);
+    c.drawImage(depotSootArt[wisp%4],-size*.65,-size*.5,size*1.3,size);c.restore();
+  }
+  c.restore();
+}
+
 var smokeWispArt=null;
 function drawSmokeScreen(c,S){
   if(!smokeWispArt){
@@ -14399,59 +14521,27 @@ function drawFire(c,f){
   }
   // charred debris at the base
   c.fillStyle='rgba(24,18,14,.85)'; c.beginPath(); c.ellipse(0,0,base*.9,base*.42,0,0,6.3); c.fill();
-  var cols=['rgba(196,44,22,.80)','rgba(248,124,32,.88)','rgba(255,206,104,.95)','rgba(255,246,206,.9)'];
-  if(f.style===undefined) f.style=ri(0,2);
-  if(f.style===1){
-    // Twin flames — a paired campfire look instead of one tall tongue.
-    for(var side=-1;side<=1;side+=2){
-      for(var i1=0;i1<4;i1++){
-        var w1=base*(.55-i1*.11), h1=base*(1.9-i1*.34), ox1=side*base*.42;
-        var wob1=Math.sin(k*(2.3+i1*.5)+i1*1.7+side)*base*.16, wob1b=Math.sin(k*3.4+i1+side)*base*.09;
-        c.fillStyle=cols[i1];
-        c.beginPath(); c.moveTo(ox1-w1,0);
-        c.quadraticCurveTo(ox1-w1*.85+wob1b,-h1*.5, ox1+wob1,-h1);
-        c.quadraticCurveTo(ox1+w1*.85+wob1b,-h1*.5, ox1+w1,0);
-        c.closePath(); c.fill();
-      }
-    }
-    for(var j1=0;j1<3;j1++){
-      var jside=j1===2?0:(j1===0?-1:1);
-      var ly1=-base*(1.8+Math.abs(Math.sin(k*1.7+j1*2.1))*.7), lw1=base*.16;
-      c.fillStyle='rgba(255,170,60,'+(.32+Math.sin(k*2.1+j1)*.2)+')';
-      c.beginPath(); c.ellipse(jside*base*.42+Math.sin(k*1.4+j1)*base*.3,ly1,lw1,lw1*1.8,0,0,6.3); c.fill();
-    }
-  } else if(f.style===2){
-    // Low, wide smolder — spread flicker rather than a tall flame.
-    for(var i2=0;i2<4;i2++){
-      var w2=base*(1.3-i2*.22), h2=base*(1.35-i2*.24);
-      var wob2b=Math.sin(k*(2.5+i2*.6)+i2*1.9)*base*.28;
-      c.fillStyle=cols[i2];
-      c.beginPath(); c.moveTo(-w2,0);
-      c.quadraticCurveTo(-w2*.7,-h2*.85, wob2b,-h2);
-      c.quadraticCurveTo(w2*.7,-h2*.85, w2,0);
-      c.closePath(); c.fill();
-    }
-    for(var j2=0;j2<3;j2++){
-      var ly2=-base*(1.2+Math.abs(Math.sin(k*2+j2*1.9))*.6), lw2=base*.22;
-      c.fillStyle='rgba(255,170,60,'+(.3+Math.sin(k*2.3+j2)*.2)+')';
-      c.beginPath(); c.ellipse(Math.sin(k*1.6+j2*1.3)*base*.55,ly2,lw2,lw2*1.5,0,0,6.3); c.fill();
-    }
-  } else {
-    // Original: a single tall tongue with licks breaking off the top.
-    for(var i=0;i<4;i++){
-      var w=base*(.95-i*.19), h=base*(2.5-i*.48);
-      var wob=Math.sin(k*(2.1+i*.5)+i*1.7)*base*.22, wob2=Math.sin(k*3.1+i)*base*.12;
-      c.fillStyle=cols[i];
-      c.beginPath(); c.moveTo(-w,0);
-      c.quadraticCurveTo(-w*.85+wob2,-h*.5, wob,-h);
-      c.quadraticCurveTo(w*.85+wob2,-h*.5, w,0);
-      c.closePath(); c.fill();
-    }
-    for(var j=0;j<2;j++){
-      var ly=-base*(2.3+Math.abs(Math.sin(k*1.6+j*2.2))*.8), lw=base*.2;
-      c.fillStyle='rgba(255,170,60,'+(.35+Math.sin(k*2+j)*.2)+')';
-      c.beginPath(); c.ellipse(Math.sin(k*1.3+j)*base*.4,ly,lw,lw*1.9,0,0,6.3); c.fill();
-    }
+  // Independent ribbons stretch, curl and tear away instead of nested flame icons.
+  var glow=c.createRadialGradient(0,-base*.25,0,0,-base*.25,base*1.7);
+  glow.addColorStop(0,'rgba(255,105,18,.25)');glow.addColorStop(1,'rgba(255,55,8,0)');
+  c.fillStyle=glow;c.fillRect(-base*1.7,-base*1.95,base*3.4,base*3.4);
+  for(var tongue=0;tongue<7;tongue++){
+    var seed=hs(f.x*.13+f.y*.17+tongue*29),phase=k*(2.8+seed*1.6)+tongue*2.4;
+    var root=(tongue/6-.5)*base*1.5;
+    var width=base*(.13+seed*.17),height=base*(.7+seed*1.65)*(1+Math.sin(phase)*.17+Math.sin(phase*2.3)*.08);
+    var lean=base*(.18+Math.sin(phase*.73)*.22),curl=Math.sin(phase*1.3)*base*.24;
+    var flame=c.createLinearGradient(root,0,root,-height);
+    flame.addColorStop(0,'rgba(255,244,171,.92)');flame.addColorStop(.22,'rgba(255,183,46,.88)');
+    flame.addColorStop(.58,'rgba(245,83,13,.72)');flame.addColorStop(1,'rgba(125,32,12,0)');
+    c.fillStyle=flame;c.beginPath();c.moveTo(root-width,base*.08);
+    c.bezierCurveTo(root-width*1.2,-height*.3,root+lean-curl-width,-height*.65,root+lean,-height);
+    c.bezierCurveTo(root+lean+curl+width*.35,-height*.63,root+width*.65,-height*.26,root+width,base*.08);
+    c.closePath();c.fill();
+    // Small detached streaks drift upward and cool, with staggered lifetimes.
+    var lift=(k*.23+seed)%1,alpha=Math.sin(lift*Math.PI)*.65;
+    c.strokeStyle='rgba(255,164,47,'+alpha+')';c.lineWidth=.7+seed;
+    c.beginPath();c.moveTo(root+lift*base*.55,-height*.6-lift*base*1.8);
+    c.lineTo(root+lift*base*.55+1,-height*.6-lift*base*1.8-2.5);c.stroke();
   }
   c.restore();
 }

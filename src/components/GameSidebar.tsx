@@ -458,7 +458,7 @@ export function GameSidebar({ game, user, hasPurchased, isAdmin = false, complet
 const OBJECTIVES: Record<number, string[]> = {
   1: ['Capture all three bases', 'Clear all hostiles', 'Destroy the enemy drone base', 'Defeat the compound boss'],
   2: ['Capture both enemy headquarters', 'Rescue the allied soldiers', 'Destroy both weapons depots', 'Defeat General Grakov'],
-  3: ['Sink all seven fleet ships', 'Eliminate shore troops', 'Destroy the Kerch road / rail bridge', 'Destroy the sea boss'],
+  3: ['Sink seven fleet ships and ten patrol U-boats', 'Eliminate shore troops', 'Destroy the Kerch road / rail bridge', 'Destroy the sea boss'],
   4: ['Destroy all six refineries', 'Neutralise SAM sites', 'Destroy all six patrol tanks', 'Defeat the Oil Baron'],
   5: ['Destroy all cargo planes', 'Repel both assault waves', 'Defeat the airfield commander'],
   6: ['Capture both flags and destroy the drone base', 'Defeat the final boss'],

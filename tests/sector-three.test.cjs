@@ -8,12 +8,12 @@ function setup(){
  for(const k of 'placeFires buildStatic initWallHP setupTruck hud banner sfx launchPart updatePatrolTanks dustPuff rebuildDroneBay explode'.split(' '))c[k]=()=>{};
  c.setMapSize=(w,h)=>{c.MW=w;c.MH=h;c.WW=w*34;c.WH=h*34;c.grid=new Uint8Array(w*h);};c.downPlayer=()=>{c.player.dead=true;};
  vm.createContext(c);
- for(const name of ['T','setT','fill','addProp','isWater','inBase','hs','waterNear','buildSea','buildSeaExpansion','seaRoom','prepareSeaRoute','planSeaRoute','moveSeaShip','seaHullDistance','damageSeaBridge','sinkPlayerGunboat','updateSeaExpansion','detonateSeaMine'])vm.runInContext(functions[name],c);
+ for(const name of ['T','setT','fill','addProp','isWater','inBase','hs','waterNear','buildSea','buildSeaExpansion','seaRoom','prepareSeaRoute','planSeaRoute','moveSeaShip','seaHullDistance','damageSeaBridge','sinkPlayerGunboat','updateSeaExpansion','detonateSeaMine','boatOverlap','boatTrafficClear','movePlayerBoat','seedEnemyUboats','updateSeaSharks','placeBoatClear'])vm.runInContext(functions[name],c);
  c.buildSea();return c;
 }
 test('enlarged fleet and both landing ships follow navigable water routes',()=>{
- const c=setup();assert.equal(c.ships.length,7);assert(c.seaMines.length>=65);assert.equal(c.seaGulls.length,42);assert.equal(c.motorcade.length,3);assert.equal(c.aaGuns.length,4);
- for(const S of c.ships){assert(c.seaRoom(S,S.x,S.y,S.ang),S.name+' initial clearance');const target=S.lander?[S.landX,S.landY]:[S.lane[S.wp][0]*34,S.lane[S.wp][1]*34];let arrived=false;for(let frame=0;frame<9000&&!arrived;frame++){arrived=c.moveSeaShip(S,.1,...target);assert(c.seaRoom(S,S.x,S.y,S.ang),S.name+' hit land');}assert(arrived,S.name+' never reached destination');}
+ const c=setup();assert.equal(c.ships.filter(s=>!s.uboat).length,7);assert.equal(c.ships.filter(s=>s.uboat).length,10);assert(c.seaMines.length>=65);assert.equal(c.seaGulls.length,42);assert.equal(c.motorcade.length,3);assert.equal(c.aaGuns.length,4);
+ const fleet=c.ships.slice();for(const S of fleet){c.ships=[S];assert(c.seaRoom(S,S.x,S.y,S.ang),S.name+' initial clearance');const target=S.lander?[S.landX,S.landY]:[S.lane[S.wp][0]*34,S.lane[S.wp][1]*34];let arrived=false;for(let frame=0;frame<9000&&!arrived;frame++){arrived=c.moveSeaShip(S,.1,...target);assert(c.seaRoom(S,S.x,S.y,S.ang),S.name+' hit land');}assert(arrived,S.name+' never reached destination');}
 });
 test('heavy-drone train hit collapses bridge; ordinary hits chip its health',()=>{
  const c=setup(),B=c.seaBridge;c.damageSeaBridge(B.trainX,B.railY,100,false);assert.equal(B.hp,1700);assert(!B.dead);c.damageSeaBridge(B.trainX,B.railY,100,true);assert(B.dead);assert(B.trainBlast);assert.equal(c.aaGuns.length,0);assert(c.motorcade.every(t=>t.dead));assert.equal(c.T(50,8),c.WATER);assert.equal(c.droneCam.t,10);
@@ -67,4 +67,64 @@ test('grenades and ordinary bullets remove sea mines',()=>{
  const start=source.indexOf('      for(var mi=seaMines.length-1;mi>=0;mi--){');
  const end=source.indexOf('      if(!bu)break;',start);
  vm.runInContext(source.slice(start,end),c);assert.equal(c.seaMines.length,0);assert.equal(c.bullets.length,0);
+});
+
+test('boats spawn apart and moving patrol hulls cannot overlap',()=>{
+ const c=setup();
+ for(let i=0;i<c.ships.length;i++)for(let j=i+1;j<c.ships.length;j++)assert(!c.boatOverlap(c.ships[i],c.ships[i].x,c.ships[i].y,c.ships[i].ang,c.ships[j]),'spawn overlap '+i+'/'+j);
+ const boats=c.ships.filter(s=>s.uboat).slice(0,2);c.ships=boats;
+ boats[0].x=1800;boats[0].y=1400;boats[0].ang=0;boats[1].x=1950;boats[1].y=1400;boats[1].ang=Math.PI;
+ for(let frame=0;frame<180;frame++){
+  for(const b of boats)c.moveSeaShip(b,.05,b===boats[0]?2200:1600,1400);
+  assert(!c.boatOverlap(boats[0],boats[0].x,boats[0].y,boats[0].ang,boats[1]));
+ }
+});
+test('USV slides along sand and can reverse without rebound or crossing land',()=>{
+ const c=setup();c.ships=[];c.gunboat=null;
+ const boat={x:40*34+12,y:40*34,ang:Math.PI/2,vx:-140,vy:100};
+ c.fill(0,0,39,c.MH-1,c.FLOOR);c.fill(40,0,c.MW-1,c.MH-1,c.WATER);
+ const before=boat.y;c.movePlayerBoat(boat,28,16,.2,false);
+ assert(boat.y>before);assert.equal(boat.vx,0);assert(c.seaRoom(boat,boat.x,boat.y,boat.ang));
+ boat.vx=140;boat.vy=0;const x=boat.x;c.movePlayerBoat(boat,28,16,.2,false);assert(boat.x>x);assert(c.seaRoom(boat,boat.x,boat.y,boat.ang));
+});
+test('gunboat cannot tunnel through another hull even at a long frame',()=>{
+ const c=setup();c.ships=[];const target={x:1800,y:1400,ang:0,len:76,wid:25,hp:100};c.ships=[target];
+ const boat={x:1600,y:1400,ang:0,vx:500,vy:0};c.gunboat=boat;c.movePlayerBoat(boat,102,39,1,false);
+ assert(boat.x<target.x);assert(!c.boatOverlap(boat,boat.x,boat.y,boat.ang,target));
+});
+test('sea boss goes directly to solved artwork with no legacy portrait',()=>{
+ const c=setup(),timers=[];let solved=0;c.checkObjMilestones=()=>{};c.setTimeout=fn=>timers.push(fn);c.showLevelSolvedScreen=()=>solved++;
+ c.document={getElementById(){throw Error('legacy boss artwork accessed');}};
+ vm.runInContext(functions.showSeaBossClear,c);c.showSeaBossClear();timers.forEach(fn=>fn());assert.equal(solved,1);
+});
+test('bridge destruction includes depot-scale smoke and large blasts',()=>{
+ const c=setup();c.damageSeaBridge(c.seaBridge.trainX,c.seaBridge.railY,1800,true);
+ assert(c.fx.filter(f=>f.t==='depotCloud').length>=6);assert(c.fx.some(f=>f.t==='boom'&&f.r>=300));
+});
+test('shark eats only its selected soldier and does not roll again every frame',()=>{
+ const c=setup(),ship={};const victim={x:1800,y:1400,t:0,ship,part:false};c.floaters=[victim];
+ c.seaSharks=[{x:1800,y:1400,t:4,a:0,ship,attack:true}];c.updateSeaSharks(.1);
+ assert.equal(victim.t,121);assert.equal(c.seaSharks[0].attack,false);assert.equal(c.wakes.at(-1).w,28);
+ const safe={x:1800,y:1400,t:0,ship,part:false};c.floaters=[safe];for(let i=0;i<100;i++)c.updateSeaSharks(.1);assert.equal(safe.t,0);
+});
+
+test('patrol U-boats fire at the player and count separately from the large fleet',()=>{
+ const c=setup(),U=c.ships.find(s=>s.uboat);c.ships=[U];c.COMMANDER_ENABLED=false;c.eb=[];c.fires=[];
+ for(const name of ['updateShips','shipFireAA','shipHit'])vm.runInContext(functions[name],c);
+ c.player.x=U.x+150;c.player.y=U.y;U.gun=0;c.updateShips(.1);assert(c.eb.length>0,'patrol should fire at nearby player');
+ c.shipHit(U,999);assert.equal(c.seaBridge.fleetSunk,0);assert.equal(c.seaBridge.uboatsSunk,1);assert.equal(c.seaSharks.length,0);
+});
+test('large shipwrecks roll once at the 5 percent boundary and release mixed survivors',()=>{
+ const c=setup();c.COMMANDER_ENABLED=false;c.eb=[];c.fires=[];c.Math=Object.create(Math);
+ for(const name of ['shipHit','updateShips','shipFireAA'])vm.runInContext(functions[name],c);
+ const first=c.ships[0],second=c.ships[1];c.Math.random=()=>.049;c.shipHit(first,9999);
+ assert.equal(c.seaSharks[0].attack,true);c.Math.random=()=>.05;c.shipHit(second,9999);assert.equal(c.seaSharks[1].attack,false);
+ c.ships=[first];c.updateShips(1.6);
+ assert(c.floaters.some(f=>f.struggle));assert(c.floaters.some(f=>f.burning&&!f.part));assert(c.floaters.some(f=>f.part));
+ const attack=c.seaSharks[0].attack;c.updateSeaSharks(.1);assert.equal(c.seaSharks[0].attack,attack);
+});
+test('sea drone contact is registered before it can cross an enemy hull',()=>{
+ const c=setup(),S={x:1800,y:1400,ang:0,len:76,wid:25,hp:120};c.ships=[S];c.gunboat=null;
+ const D={x:1700,y:1400,ang:0,vx:400,vy:0,kind:'usv'};c.drone=D;c.movePlayerBoat(D,28,16,.5,true);
+ assert.equal(D.contactShip,S);assert(!c.boatOverlap(D,D.x,D.y,D.ang,S));
 });
