@@ -65,7 +65,7 @@ var BASE={x0:55.5,y0:2.2,x1:67.8,y1:13.6}, wave=0, dronePad=null, droneCD=0, tan
 var flag=null, baseFlags=[], crew=[], civs=[], civT=4, shopPad=null, shopCD=0, bought={}, upgAP=60, upgHP=100;
 var baseGuards=[];
 var startCoins=0; // set from ?coins= URL param; applied at every level reset
-var belt=[], drops=[], twitchers=[], money=0, sentries=[], strikes=[], smokes=[], drone=null, piloting=false, fx2=[];
+var belt=[], beltSeeded=false, drops=[], twitchers=[], money=0, sentries=[], strikes=[], smokes=[], drone=null, piloting=false, fx2=[];
 var fires=[], plume=[], embers=[], motes=[], flares=[], chunks=[], mist=[], splat=[], pools=[], arty={t:5,flash:0}, wind=14, now=0;
 var corpses=[], crawlers=[], sunflowers=[];
 var medStation=null;
@@ -14539,7 +14539,7 @@ function beginLevelFromIntro(level){
   if(levelIntroActive!==level) return;
   levelIntroActive=0; clearTimeout(levelIntroTimer);
   var intro=document.getElementById(levelIntroIds[level]);
-  totalKills=0; timeAlive=0; belt=level===1?[]:['drone','med']; money=startCoins; bought={}; upgAP=60; upgHP=100; squadLost=0;
+  totalKills=0; timeAlive=0; if(!beltSeeded) belt=level===1?[]:['drone','med']; beltSeeded=false; money=startCoins; bought={}; upgAP=60; upgHP=100; squadLost=0;
   // Keep the briefing over the canvas until the new map has actually rendered.
   startSector(level);
   draw();
@@ -14565,7 +14565,7 @@ bindTap(document.getElementById('go'),function(){
   var sc=parseInt(params.get('coins')||'0',10);
   if(sc>0&&sc<=99999) startCoins=sc;
   var beltParam=params.get('belt');
-  if(beltParam){ var VALID_TOOLS={droneS:1,drone:1,droneL:1,usv:1,sentry:1,strike:1,stim:1,smoke:1,incend:1,flamer:1,emp:1,med:1,plate:1,fullArmour:1,repair:1,reinforcements:1}; var bids=beltParam.split(',').filter(function(b){return VALID_TOOLS[b];}).slice(0,6); if(bids.length) belt=bids; }
+  if(beltParam){ var VALID_TOOLS={droneS:1,drone:1,droneL:1,usv:1,sentry:1,strike:1,stim:1,smoke:1,incend:1,flamer:1,emp:1,med:1,plate:1,fullArmour:1,repair:1,reinforcements:1}; var bids=beltParam.split(',').filter(function(b){return VALID_TOOLS[b];}).slice(0,6); if(bids.length){belt=bids;beltSeeded=true;} }
   window._recEnabled = adminToolAllowed&&params.get('rec')==='1';
   if(params.get('mute')==='1'){ muted=true; var mb=document.getElementById('mute'); if(mb){mb.textContent='✕';mb.style.opacity=.5;} }
   var autolvl=parseInt(params.get('autostart')||'0',10);
