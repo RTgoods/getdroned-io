@@ -2963,14 +2963,7 @@ function damageDroneEmplacements(x,y,blast){
 }
 function droneBoom(x,y){
   var dk=(drone&&drone.kind)||'drone', bl=(TOOLS[dk]&&TOOLS[dk].blast)||[100,145];
-  if(level===2&&dk==='droneL') for(var depotHit=0;depotHit<depots.length;depotHit++){
-    var targetDepot=depots[depotHit];
-    if(!targetDepot.blown&&x>targetDepot.x0*TILE&&x<(targetDepot.x1+1)*TILE&&y>targetDepot.y0*TILE&&y<(targetDepot.y1+1)*TILE){
-      targetDepot.heavyHits=Math.min(3,(targetDepot.heavyHits||0)+1);
-      if(targetDepot.heavyHits===3)blowDepot(targetDepot);
-      else banner('DEPOT HIT',targetDepot.heavyHits+' / 3 HEAVY DRONE HITS',2);
-    }
-  }
+  // Depots take their damage generically inside explode() below, same as any other warhead.
   // Drone warheads share tower health with bullets and grenade fragments.
   damageDroneEmplacements(x,y,bl);
   seaMines.slice().forEach(function(m){if(Math.hypot(m.x-x,m.y-y)<bl[0])detonateSeaMine(m,false);});
@@ -3159,13 +3152,14 @@ function buildTrench(){
     addProp(dx2-1,dy2+5,2,1,'sand',true); addProp(dx2+4,dy2+5,2,1,'sand',true);
     var DD={i:di2,x0:dx2,y0:dy2,x1:dx2+5,y1:dy2+4,
       cx:(dx2+3)*TILE,cy:(dy2+2.5)*TILE,blown:0,
+      hp:645,mx:645,hurt:0, // ~3 direct heavy-drone hits (215 dmg each) worth of punishment
       truckX:(dx2-2.15)*TILE,truckY:(dy2+2.55)*TILE};
     depots.push(DD);
     // A loading detail continuously moves ammunition from the parked truck.
     for(var dcw=0;dcw<3;dcw++) depotWorkers.push({depot:di2,depotWorker:1,
       x:DD.truckX+rr(-35,-15),y:DD.truckY+44+dcw*5,fromX:DD.truckX-25,fromY:DD.truckY+44+dcw*5,
       toX:(dx2+.8)*TILE,toY:(dy2+2+dcw*.55)*TILE,trip:dcw/3,dir:1,
-      ang:0,walk:rr(0,6.28),amt:1,carry:dcw!==2,sid:5200+di2*70+dcw*13,alive:1});
+      ang:0,walk:rr(0,6.28),amt:1,carry:dcw!==2,sid:5200+di2*70+dcw*13,alive:1,hp:40,dead:0});
     // four AA mounts covering the approaches
     var AAP=[[dx2-2,dy2-1],[dx2+7,dy2-1],[dx2-2,dy2+5],[dx2+7,dy2+5]];
     for(var ai=0;ai<AAP.length;ai++){
@@ -5560,10 +5554,21 @@ function explode(x,y,r,dmg,fromPlayer,depotBlast){
     if(C.hp>0&&cd<r)hitSiegeCover(C,dmg*2*(1-.5*cd/r));
   }
 
-  for(var dq7=0;dq7<depots.length;dq7++){
+  // Depots take proportional damage from any explosion (frag or drone warhead)
+  // landing near their walls, instead of requiring a precise hit inside them.
+  if(fromPlayer&&dmg>0)for(var dq7=0;dq7<depots.length;dq7++){
     var DQ7=depots[dq7];
-    if(DQ7.blown) continue;
-    if(x>DQ7.x0*TILE&&x<(DQ7.x1+1)*TILE&&y>DQ7.y0*TILE&&y<(DQ7.y1+1)*TILE) blowDepot(DQ7);
+    if(DQ7.blown||DQ7.hp<=0) continue;
+    var depotDist=Math.max(0,Math.hypot(DQ7.cx-x,DQ7.cy-y)-90);
+    if(depotDist<r){
+      DQ7.hp=Math.max(0,DQ7.hp-dmg*(1-depotDist/r)); DQ7.hurt=.25;
+      if(DQ7.hp<=0) blowDepot(DQ7);
+    }
+  }
+  if(fromPlayer&&dmg>0)for(var dwq=depotWorkers.length-1;dwq>=0;dwq--){
+    var DWQ=depotWorkers[dwq]; if(DWQ.dead||!DWQ.alive) continue;
+    var dwd2=Math.hypot(DWQ.x-x,DWQ.y-y);
+    if(dwd2<r) hurtDepotWorker(DWQ, dmg*(1-dwd2/r*.6));
   }
   if(depotJustBlown()) return;
   for(var wq=0;wq<6;wq++) wallHit(x,y,wq*1.047+rr(-.3,.3),r*1.25,1.5);
@@ -6869,6 +6874,27 @@ function update(dt,realDt){
             // Small arms barely dent tank armour — frags/explosives are the real answer.
             var gunDmg=bu.dmg||24; if(shotCar.patrolTank) gunDmg*=.35;
             hitMotorcadeCar(shotCar,gunDmg); impact(bu.x,bu.y); bullets.splice(b,1); bu=null; break;
+          }
+        }
+      }
+      if(!bu) break;
+      if(depots.length){
+        for(var dpb=0;dpb<depots.length;dpb++){
+          var DPB=depots[dpb]; if(DPB.blown||DPB.hp<=0) continue;
+          if(bu.x>DPB.x0*TILE&&bu.x<(DPB.x1+1)*TILE&&bu.y>DPB.y0*TILE&&bu.y<(DPB.y1+1)*TILE){
+            DPB.hp=Math.max(0,DPB.hp-(bu.dmg||24)); DPB.hurt=.2; impact(bu.x,bu.y);
+            if(DPB.hp<=0) blowDepot(DPB);
+            bullets.splice(b,1); bu=null; break;
+          }
+        }
+      }
+      if(!bu) break;
+      if(depotWorkers.length){
+        for(var dwb=depotWorkers.length-1;dwb>=0;dwb--){
+          var DWB=depotWorkers[dwb]; if(DWB.dead||!DWB.alive) continue;
+          if(Math.hypot(DWB.x-bu.x,DWB.y-bu.y)<16){
+            hurtDepotWorker(DWB,bu.dmg||24); impact(bu.x,bu.y);
+            bullets.splice(b,1); bu=null; break;
           }
         }
       }
@@ -8860,13 +8886,23 @@ function updateDepotWorkers(dt){
   if(mapKind!=='trench') return;
   for(var i=0;i<depotWorkers.length;i++){
     var W=depotWorkers[i], D=depots[W.depot];
-    if(!D||D.blown){ W.alive=0; continue; }
+    if(W.dead||!D||D.blown){ W.alive=0; continue; }
     W.alive=1;
     var ax=W.dir>0?W.toX:W.fromX, ay=W.dir>0?W.toY:W.fromY;
     var dx=ax-W.x,dy=ay-W.y,dd=Math.hypot(dx,dy)||1,spd=58;
     if(dd<5){ W.dir*=-1; W.carry=W.dir>0; continue; }
     W.x+=dx/dd*spd*dt; W.y+=dy/dd*spd*dt; W.ang=Math.atan2(dy,dx);
     W.walk+=dt*8.5; W.amt=1;
+  }
+}
+function hurtDepotWorker(W,damage){
+  if(W.dead||!W.alive)return;
+  W.hp=Math.max(0,W.hp-damage);
+  if(W.hp<=0){
+    W.dead=1; W.alive=0;
+    bakeCorpse(W.x,W.y,W.ang,'#59614a','#c0392b','rifle',false);
+    bloodSpray(W.x,W.y,W.ang,rr(40,80),24);
+    sfx('hit',.5);
   }
 }
 function drawDepotTruck(c,D){
@@ -9212,7 +9248,7 @@ function drawTank(c,T2){
 }
 function depotJustBlown(){ return false; }
 function blowDepot(D){
-  if(D.blown||(level===2&&(D.heavyHits||0)<3)) return;
+  if(D.blown) return;
   D.blown=1;
   var R=430;
   banner('AMMO DEPOT CHAIN REACTION','GET CLEAR',2.6);
@@ -9454,7 +9490,7 @@ function startSector(n){
         {t:9.6,a:'DESTROY KERCH BRIDGE',b:'HEAVY DRONE + OIL TRAIN = CHAIN REACTION'}]:(mapKind==='trench')?[{t:0,a:'SECTOR '+n,b:'MEAT GRINDER'},
         {t:2.4,a:'TWO ENEMY BASES',b:'CLEAR AND CAPTURE BOTH'},
         {t:4.8,a:'PRISONERS IN EACH BASE',b:'FREE THEM AND GET THEM HOME'},
-        {t:7.2,a:'TWO WEAPONS DEPOTS',b:'3 HEAVY DRONE HITS EACH · DETONATE INSIDE'},
+        {t:7.2,a:'TWO WEAPONS DEPOTS',b:'FRAGS, BULLETS OR DRONES — WEAR DOWN THEIR ARMOUR'},
         {t:9.6,a:'LAUNCH TRUCK DEPLOYING',b:'PROTECTED FOR 12 SECONDS'}]:[{t:0,a:'SECTOR '+n,b:'FRANKS AND HAMMERS'},
          {t:2.4,a:'BREACH 3 COMPOUND PERIMETERS',b:'TAKE EACH FORTIFIED POSITION'},
          {t:4.8,a:'NEUTRALIZE ENEMY FORCES',b:'CLEAR ALL HOSTILES'},
@@ -12796,8 +12832,13 @@ function draw(){
     outl(ctx,'#2a1405',2);
     ctx.fillStyle='#1a1208'; ctx.fillRect(-1.6,-5,3.2,8); ctx.fillRect(-1.6,4.5,3.2,2.4);
     ctx.restore();
+    // Health bar — always visible so the player can see it wearing down.
+    var depotBarW=64;
+    ctx.fillStyle='#17251e'; ctx.fillRect(DW.cx-depotBarW/2-1,DW.y0*TILE-31,depotBarW+2,6);
+    ctx.fillStyle=DW.hp/DW.mx<=.25?'#ff4030':'#d9bf6b';
+    ctx.fillRect(DW.cx-depotBarW/2,DW.y0*TILE-30,depotBarW*Math.max(0,DW.hp/DW.mx),4);
     ctx.fillStyle='rgba(226,118,44,.9)'; ctx.font='bold 9px Arial'; ctx.textAlign='center';
-    ctx.fillText(level===2?'DEPOT · '+(3-(DW.heavyHits||0))+' HEAVY HITS LEFT':'WEAPONS DEPOT',DW.cx,DW.y0*TILE-22);
+    ctx.fillText('WEAPONS DEPOT',DW.cx,DW.y0*TILE-22);
     ctx.font='bold 7px Arial'; ctx.fillStyle='rgba(226,118,44,.6)';
     var guns9=0;
     for(var gq9=0;gq9<aaGuns.length;gq9++) if(aaGuns[gq9].depot===DW.i) guns9++;
