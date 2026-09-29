@@ -55,7 +55,7 @@ const SECTORS = [
   { num: 3, name: 'BLACK SEA FLEET',  cover: '/get-droned/assets/images/covers/level-3.png?v=1' },
   { num: 4, name: 'CRUDE INTENTIONS', cover: '/get-droned/assets/images/covers/level-4.png?v=1' },
   { num: 5, name: 'MILITARY AID',     cover: '/get-droned/assets/images/covers/level-5.png?v=2' },
-  { num: 6, name: 'RED SQUARE',     cover: '/get-droned/assets/images/covers/level-6.png?v=1' },
+  { num: 6, name: 'RED SQUARE',     cover: '/get-droned/assets/images/covers/level-6.png?v=2' },
 ]
 
 export function GameSidebar({ game, user, hasPurchased, isAdmin = false, completedSectors = [], sectorStats = {}, liveObjectives = {}, playing = false, onPlay, onBack, onPilotSettings, onReset, avatarUrl = null }: Props) {

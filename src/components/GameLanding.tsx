@@ -14,7 +14,7 @@ const SECTORS = [
   { num: 3, terrain: 'Naval combat', briefing: 'Take the fight offshore. Pilot sea drones, board your gunboat and attack hostile ships while defending your coastal base. Destroy the Kerch road and rail bridge before confronting the sea boss.', name: 'BLACK SEA FLEET',  cover: '/get-droned/assets/images/covers/level-3.png?v=1' },
   { num: 4, terrain: 'Industrial assault', briefing: 'Battle through an oil refinery complex packed with tanks, pipes and industrial cover. Watch for machine-gun towers that threaten both you and your drones. Destroy all six refineries and their six patrol tanks to draw out the boss.', name: 'CRUDE INTENTIONS', cover: '/get-droned/assets/images/covers/level-4.png?v=1' },
   { num: 5, terrain: 'Winter operations', briefing: 'Push across a snow-covered airfield in winter gear. Work around aircraft, icy open ground and snow-laden trees as you close in on the boss.', name: 'MILITARY AID',   cover: '/get-droned/assets/images/covers/level-5.png?v=2' },
-  { num: 6, terrain: 'City showdown', briefing: 'Fight through city streets beneath Red Square-inspired landmarks. Break through the final defenses and face the mounted boss.', name: 'RED SQUARE',     cover: '/get-droned/assets/images/covers/level-6.png?v=1' },
+  { num: 6, terrain: 'City showdown', briefing: 'Fight through city streets beneath Red Square-inspired landmarks. Break through the final defenses and face the mounted boss.', name: 'RED SQUARE',     cover: '/get-droned/assets/images/covers/level-6.png?v=2' },
 ]
 
 const SPECS = [

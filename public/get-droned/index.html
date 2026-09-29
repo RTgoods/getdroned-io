@@ -71,8 +71,8 @@
   </div>
   <div id="levelSixIntro" class="levelIntro" aria-hidden="true">
     <picture style="display:contents">
-      <source srcset="assets/images/covers/level-6.webp?v=1" type="image/webp">
-      <img class="levelIntroImg" id="levelSixIntroImg" alt="Red Square mission briefing: Vladimir Putin" src="assets/images/covers/level-6.png">
+      <source srcset="assets/images/covers/level-6.webp?v=2" type="image/webp">
+      <img class="levelIntroImg" id="levelSixIntroImg" alt="Red Square mission briefing: Vladimir Putin" src="assets/images/covers/level-6.png?v=2">
     </picture>
     <div class="levelIntroControls"><div class="levelIntroBar" aria-hidden="true"><i></i></div></div>
   </div>
@@ -116,8 +116,8 @@
   </div>
   <div id="gameCompleteOverlay">
     <picture style="display:contents">
-      <source srcset="assets/images/covers/Game-Complete.webp" type="image/webp">
-      <img src="assets/images/covers/Game-Complete.png" alt="Mission Complete">
+      <source srcset="assets/images/covers/Game-Complete.webp?v=2" type="image/webp">
+      <img src="assets/images/covers/Game-Complete.png?v=2" alt="Mission Complete">
     </picture>
     <div class="solvedContinueWrap">
       <button class="levelIntroStart" id="gameCompleteBtn">&#9654; RETURN TO BASE</button>
@@ -146,7 +146,10 @@
   </div>
 
   <div class="ov hide" id="over">
-    <img id="baseLostArt" alt="Base lost — the fight continues" decoding="async">
+    <picture style="display:contents">
+      <source id="baseLostArtSrc" srcset="assets/images/covers/base-lost.webp" type="image/webp">
+      <img id="baseLostArt" alt="Base lost — the fight continues" decoding="async">
+    </picture>
     <h1 id="overT">K.I.A.<small id="overS">THE HOUSE HOLDS</small></h1>
     <p class="sub" id="overStats"></p>
     <button class="btn" id="retry">REDEPLOY</button>
@@ -193,6 +196,6 @@
 </script>
 
 <script src="assets/js/language.js?v=6"></script>
-<script src="assets/js/game.js?v=1790340444"></script>
+<script src="assets/js/game.js?v=1790340446"></script>
 </body>
 </html>
