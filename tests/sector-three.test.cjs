@@ -128,3 +128,29 @@ test('sea drone contact is registered before it can cross an enemy hull',()=>{
  const D={x:1700,y:1400,ang:0,vx:400,vy:0,kind:'usv'};c.drone=D;c.movePlayerBoat(D,28,16,.5,true);
  assert.equal(D.contactShip,S);assert(!c.boatOverlap(D,D.x,D.y,D.ang,S));
 });
+test('opposing ships pass each other and reach their destinations without overlap',()=>{
+ const c=setup();c.gunboat=null;
+ const a={x:1800,y:1400,ang:0,len:180,wid:70,spd:70,name:'east'},b={x:2200,y:1400,ang:Math.PI,len:180,wid:70,spd:70,name:'west'};
+ c.ships=[a,b];for(const s of c.ships)c.prepareSeaRoute(s);
+ let arrivedA=false,arrivedB=false;
+ for(let frame=0;frame<1800&&(!arrivedA||!arrivedB);frame++){
+  if(!arrivedA)arrivedA=c.moveSeaShip(a,.05,2400,1400);
+  if(!arrivedB)arrivedB=c.moveSeaShip(b,.05,1600,1400);
+  assert(!c.boatOverlap(a,a.x,a.y,a.ang,b));
+ }
+ assert(arrivedA&&arrivedB,'ships deadlocked: '+JSON.stringify([a.x,a.y,b.x,b.y]));
+});
+test('all seventeen ships keep making progress in fleet traffic without piling up',()=>{
+ const c=setup();c.gunboat=null;
+ const boats=c.ships.slice(),distance=new Map(boats.map(b=>[b,0])),arrivals=new Map(boats.map(b=>[b,0]));
+ for(let frame=0;frame<2400;frame++){
+  for(const b of boats){
+   if(b.testArrived)continue;
+   const target=b.lander?[b.landX,b.landY]:[b.lane[b.wp][0]*34,b.lane[b.wp][1]*34],x=b.x,y=b.y;
+   if(c.moveSeaShip(b,.05,...target)){arrivals.set(b,arrivals.get(b)+1);if(b.lander)b.testArrived=true;else b.wp=(b.wp+1)%b.lane.length;}
+   if(frame>=1800)distance.set(b,distance.get(b)+Math.hypot(b.x-x,b.y-y));
+  }
+  if(frame%20===0)for(let i=0;i<boats.length;i++)for(let j=i+1;j<boats.length;j++)assert(!c.boatOverlap(boats[i],boats[i].x,boats[i].y,boats[i].ang,boats[j]),'overlap '+i+'/'+j);
+ }
+ for(const b of boats){assert(b.testArrived||distance.get(b)>34,b.name+' stalled in fleet traffic; distance '+distance.get(b));assert(arrivals.get(b)>0,b.name+' never reached a destination');}
+});

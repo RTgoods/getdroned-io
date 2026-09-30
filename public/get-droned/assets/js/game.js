@@ -7785,36 +7785,75 @@ function prepareSeaRoute(S){
   // Called only on initial spawn; ships never teleport during patrols.
   S.x=((nearest%cols)*2+1)*TILE;S.y=(Math.floor(nearest/cols)*2+1)*TILE;S.navPath=null;
 }
-function planSeaRoute(S,tx,ty){
+function planSeaRoute(S,tx,ty,traffic){
+  // Replan around nearby hulls, rather than repeatedly selecting the same
+  // land-only route through an occupied channel.
+  var clearance=null;
+  if(traffic){
+    clearance=new Float32Array(S.nav.clear.length);
+    var radius=Math.hypot(S.len*.5,S.wid*.5)+14;
+    var obstacles=ships.filter(function(other){return other!==S;});
+    if(gunboat&&gunboat!==S)obstacles.push(Object.assign({len:102,wid:39},gunboat));
+    if(drone&&drone.kind==='usv')obstacles.push(Object.assign({len:28,wid:16},drone));
+    for(var cell=0;cell<clearance.length;cell++){
+      var wx=((cell%S.nav.cols)*2+1)*TILE,wy=(Math.floor(cell/S.nav.cols)*2+1)*TILE,room=Infinity;
+      for(var o=0;o<obstacles.length;o++)room=Math.min(room,seaHullDistance(obstacles[o],wx,wy)-radius);
+      clearance[cell]=room;
+    }
+  }
   var N=S.nav,start=Math.round((S.y/TILE-1)/2)*N.cols+Math.round((S.x/TILE-1)/2),q=[start],prev=new Int32Array(N.clear.length).fill(-2);prev[start]=-1;
   var best=start,bd=Infinity;
   for(var h=0;h<q.length;h++){
     var id=q[h],x=id%N.cols,y=Math.floor(id/N.cols),d=Math.hypot((x*2+1)*TILE-tx,(y*2+1)*TILE-ty);
     if(d<bd){bd=d;best=id;}
     [[1,0],[-1,0],[0,1],[0,-1]].forEach(function(dir){var nx=x+dir[0],ny=y+dir[1],ni=ny*N.cols+nx;
-      if(nx>=0&&ny>=0&&nx<N.cols&&ny<N.rows&&N.clear[ni]&&prev[ni]===-2&&seaRoom(S,(nx+x+1)*TILE,(ny+y+1)*TILE,Math.atan2(dir[1],dir[0]))){prev[ni]=id;q.push(ni);}});
+      if(nx>=0&&ny>=0&&nx<N.cols&&ny<N.rows&&N.clear[ni]&&prev[ni]===-2&&(!clearance||clearance[ni]>=Math.min(0,clearance[start]))&&seaRoom(S,(nx+x+1)*TILE,(ny+y+1)*TILE,Math.atan2(dir[1],dir[0]))){prev[ni]=id;q.push(ni);}});
   }
   var path=[];for(var id=best;id!==-1;id=prev[id])path.push({x:((id%N.cols)*2+1)*TILE,y:(Math.floor(id/N.cols)*2+1)*TILE});
-  S.navPath=path.reverse();S.navIndex=0;
+  S.navPath=path.reverse();S.navIndex=S.navPath.length>1?1:0;
+  S.navTraffic=!!traffic;
+  if(!traffic)S.navGoal=S.navPath[S.navPath.length-1];
 }
 function moveSeaShip(S,dt,tx,ty){
-  if(!S.navPath)planSeaRoute(S,tx,ty);
+  // Keep a chosen passing direction long enough to clear the obstruction.
+  // A one-frame sidestep immediately steers back into the same blocked waypoint.
+  if(S.yieldTime>0){
+    var yieldStep=Math.min(6,S.spd*dt),yx=S.x+Math.cos(S.yieldAngle)*yieldStep,yy=S.y+Math.sin(S.yieldAngle)*yieldStep;
+    if(seaRoom(S,yx,yy,S.ang)&&boatTrafficClear(S,yx,yy,S.ang)){S.x=yx;S.y=yy;}
+    else S.yieldTime=0;
+    S.yieldTime-=dt;
+    if(S.yieldTime<=0){S.navPath=null;S.replanTraffic=true;}
+    return false;
+  }
+  if(!S.navPath){planSeaRoute(S,tx,ty,S.replanTraffic);S.replanTraffic=false;}
   var P=S.navPath[S.navIndex];
   while(P&&Math.hypot(P.x-S.x,P.y-S.y)<2){S.navIndex++;P=S.navPath[S.navIndex];}
-  if(!P){S.navPath=null;return true;}
-  var dx=P.x-S.x,dy=P.y-S.y,d=Math.hypot(dx,dy),a=Math.atan2(dy,dx),step=Math.min(d,S.spd*dt);
+  if(!P){
+    S.navPath=null;
+    if(S.navTraffic&&S.navGoal&&Math.hypot(S.navGoal.x-S.x,S.navGoal.y-S.y)>4){
+      // A temporarily blocked route is not an arrival. Try a local passing
+      // maneuver; avoid rebuilding the same blocked BFS on every frame.
+      P=S.navGoal;S.navPath=[P];S.navIndex=0;
+    }else return true;
+  }
+  var dx=P.x-S.x,dy=P.y-S.y,d=Math.hypot(dx,dy),a=Math.atan2(dy,dx),step=Math.min(d,S.spd*dt,6);
   var turn=((a-S.ang+Math.PI*3)%(Math.PI*2))-Math.PI;
   var heading=S.ang+Math.max(-1.1*dt,Math.min(1.1*dt,turn));
-  if(boatTrafficClear(S,S.x,S.y,heading))S.ang=heading;
+  if(seaRoom(S,S.x,S.y,heading)&&boatTrafficClear(S,S.x,S.y,heading))S.ang=heading;
   var nx=S.x+dx/d*step,ny=S.y+dy/d*step;
-  // Centre-line waypoints have clearance for the hull at every heading.
   if(seaRoom(S,nx,ny,S.ang)&&boatTrafficClear(S,nx,ny,S.ang)){S.x=nx;S.y=ny;S.blocked=0;}
   else {
     S.blocked=(S.blocked||0)+dt;
-    // Yield sideways into clear water; never pass through another hull.
-    for(var side=1;side>=-1;side-=2){var sx=S.x-dy/d*step*side,sy=S.y+dx/d*step*side;
-      if(seaRoom(S,sx,sy,S.ang)&&boatTrafficClear(S,sx,sy,S.ang)){S.x=sx;S.y=sy;break;}}
-    if(S.blocked>3){S.navPath=null;S.blocked=0;}
+    if(!S.navTraffic){S.navPath=null;S.replanTraffic=true;}
+    if(S.blocked>.25){
+      var goal=Math.atan2(ty-S.y,tx-S.x),choices=[Math.PI/2,-Math.PI/2,Math.PI*.75,-Math.PI*.75,Math.PI];
+      for(var side=0;side<choices.length;side++){
+        var direction=goal+choices[side],sx=S.x+Math.cos(direction)*step,sy=S.y+Math.sin(direction)*step;
+        if(seaRoom(S,sx,sy,S.ang)&&boatTrafficClear(S,sx,sy,S.ang)){
+          S.yieldAngle=direction;S.yieldTime=1.2;S.blocked=0;break;
+        }
+      }
+    }
   }
   return false;
 }
